@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>2D Rigging Studio - Marcadores Nítidos de Keyframe (KF)</title>
+  <title>2D Rigging Studio - Timeline por Osso & Opacidade</title>
   <style>
     * {
       box-sizing: border-box;
@@ -25,7 +25,7 @@
     #app-container {
       display: flex;
       flex: 1;
-      height: calc(100vh - 160px);
+      height: calc(100vh - 220px);
     }
 
     #sidebar {
@@ -58,7 +58,7 @@
       color: #aaa;
     }
 
-    select {
+    select, input[type="number"] {
       background-color: #18181f;
       color: #fff;
       border: 1px solid #575773;
@@ -149,9 +149,9 @@
       background-color: #121216;
     }
 
-    /* TIMELINE BARRA INFERIOR */
+    /* TIMELINE MULTI-TRACK BAR */
     #timeline-bar {
-      height: 160px;
+      height: 220px;
       background-color: #18181f;
       border-top: 2px solid #3f3f52;
       display: flex;
@@ -171,11 +171,13 @@
       flex-direction: column;
       gap: 4px;
       width: 100%;
+      flex: 1;
+      overflow-y: auto;
     }
 
     canvas#timeline-canvas {
       width: 100%;
-      height: 50px;
+      height: 120px;
       background-color: #121216;
       border: 1px solid #3f3f52;
       border-radius: 4px;
@@ -256,10 +258,13 @@
       <div class="section">
         <label>1. Modo de Interação</label>
         <div class="btn-group">
-          <button id="btn-mode-bone" class="active" onclick="setMode('ADD_BONE')">Criar Osso</button>
-          <button id="btn-mode-draw" onclick="setMode('DRAW_MESH')">Desenhar</button>
+          <button id="btn-mode-bone-root" class="active" onclick="setMode('ADD_BONE_ROOT')">+ Osso Raiz</button>
+          <button id="btn-mode-bone-child" onclick="setMode('ADD_BONE_CHILD')">+ Osso Filhado</button>
         </div>
-        <button id="btn-mode-pose" onclick="setMode('POSE')">Posicionar / Rotacionar</button>
+        <div class="btn-group" style="margin-top: 4px;">
+          <button id="btn-mode-draw" onclick="setMode('DRAW_MESH')">Desenhar</button>
+          <button id="btn-mode-pose" onclick="setMode('POSE')">Posicionar</button>
+        </div>
       </div>
 
       <div class="section">
@@ -281,6 +286,12 @@
         <div id="bone-transform-box" class="section">
           <label id="lbl-bone-name">Rotacionar Osso (°)</label>
           <input type="range" id="angle-slider" min="-180" max="180" value="0">
+
+          <label>Translação X:</label>
+          <input type="range" id="bone-posx-slider" min="-1000" max="1000" value="0">
+
+          <label>Translação Y:</label>
+          <input type="range" id="bone-posy-slider" min="-1000" max="1000" value="0">
         </div>
 
         <!-- Controles da Imagem Anexada -->
@@ -292,10 +303,10 @@
             <label>Rotação Própria (°):</label>
             <input type="range" id="sprite-rot" min="-180" max="180" value="0">
 
-            <label>Offset X (Translada Livre):</label>
+            <label>Offset X:</label>
             <input type="range" id="sprite-offx" min="-1000" max="1000" value="0">
 
-            <label>Offset Y (Translada Livre):</label>
+            <label>Offset Y:</label>
             <input type="range" id="sprite-offy" min="-1000" max="1000" value="0">
 
             <label>Escala:</label>
@@ -336,21 +347,26 @@
     </div>
   </div>
 
-  <!-- TIMELINE COM RÉGUA E MARCADOR NITIDO "KF" -->
+  <!-- TIMELINE BAR COM LINHA DO TEMPO POR OSSO -->
   <div id="timeline-bar">
     <div class="timeline-controls">
       <button id="btn-play" class="accent-btn" onclick="togglePlay()">▶ Play</button>
       <button onclick="jumpToKeyframe(-1)">&lt; KF</button>
       <button onclick="jumpToKeyframe(1)">KF &gt;</button>
-      <button class="accent-btn" onclick="addKeyframe()">+ Gravar Keyframe (KF)</button>
+      <button class="accent-btn" onclick="addKeyframe()">+ Gravar KF (Osso Ativo)</button>
       <button class="danger-btn" onclick="removeKeyframe()">- Remover KF</button>
+      
+      <div style="display:flex; align-items:center; gap:5px; margin-left:10px;">
+        <label style="color:#00d2ff; font-weight:bold;">Frames:</label>
+        <input type="number" id="max-frames-input" value="60" min="5" max="1000" style="width: 60px;" onchange="updateMaxFrames(this.value)">
+      </div>
+
       <span id="frame-counter" style="font-weight: bold; color: #00d2ff; margin-left:10px;">Frame: 0 / 60</span>
       <span id="keyframe-info" style="font-size:0.8rem; color:#ffcc00; font-weight:bold; margin-left:auto;"></span>
     </div>
 
     <div class="timeline-track-container">
       <canvas id="timeline-canvas"></canvas>
-      <input type="range" id="timeline-slider" min="0" max="60" value="0" oninput="onTimelineSeek(this.value)">
     </div>
   </div>
 
@@ -396,19 +412,24 @@
     const timelineCanvas = document.getElementById('timeline-canvas');
     const tCtx = timelineCanvas.getContext('2d');
     
-    let mode = 'ADD_BONE'; 
+    let mode = 'ADD_BONE_ROOT'; 
     let transformTarget = 'BONE';
     let bones = [];
     let selectedBone = null;
     let selectedSpriteIndex = -1;
     let isMouseDown = false;
+    let isDraggingBonePose = false;
     let dragStartPos = null;
     let currentDrawingStroke = [];
 
-    // Animation & Keyframes
+    // Timeline Dragging & Resizing State
+    let isResizingTimeline = false;
+    let isScrubbingTimeline = false;
+
+    // Animation & Keyframes por Osso
     let currentFrame = 0;
-    const maxFrames = 60;
-    let keyframes = {}; // { [frameIndex]: { [boneId]: localAngle } }
+    let maxFrames = 60;
+    let boneKeyframes = {};
     let isPlaying = false;
     let animationInterval = null;
 
@@ -429,7 +450,7 @@
       canvas.height = canvas.parentElement.clientHeight;
 
       timelineCanvas.width = timelineCanvas.parentElement.clientWidth;
-      timelineCanvas.height = 50;
+      timelineCanvas.height = Math.max(120, (bones.length + 1) * 24 + 30);
 
       render();
       drawTimelineCanvas();
@@ -442,6 +463,8 @@
         this.parent = parent;
         this.length = length;
         this.localAngle = angle;
+        this.posX = basePos.x;
+        this.posY = basePos.y;
         this.meshStrokes = [];
         this.attachedSprites = []; 
         
@@ -450,19 +473,16 @@
         this.endX = 0;
         this.endY = 0;
         this.worldAngle = 0;
-
-        if (!parent) {
-          this.startX = basePos.x;
-          this.startY = basePos.y;
-        }
       }
 
       updateTransform() {
         if (this.parent) {
-          this.startX = this.parent.endX;
-          this.startY = this.parent.endY;
+          this.startX = this.parent.endX + this.posX;
+          this.startY = this.parent.endY + this.posY;
           this.worldAngle = this.parent.worldAngle + this.localAngle;
         } else {
+          this.startX = this.posX;
+          this.startY = this.posY;
           this.worldAngle = this.localAngle;
         }
 
@@ -492,7 +512,8 @@
       mode = newMode;
       document.querySelectorAll('#sidebar button').forEach(b => b.classList.remove('active'));
       
-      if (mode === 'ADD_BONE') document.getElementById('btn-mode-bone').classList.add('active');
+      if (mode === 'ADD_BONE_ROOT') document.getElementById('btn-mode-bone-root').classList.add('active');
+      if (mode === 'ADD_BONE_CHILD') document.getElementById('btn-mode-bone-child').classList.add('active');
       if (mode === 'DRAW_MESH') document.getElementById('btn-mode-draw').classList.add('active');
       if (mode === 'POSE') document.getElementById('btn-mode-pose').classList.add('active');
 
@@ -509,6 +530,7 @@
       document.getElementById('image-transform-box').style.display = (target === 'IMAGE') ? 'flex' : 'none';
       
       if (target === 'IMAGE') updateSpriteDropdown();
+      render();
     }
 
     canvas.addEventListener('mousedown', (e) => {
@@ -516,10 +538,14 @@
       const mousePos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
       isMouseDown = true;
 
-      if (mode === 'ADD_BONE') {
-        let parentBone = selectedBone || (bones.length > 0 ? bones[bones.length - 1] : null);
-        let startPos = parentBone ? { x: parentBone.endX, y: parentBone.endY } : mousePos;
-        dragStartPos = startPos;
+      if (mode === 'ADD_BONE_ROOT') {
+        dragStartPos = mousePos;
+      }
+      else if (mode === 'ADD_BONE_CHILD') {
+        if (!selectedBone && bones.length > 0) {
+          selectedBone = bones[bones.length - 1];
+        }
+        dragStartPos = selectedBone ? { x: selectedBone.endX, y: selectedBone.endY } : mousePos;
       } 
       else if (mode === 'DRAW_MESH') {
         if (!selectedBone && bones.length > 0) selectedBone = bones[0];
@@ -532,14 +558,19 @@
         let minDist = 25;
 
         bones.forEach(b => {
-          const dist = Math.hypot(b.endX - mousePos.x, b.endY - mousePos.y);
-          if (dist < minDist) {
-            minDist = dist;
+          const dist = Math.hypot(b.startX - mousePos.x, b.startY - mousePos.y);
+          const endDist = Math.hypot(b.endX - mousePos.x, b.endY - mousePos.y);
+          if (dist < minDist || endDist < minDist) {
+            minDist = Math.min(dist, endDist);
             closestBone = b;
           }
         });
 
-        if (closestBone) selectBone(closestBone);
+        if (closestBone) {
+          selectBone(closestBone);
+          isDraggingBonePose = true;
+          dragStartPos = mousePos;
+        }
       }
     });
 
@@ -549,7 +580,7 @@
 
       if (!isMouseDown) return;
 
-      if (mode === 'ADD_BONE' && dragStartPos) {
+      if ((mode === 'ADD_BONE_ROOT' || mode === 'ADD_BONE_CHILD') && dragStartPos) {
         render();
         ctx.beginPath();
         ctx.moveTo(dragStartPos.x, dragStartPos.y);
@@ -575,25 +606,43 @@
         }
         ctx.stroke();
       }
+      else if (mode === 'POSE' && isDraggingBonePose && selectedBone) {
+        const dx = mousePos.x - dragStartPos.x;
+        const dy = mousePos.y - dragStartPos.y;
+
+        selectedBone.posX += dx;
+        selectedBone.posY += dy;
+
+        dragStartPos = mousePos;
+        updateUI();
+        render();
+      }
     });
 
     canvas.addEventListener('mouseup', (e) => {
       const rect = canvas.getBoundingClientRect();
       const mousePos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
 
-      if (mode === 'ADD_BONE' && isMouseDown && dragStartPos) {
+      if ((mode === 'ADD_BONE_ROOT' || mode === 'ADD_BONE_CHILD') && isMouseDown && dragStartPos) {
         const dx = mousePos.x - dragStartPos.x;
         const dy = mousePos.y - dragStartPos.y;
         const length = Math.hypot(dx, dy);
 
         if (length > 15) {
-          let parentBone = selectedBone || (bones.length > 0 ? bones[bones.length - 1] : null);
+          let parentBone = (mode === 'ADD_BONE_CHILD') ? selectedBone : null;
           let worldAngle = Math.atan2(dy, dx);
           let localAngle = parentBone ? worldAngle - parentBone.worldAngle : worldAngle;
 
-          const newBone = new Bone(`Osso_${bones.length + 1}`, parentBone, length, localAngle, dragStartPos);
+          let basePos = { x: dragStartPos.x, y: dragStartPos.y };
+          if (parentBone) {
+            basePos = { x: dragStartPos.x - parentBone.endX, y: dragStartPos.y - parentBone.endY };
+          }
+
+          const newBone = new Bone(`Osso_${bones.length + 1}`, parentBone, length, localAngle, basePos);
           bones.push(newBone);
+          boneKeyframes[newBone.id] = {};
           selectBone(newBone);
+          resizeCanvas();
         }
       } 
       else if (mode === 'DRAW_MESH' && isMouseDown && selectedBone) {
@@ -604,14 +653,32 @@
       }
 
       isMouseDown = false;
+      isDraggingBonePose = false;
       dragStartPos = null;
       render();
     });
 
     const angleSlider = document.getElementById('angle-slider');
+    const bonePosXSlider = document.getElementById('bone-posx-slider');
+    const bonePosYSlider = document.getElementById('bone-posy-slider');
+
     angleSlider.addEventListener('input', (e) => {
       if (selectedBone && mode === 'POSE' && transformTarget === 'BONE') {
         selectedBone.localAngle = (e.target.value * Math.PI) / 180;
+        render();
+      }
+    });
+
+    bonePosXSlider.addEventListener('input', (e) => {
+      if (selectedBone && mode === 'POSE' && transformTarget === 'BONE') {
+        selectedBone.posX = parseFloat(e.target.value);
+        render();
+      }
+    });
+
+    bonePosYSlider.addEventListener('input', (e) => {
+      if (selectedBone && mode === 'POSE' && transformTarget === 'BONE') {
+        selectedBone.posY = parseFloat(e.target.value);
         render();
       }
     });
@@ -674,6 +741,7 @@
         scaleSlider.value = sprite.scale;
         rotSlider.value = Math.round((sprite.rot * 180) / Math.PI);
       }
+      render();
     }
 
     function updateUI() {
@@ -684,12 +752,15 @@
         infoBox.innerHTML = `
           <b>Selecionado:</b> ${selectedBone.id}<br>
           <b>Comprimento:</b> ${Math.round(selectedBone.length)}px<br>
+          <b>Posição Relativa:</b> X:${Math.round(selectedBone.posX)}, Y:${Math.round(selectedBone.posY)}<br>
           <b>Pai:</b> ${selectedBone.parent ? selectedBone.parent.id : 'Nenhum'}<br>
           <b>Imagens Anexadas:</b> ${selectedBone.attachedSprites.length}
         `;
         
         lblName.innerText = `Rotacionar Osso: ${selectedBone.id}`;
         angleSlider.value = Math.round((selectedBone.localAngle * 180) / Math.PI);
+        bonePosXSlider.value = Math.round(selectedBone.posX);
+        bonePosYSlider.value = Math.round(selectedBone.posY);
 
         updateSpriteDropdown();
       } else {
@@ -697,7 +768,7 @@
       }
 
       document.getElementById('frame-counter').innerText = `Frame: ${currentFrame} / ${maxFrames}`;
-      const hasKeyframe = !!keyframes[currentFrame];
+      const hasKeyframe = selectedBone && boneKeyframes[selectedBone.id] && !!boneKeyframes[selectedBone.id][currentFrame];
       document.getElementById('keyframe-info').innerText = hasKeyframe ? '★ KEYFRAME (KF) GRAVADO' : '';
 
       drawTimelineCanvas();
@@ -717,63 +788,94 @@
       selectedBone = null;
       selectedSpriteIndex = -1;
       currentDrawingStroke = [];
-      keyframes = {};
+      boneKeyframes = {};
       updateUI();
-      render();
+      resizeCanvas();
     }
 
-    // --- TIMELINE VISUAL CANVAS (INDICADOR NITIDO "KF") ---
+    function updateMaxFrames(val) {
+      maxFrames = Math.max(5, parseInt(val) || 60);
+      if (currentFrame > maxFrames) currentFrame = maxFrames;
+      updateUI();
+    }
+
+    // --- TIMELINE VISUAL CANVAS ---
     function drawTimelineCanvas() {
       const w = timelineCanvas.width;
       const h = timelineCanvas.height;
       tCtx.clearRect(0, 0, w, h);
 
-      const padding = 15;
-      const trackWidth = w - padding * 2;
+      const headerHeight = 30;
+      const trackHeight = 24;
+      const labelWidth = 100;
+      const paddingRight = 20;
+
+      const trackWidth = w - labelWidth - paddingRight;
       const step = trackWidth / maxFrames;
 
-      // 1. Grade de Ticks/Régua de Frames
+      // 1. Cabeçalho das réguas
+      tCtx.fillStyle = '#18181f';
+      tCtx.fillRect(0, 0, w, headerHeight);
+      
       tCtx.strokeStyle = '#3f3f52';
       tCtx.lineWidth = 1;
       tCtx.fillStyle = '#888';
-      tCtx.font = '9px sans-serif';
+      tCtx.font = '10px sans-serif';
       tCtx.textAlign = 'center';
 
       for (let i = 0; i <= maxFrames; i += 5) {
-        const x = padding + i * step;
+        const x = labelWidth + i * step;
         tCtx.beginPath();
         tCtx.moveTo(x, 0);
         tCtx.lineTo(x, 10);
         tCtx.stroke();
-        tCtx.fillText(i, x, 20);
+        tCtx.fillText(i, x, 22);
       }
 
-      // 2. DESENHAR KEYFRAMES (Linha Vertical Nítida Amarela + Rótulo "KF")
-      Object.keys(keyframes).forEach(fStr => {
-        const f = parseInt(fStr);
-        const x = padding + f * step;
+      // Handle de Redimensionamento dos Frames
+      const resizeHandleX = labelWidth + maxFrames * step;
+      tCtx.fillStyle = '#00d2ff';
+      tCtx.fillRect(resizeHandleX - 4, 0, 8, headerHeight);
+      tCtx.fillStyle = '#000';
+      tCtx.fillText('⇹', resizeHandleX, 18);
 
-        // Traço Nítido Amarelo
+      // 2. Linhas/Faixas de cada osso
+      bones.forEach((bone, index) => {
+        const y = headerHeight + index * trackHeight;
+
+        tCtx.fillStyle = (bone === selectedBone) ? '#2a2a3a' : (index % 2 === 0 ? '#14141a' : '#18181f');
+        tCtx.fillRect(0, y, w, trackHeight);
+
+        tCtx.fillStyle = (bone === selectedBone) ? '#00d2ff' : '#aaa';
+        tCtx.font = (bone === selectedBone) ? 'bold 11px sans-serif' : '11px sans-serif';
+        tCtx.textAlign = 'left';
+        tCtx.fillText(bone.id, 8, y + 16);
+
+        tCtx.strokeStyle = '#2b2b36';
         tCtx.beginPath();
-        tCtx.moveTo(x, 12);
-        tCtx.lineTo(x, h - 5);
-        tCtx.strokeStyle = '#ffcc00';
-        tCtx.lineWidth = 2;
+        tCtx.moveTo(0, y + trackHeight);
+        tCtx.lineTo(w, y + trackHeight);
         tCtx.stroke();
 
-        // Quadrado com Texto KF
-        tCtx.fillStyle = '#ffcc00';
-        tCtx.fillRect(x - 10, 24, 20, 14);
-        
-        tCtx.fillStyle = '#121216';
-        tCtx.font = 'bold 9px sans-serif';
-        tCtx.fillText('KF', x, 35);
+        const kfs = boneKeyframes[bone.id] || {};
+        Object.keys(kfs).forEach(fStr => {
+          const f = parseInt(fStr);
+          if (f <= maxFrames) {
+            const kx = labelWidth + f * step;
+            const ky = y + trackHeight / 2;
+
+            tCtx.beginPath();
+            tCtx.arc(kx, ky, 5, 0, Math.PI * 2);
+            tCtx.fillStyle = '#ffcc00';
+            tCtx.fill();
+            tCtx.strokeStyle = '#000';
+            tCtx.stroke();
+          }
+        });
       });
 
-      // 3. INDICADOR ATUAL (PLAYHEAD AZUL CIANO)
-      const currentX = padding + currentFrame * step;
-
-      // Linha Vertical Ciano
+      // 3. Indicador de Tempo Atual
+      const currentX = labelWidth + currentFrame * step;
       tCtx.beginPath();
       tCtx.moveTo(currentX, 0);
       tCtx.lineTo(currentX, h);
@@ -781,7 +883,6 @@
       tCtx.lineWidth = 2;
       tCtx.stroke();
 
-      // Triângulo no topo
       tCtx.beginPath();
       tCtx.moveTo(currentX - 6, 0);
       tCtx.lineTo(currentX + 6, 0);
@@ -791,93 +892,163 @@
       tCtx.fill();
     }
 
-    // Clique direto no Canvas da Timeline para interagir
     timelineCanvas.addEventListener('mousedown', (e) => {
       const rect = timelineCanvas.getBoundingClientRect();
       const clickX = e.clientX - rect.left;
-      const padding = 15;
-      const trackWidth = timelineCanvas.width - padding * 2;
-      
-      let frame = Math.round(((clickX - padding) / trackWidth) * maxFrames);
-      frame = Math.max(0, Math.min(maxFrames, frame));
+      const clickY = e.clientY - rect.top;
 
-      document.getElementById('timeline-slider').value = frame;
-      onTimelineSeek(frame);
+      const headerHeight = 30;
+      const trackHeight = 24;
+      const labelWidth = 100;
+      const paddingRight = 20;
+
+      const trackWidth = timelineCanvas.width - labelWidth - paddingRight;
+      const step = trackWidth / maxFrames;
+      const resizeHandleX = labelWidth + maxFrames * step;
+
+      if (Math.abs(clickX - resizeHandleX) <= 8 && clickY <= headerHeight) {
+        isResizingTimeline = true;
+        return;
+      }
+
+      if (clickY > headerHeight) {
+        const boneIndex = Math.floor((clickY - headerHeight) / trackHeight);
+        if (boneIndex >= 0 && boneIndex < bones.length) {
+          selectBone(bones[boneIndex]);
+        }
+      }
+
+      isScrubbingTimeline = true;
+      updateFrameFromClick(clickX);
     });
 
-    function onTimelineSeek(frame) {
-      currentFrame = parseInt(frame);
+    timelineCanvas.addEventListener('mousemove', (e) => {
+      const rect = timelineCanvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const labelWidth = 100;
+      const paddingRight = 20;
+
+      if (isResizingTimeline) {
+        const trackWidth = timelineCanvas.width - labelWidth - paddingRight;
+        const newMax = Math.round(((clickX - labelWidth) / trackWidth) * maxFrames);
+        if (newMax >= 5 && newMax <= 1000) {
+          maxFrames = newMax;
+          document.getElementById('max-frames-input').value = maxFrames;
+          updateUI();
+        }
+        return;
+      }
+
+      if (isScrubbingTimeline) {
+        updateFrameFromClick(clickX);
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      isResizingTimeline = false;
+      isScrubbingTimeline = false;
+    });
+
+    function updateFrameFromClick(clickX) {
+      const labelWidth = 100;
+      const paddingRight = 20;
+      const trackWidth = timelineCanvas.width - labelWidth - paddingRight;
+      const step = trackWidth / maxFrames;
+
+      let frame = Math.round((clickX - labelWidth) / step);
+      frame = Math.max(0, Math.min(maxFrames, frame));
+
+      currentFrame = frame;
       applyKeyframeState(currentFrame);
       updateUI();
       render();
     }
 
     function addKeyframe() {
-      if (bones.length === 0) {
-        alert("Crie ao menos um osso antes de gravar keyframes.");
+      if (!selectedBone) {
+        alert("Selecione um osso para gravar seu keyframe.");
         return;
       }
       
-      const frameData = {};
-      bones.forEach(bone => {
-        frameData[bone.id] = bone.localAngle;
-      });
+      if (!boneKeyframes[selectedBone.id]) {
+        boneKeyframes[selectedBone.id] = {};
+      }
 
-      keyframes[currentFrame] = frameData;
+      boneKeyframes[selectedBone.id][currentFrame] = {
+        angle: selectedBone.localAngle,
+        posX: selectedBone.posX,
+        posY: selectedBone.posY
+      };
+
       updateUI();
     }
 
     function removeKeyframe() {
-      delete keyframes[currentFrame];
-      updateUI();
+      if (selectedBone && boneKeyframes[selectedBone.id]) {
+        delete boneKeyframes[selectedBone.id][currentFrame];
+        updateUI();
+      }
     }
 
     function jumpToKeyframe(direction) {
-      const activeFrames = Object.keys(keyframes).map(Number).sort((a, b) => a - b);
+      if (!selectedBone || !boneKeyframes[selectedBone.id]) return;
+      
+      const activeFrames = Object.keys(boneKeyframes[selectedBone.id]).map(Number).sort((a, b) => a - b);
       if (activeFrames.length === 0) return;
 
       if (direction > 0) {
         const next = activeFrames.find(f => f > currentFrame);
-        if (next !== undefined) onTimelineSeek(next);
+        if (next !== undefined) {
+          currentFrame = next;
+          applyKeyframeState(currentFrame);
+          updateUI();
+          render();
+        }
       } else {
         const prev = activeFrames.filter(f => f < currentFrame).pop();
-        if (prev !== undefined) onTimelineSeek(prev);
+        if (prev !== undefined) {
+          currentFrame = prev;
+          applyKeyframeState(currentFrame);
+          updateUI();
+          render();
+        }
       }
     }
 
     function applyKeyframeState(frame) {
-      const activeFrames = Object.keys(keyframes).map(Number).sort((a, b) => a - b);
-      if (activeFrames.length === 0) return;
+      bones.forEach(bone => {
+        const kfs = boneKeyframes[bone.id];
+        if (!kfs) return;
 
-      if (keyframes[frame]) {
-        bones.forEach(bone => {
-          if (keyframes[frame][bone.id] !== undefined) {
-            bone.localAngle = keyframes[frame][bone.id];
-          }
-        });
-        return;
-      }
+        const activeFrames = Object.keys(kfs).map(Number).sort((a, b) => a - b);
+        if (activeFrames.length === 0) return;
 
-      let prevFrame = null;
-      let nextFrame = null;
+        if (kfs[frame]) {
+          bone.localAngle = kfs[frame].angle;
+          bone.posX = kfs[frame].posX;
+          bone.posY = kfs[frame].posY;
+          return;
+        }
 
-      for (let f of activeFrames) {
-        if (f <= frame) prevFrame = f;
-        if (f >= frame && nextFrame === null) nextFrame = f;
-      }
+        let prevFrame = null;
+        let nextFrame = null;
 
-      if (prevFrame !== null && nextFrame !== null && prevFrame !== nextFrame) {
-        const factor = (frame - prevFrame) / (nextFrame - prevFrame);
-        bones.forEach(bone => {
-          const anglePrev = keyframes[prevFrame][bone.id] || 0;
-          const angleNext = keyframes[nextFrame][bone.id] || 0;
-          bone.localAngle = anglePrev + (angleNext - anglePrev) * factor;
-        });
-      } else if (prevFrame !== null) {
-        bones.forEach(bone => {
-          bone.localAngle = keyframes[prevFrame][bone.id] || bone.localAngle;
-        });
-      }
+        for (let f of activeFrames) {
+          if (f <= frame) prevFrame = f;
+          if (f >= frame && nextFrame === null) nextFrame = f;
+        }
+
+        if (prevFrame !== null && nextFrame !== null && prevFrame !== nextFrame) {
+          const factor = (frame - prevFrame) / (nextFrame - prevFrame);
+          bone.localAngle = kfs[prevFrame].angle + (kfs[nextFrame].angle - kfs[prevFrame].angle) * factor;
+          bone.posX = kfs[prevFrame].posX + (kfs[nextFrame].posX - kfs[prevFrame].posX) * factor;
+          bone.posY = kfs[prevFrame].posY + (kfs[nextFrame].posY - kfs[prevFrame].posY) * factor;
+        } else if (prevFrame !== null) {
+          bone.localAngle = kfs[prevFrame].angle;
+          bone.posX = kfs[prevFrame].posX;
+          bone.posY = kfs[prevFrame].posY;
+        }
+      });
     }
 
     function togglePlay() {
@@ -888,7 +1059,6 @@
         btn.innerText = '⏸ Pause';
         animationInterval = setInterval(() => {
           currentFrame = (currentFrame + 1) % (maxFrames + 1);
-          document.getElementById('timeline-slider').value = currentFrame;
           applyKeyframeState(currentFrame);
           updateUI();
           render();
@@ -899,16 +1069,17 @@
       }
     }
 
-    // --- PERSISTÊNCIA DE DADOS (LOCALSTORAGE & JSON) ---
+    // --- PERSISTÊNCIA DE DADOS ---
     function serializeProject() {
       const projectData = {
+        maxFrames: maxFrames,
         bones: bones.map(bone => ({
           id: bone.id,
           parentId: bone.parent ? bone.parent.id : null,
           length: bone.length,
           localAngle: bone.localAngle,
-          startX: bone.startX,
-          startY: bone.startY,
+          posX: bone.posX,
+          posY: bone.posY,
           meshStrokes: bone.meshStrokes,
           attachedSprites: bone.attachedSprites.map(s => ({
             name: s.name,
@@ -919,7 +1090,7 @@
             dataUrl: s.imageCanvas.toDataURL()
           }))
         })),
-        keyframes: keyframes
+        boneKeyframes: boneKeyframes
       };
       return JSON.stringify(projectData);
     }
@@ -929,12 +1100,14 @@
         const data = JSON.parse(jsonString);
         bones = [];
         selectedBone = null;
-        keyframes = data.keyframes || {};
+        maxFrames = data.maxFrames || 60;
+        document.getElementById('max-frames-input').value = maxFrames;
+        boneKeyframes = data.boneKeyframes || {};
 
         const boneMap = {};
 
         data.bones.forEach(bData => {
-          const bone = new Bone(bData.id, null, bData.length, bData.localAngle, { x: bData.startX, y: bData.startY });
+          const bone = new Bone(bData.id, null, bData.length, bData.localAngle, { x: bData.posX || 0, y: bData.posY || 0 });
           bone.meshStrokes = bData.meshStrokes || [];
           boneMap[bData.id] = { instance: bone, parentId: bData.parentId, rawSprites: bData.attachedSprites };
           bones.push(bone);
@@ -972,9 +1145,8 @@
         });
 
         if (bones.length > 0) selectBone(bones[0]);
-        updateUI();
-        render();
-        alert("Projeto e Keyframes carregados com sucesso!");
+        resizeCanvas();
+        alert("Projeto carregado com sucesso!");
       } catch (err) {
         alert("Erro ao carregar dados do projeto.");
         console.error(err);
@@ -982,17 +1154,14 @@
     }
 
     function saveToLocalStorage() {
-      localStorage.setItem('2d_rigging_project', serializeProject());
-      alert("Projeto salvo localmente no seu navegador!");
+      localStorage.setItem('2d_rigging_project_v2', serializeProject());
+      alert("Projeto salvo localmente!");
     }
 
     function loadFromLocalStorage() {
-      const data = localStorage.getItem('2d_rigging_project');
-      if (data) {
-        deserializeProject(data);
-      } else {
-        alert("Nenhum projeto salvo encontrado no navegador.");
-      }
+      const data = localStorage.getItem('2d_rigging_project_v2');
+      if (data) deserializeProject(data);
+      else alert("Nenhum projeto salvo encontrado.");
     }
 
     function exportJSON() {
@@ -1010,9 +1179,7 @@
       if (!file) return;
 
       const reader = new FileReader();
-      reader.onload = (event) => {
-        deserializeProject(event.target.result);
-      };
+      reader.onload = (event) => deserializeProject(event.target.result);
       reader.readAsText(file);
     }
 
@@ -1042,9 +1209,7 @@
       const reader = new FileReader();
       reader.onload = (event) => {
         loadedImage = new Image();
-        loadedImage.onload = () => {
-          resetCropZoom();
-        };
+        loadedImage.onload = () => resetCropZoom();
         loadedImage.src = event.target.result;
       };
       reader.readAsDataURL(file);
@@ -1061,17 +1226,11 @@
     }
 
     function canvasToImageCoords(cx, cy) {
-      return {
-        x: (cx - cropPan.x) / cropZoom,
-        y: (cy - cropPan.y) / cropZoom
-      };
+      return { x: (cx - cropPan.x) / cropZoom, y: (cy - cropPan.y) / cropZoom };
     }
 
     function imageToCanvasCoords(ix, iy) {
-      return {
-        x: ix * cropZoom + cropPan.x,
-        y: iy * cropZoom + cropPan.y
-      };
+      return { x: ix * cropZoom + cropPan.x, y: iy * cropZoom + cropPan.y };
     }
 
     cropCanvas.addEventListener('contextmenu', e => e.preventDefault());
@@ -1089,8 +1248,7 @@
       }
 
       if (e.button === 0 && !isPolyClosed) {
-        const imgPt = canvasToImageCoords(mx, my);
-        polyPoints.push(imgPt);
+        polyPoints.push(canvasToImageCoords(mx, my));
         drawCropCanvas();
       }
     });
@@ -1125,9 +1283,7 @@
       if (e.button === 2) isPanning = false;
     });
 
-    cropCanvas.addEventListener('dblclick', () => {
-      finishPolygon();
-    });
+    cropCanvas.addEventListener('dblclick', () => finishPolygon());
 
     cropCanvas.addEventListener('wheel', (e) => {
       e.preventDefault();
@@ -1163,7 +1319,6 @@
 
     function drawCropCanvas() {
       cropCtx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
-
       if (!loadedImage) return;
 
       cropCtx.save();
@@ -1220,7 +1375,6 @@
 
       const width = maxX - minX;
       const height = maxY - minY;
-
       if (width <= 0 || height <= 0) return;
 
       const offCanvas = document.createElement('canvas');
@@ -1228,7 +1382,6 @@
       offCanvas.height = height;
       const offCtx = offCanvas.getContext('2d');
 
-      // 1. Aplica a Máscara Poligonal
       offCtx.beginPath();
       offCtx.moveTo(polyPoints[0].x - minX, polyPoints[0].y - minY);
       for (let i = 1; i < polyPoints.length; i++) {
@@ -1237,22 +1390,15 @@
       offCtx.closePath();
       offCtx.clip();
 
-      // 2. Desenha a imagem original
       offCtx.drawImage(loadedImage, -minX, -minY);
 
-      // 3. REMOÇÃO DE FUNDO BRANCO
-      const removeWhite = document.getElementById('chk-remove-white').checked;
-      if (removeWhite) {
+      if (document.getElementById('chk-remove-white').checked) {
         const imgData = offCtx.getImageData(0, 0, width, height);
         const data = imgData.data;
 
         for (let i = 0; i < data.length; i += 4) {
-          const r = data[i];
-          const g = data[i + 1];
-          const b = data[i + 2];
-
-          if (r > 225 && g > 225 && b > 225) {
-            data[i + 3] = 0; // Transparência
+          if (data[i] > 225 && data[i + 1] > 225 && data[i + 2] > 225) {
+            data[i + 3] = 0;
           }
         }
         offCtx.putImageData(imgData, 0, 0);
@@ -1281,23 +1427,48 @@
       bones.forEach(b => b.updateTransform());
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // 1. Desenhar TODAS as Imagens/Sprites Anexadas
+      // 1. Renderizar Texturas (Com opacidade adaptativa)
       bones.forEach(bone => {
-        bone.attachedSprites.forEach(s => {
+        const isSelectedBone = (bone === selectedBone);
+
+        bone.attachedSprites.forEach((s, sIdx) => {
+          const isSelectedSprite = isSelectedBone && (sIdx === selectedSpriteIndex);
+
           ctx.save();
+          
+          // Aplica opacidade reduzida caso a imagem não seja a selecionada
+          ctx.globalAlpha = isSelectedSprite ? 1.0 : 0.5;
+
           ctx.translate(bone.startX, bone.startY);
           ctx.rotate(bone.worldAngle);
-
           ctx.translate(s.offX, s.offY);
           ctx.rotate(s.rot);
           ctx.scale(s.scale, s.scale);
 
           ctx.drawImage(s.imageCanvas, -s.imageCanvas.width / 2, -s.imageCanvas.height / 2);
+
+          // Borda destacando a imagem selecionada
+          if (isSelectedSprite) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(
+              -s.imageCanvas.width / 2 - 4, 
+              -s.imageCanvas.height / 2 - 4, 
+              s.imageCanvas.width + 8, 
+              s.imageCanvas.height + 8
+            );
+            ctx.setLineDash([6, 4]);
+            ctx.strokeStyle = '#00d2ff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.restore();
+          }
+
           ctx.restore();
         });
       });
 
-      // 2. Desenhar Desenhos em Retas
+      // 2. Renderizar Linhas Desenhadas
       bones.forEach(bone => {
         ctx.strokeStyle = '#ff0055';
         ctx.lineWidth = 4;
@@ -1316,11 +1487,10 @@
         });
       });
 
-      // 3. Desenhar Esqueleto e Pontos de Ancoragem (Controle)
+      // 3. Renderizar Esqueleto
       bones.forEach(bone => {
         const isSelected = bone === selectedBone;
 
-        // Reta do Osso
         ctx.beginPath();
         ctx.moveTo(bone.startX, bone.startY);
         ctx.lineTo(bone.endX, bone.endY);
@@ -1328,7 +1498,6 @@
         ctx.lineWidth = isSelected ? 3 : 1.5;
         ctx.stroke();
 
-        // Ponta Final (Tip Node)
         ctx.beginPath();
         ctx.arc(bone.endX, bone.endY, isSelected ? 7 : 5, 0, Math.PI * 2);
         ctx.fillStyle = isSelected ? '#00d2ff' : '#00ff88';
@@ -1336,9 +1505,7 @@
         ctx.strokeStyle = '#000';
         ctx.stroke();
 
-        // PONTO DE ANCORAGEM/PIVOT (Base Node com Círculo Pontilhado Reforçado)
         ctx.save();
-        
         ctx.beginPath();
         ctx.arc(bone.startX, bone.startY, isSelected ? 12 : 9, 0, Math.PI * 2);
         ctx.setLineDash([4, 3]);
@@ -1354,13 +1521,12 @@
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 1;
         ctx.stroke();
-
         ctx.restore();
       });
     }
 
     resizeCanvas();
-    setMode('ADD_BONE');
+    setMode('ADD_BONE_ROOT');
   </script>
 </body>
 </html>
