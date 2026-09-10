@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2D Rigging Studio - Animação, Timeline e Persistência</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #1e1e24;
+      color: #fff;
+      overflow: hidden;
+    }
+
+    #app-container {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 120px);
+    }
+
+    #sidebar {
+      width: 320px;
+      background-color: #2b2b36;
+      border-right: 1px solid #3f3f52;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 10;
+      overflow-y: auto;
+    }
+
+    h2 {
+      font-size: 1.1rem;
+      color: #00d2ff;
+      border-bottom: 1px solid #3f3f52;
+      padding-bottom: 6px;
+    }
+
+    .section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-size: 0.8rem;
+      color: #aaa;
+    }
+
+    select {
+      background-color: #18181f;
+      color: #fff;
+      border: 1px solid #575773;
+      padding: 6px;
+      border-radius: 4px;
+      outline: none;
+    }
+
+    .btn-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    button {
+      background-color: #3f3f52;
+      color: #fff;
+      border: 1px solid #575773;
+      padding: 8px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      background-color: #575773;
+    }
+
+    button.active {
+      background-color: #00d2ff;
+      color: #121212;
+      font-weight: bold;
+      border-color: #00d2ff;
+    }
+
+    .accent-btn {
+      background-color: #0088cc;
+      border-color: #00aaff;
+    }
+
+    .accent-btn:hover {
+      background-color: #00aaff;
+    }
+
+    .danger-btn {
+      background-color: #8b0000;
+      border-color: #a00000;
+    }
+
+    .danger-btn:hover {
+      background-color: #a00000;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #00d2ff;
+    }
+
+    .checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      color: #ddd;
+      cursor: pointer;
+    }
+
+    .info-box {
+      background-color: #18181f;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      color: #aaa;
+      line-height: 1.3;
+    }
+
+    #canvas-container {
+      flex: 1;
+      position: relative;
+      cursor: crosshair;
+    }
+
+    canvas#stage {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background-color: #121216;
+    }
+
+    /* BARRA INFERIOR / TIMELINE */
+    #timeline-bar {
+      height: 120px;
+      background-color: #18181f;
+      border-top: 2px solid #3f3f52;
+      display: flex;
+      flex-direction: column;
+      padding: 10px 20px;
+      gap: 8px;
+    }
+
+    .timeline-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .timeline-slider-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+    }
+
+    /* Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0,0,0,0.85);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+
+    .modal {
+      background: #2b2b36;
+      border: 1px solid #3f3f52;
+      border-radius: 8px;
+      padding: 20px;
+      width: 820px;
+      max-width: 95vw;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #3f3f52;
+      padding-bottom: 10px;
+    }
+
+    .modal-body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #crop-canvas-container {
+      width: 100%;
+      height: 400px;
+      overflow: hidden;
+      background: #121216;
+      border: 1px solid #3f3f52;
+      position: relative;
+    }
+
+    #crop-canvas {
+      cursor: crosshair;
+      width: 100%;
+      height: 100%;
+    }
+
+    .modal-toolbar {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+      align-items: center;
+      justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="app-container">
+    <div id="sidebar">
+      <h2>2D Rigging Studio</h2>
+
+      <div class="section">
+        <label>1. Modo de Interação</label>
+        <div class="btn-group">
+          <button id="btn-mode-bone" class="active" onclick="setMode('ADD_BONE')">Criar Osso</button>
+          <button id="btn-mode-draw" onclick="setMode('DRAW_MESH')">Desenhar</button>
+        </div>
+        <button id="btn-mode-pose" onclick="setMode('POSE')">Posicionar / Rotacionar</button>
+      </div>
+
+      <div class="section">
+        <label>2. Texturas / Imagens</label>
+        <button class="accent-btn" onclick="openImageModal()">Recortar e Anexar Imagem</button>
+      </div>
+
+      <!-- Controles de Posicionamento -->
+      <div class="section" id="pose-controls" style="display: none;">
+        <label style="color:#00d2ff; font-weight: bold;">Transformação / Ajustes</label>
+        
+        <label>Alvo da Operação:</label>
+        <div class="btn-group">
+          <button id="btn-target-bone" class="active" onclick="setTransformTarget('BONE')">Osso</button>
+          <button id="btn-target-image" onclick="setTransformTarget('IMAGE')">Imagens</button>
+        </div>
+
+        <!-- Controles do Osso -->
+        <div id="bone-transform-box" class="section">
+          <label id="lbl-bone-name">Rotacionar Osso (°)</label>
+          <input type="range" id="angle-slider" min="-180" max="180" value="0">
+        </div>
+
+        <!-- Controles da Imagem Anexada -->
+        <div id="image-transform-box" class="section" style="display: none;">
+          <label>Selecione a Imagem Anexada:</label>
+          <select id="sprite-select" onchange="onSpriteSelected()"></select>
+
+          <div id="sprite-editor-controls" class="section" style="margin-top: 5px;">
+            <label>Rotação Própria (°):</label>
+            <input type="range" id="sprite-rot" min="-180" max="180" value="0">
+
+            <!-- LIBERDADE TOTAL DE TRANSLADO DE -1000px A +1000px -->
+            <label>Offset X (Translada Livre):</label>
+            <input type="range" id="sprite-offx" min="-1000" max="1000" value="0">
+
+            <label>Offset Y (Translada Livre):</label>
+            <input type="range" id="sprite-offy" min="-1000" max="1000" value="0">
+
+            <label>Escala:</label>
+            <input type="range" id="sprite-scale" min="0.05" max="5" step="0.05" value="1">
+            
+            <button class="danger-btn" onclick="removeSelectedSprite()">Remover Imagem Selecionada</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <label>3. Salvar / Carregar Dados</label>
+        <div class="btn-group">
+          <button onclick="saveToLocalStorage()">Salvar local</button>
+          <button onclick="loadFromLocalStorage()">Carregar local</button>
+        </div>
+        <div class="btn-group">
+          <button onclick="exportJSON()">Exportar JSON</button>
+          <button onclick="document.getElementById('file-input-json').click()">Importar JSON</button>
+        </div>
+        <input type="file" id="file-input-json" accept=".json" style="display: none;" onchange="importJSON(event)">
+      </div>
+
+      <div class="section">
+        <label>Estrutura do Rig</label>
+        <div class="info-box" id="hierarchy-info">
+          Nenhum osso selecionado.
+        </div>
+      </div>
+
+      <div class="section">
+        <button class="danger-btn" onclick="clearAll()">Limpar Tudo</button>
+      </div>
+    </div>
+
+    <div id="canvas-container">
+      <canvas id="stage"></canvas>
+    </div>
+  </div>
+
+  <!-- TIMELINE E CONTROLE DE ANIMAÇÃO -->
+  <div id="timeline-bar">
+    <div class="timeline-controls">
+      <button id="btn-play" class="accent-btn" onclick="togglePlay()">▶ Play</button>
+      <button onclick="addKeyframe()">+ Add Keyframe</button>
+      <button class="danger-btn" onclick="removeKeyframe()">- Remover Keyframe</button>
+      <span id="frame-counter" style="font-weight: bold; color: #00d2ff;">Frame: 0 / 60</span>
+      <span id="keyframe-info" style="font-size:0.8rem; color:#aaa; margin-left:auto;"></span>
+    </div>
+    <div class="timeline-slider-container">
+      <label>Linha do Tempo:</label>
+      <input type="range" id="timeline-slider" min="0" max="60" value="0" oninput="onTimelineSeek(this.value)">
+    </div>
+  </div>
+
+  <!-- Modal de Recorte Poligonal -->
+  <div class="modal-overlay" id="image-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Recorte Poligonal por Retas (com Transparência)</h3>
+        <button onclick="closeImageModal()">X</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-toolbar">
+          <input type="file" id="image-loader" accept="image/*">
+          <div>
+            <button onclick="resetCropZoom()">Resetar Zoom</button>
+            <button onclick="undoCropPoint()">Desfazer Ponto</button>
+            <button class="accent-btn" onclick="finishPolygon()">Fechar Polígono</button>
+          </div>
+        </div>
+
+        <div id="crop-canvas-container">
+          <canvas id="crop-canvas"></canvas>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+          <label class="checkbox-container">
+            <input type="checkbox" id="chk-remove-white" checked>
+            Remover Fundo Branco (Tornar Fundo Transparente)
+          </label>
+        </div>
+      </div>
+      <div class="btn-group">
+        <button onclick="closeImageModal()">Cancelar</button>
+        <button class="accent-btn" onclick="confirmCrop()">Confirmar e Adicionar ao Osso</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('stage');
+    const ctx = canvas.getContext('2d');
+    
+    let mode = 'ADD_BONE'; 
+    let transformTarget = 'BONE';
+    let bones = [];
+    let selectedBone = null;
+    let selectedSpriteIndex = -1;
+    let isMouseDown = false;
+    let dragStartPos = null;
+    let currentDrawingStroke = [];
+
+    // Animation & Keyframes
+    let currentFrame = 0;
+    const maxFrames = 60;
+    let keyframes = {}; // Estrutura: { [frameIndex]: { [boneId]: localAngle } }
+    let isPlaying = false;
+    let animationInterval = null;
+
+    // Modal State
+    let loadedImage = null;
+    let polyPoints = [];
+    let isPolyClosed = false;
+    let cropZoom = 1;
+    let cropPan = { x: 0, y: 0 };
+    let isPanning = false;
+    let panStart = { x: 0, y: 0 };
+
+    const cropCanvas = document.getElementById('crop-canvas');
+    const cropCtx = cropCanvas.getContext('2d');
+
+    function resizeCanvas() {
+      canvas.width = canvas.parentElement.clientWidth;
+      canvas.height = canvas.parentElement.clientHeight;
+      render();
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    class Bone {
+      constructor(id, parent, length, angle, basePos = {x: 0, y: 0}) {
+        this.id = id;
+        this.parent = parent;
+        this.length = length;
+        this.localAngle = angle;
+        this.meshStrokes = [];
+        this.attachedSprites = []; 
+        
+        this.startX = 0;
+        this.startY = 0;
+        this.endX = 0;
+        this.endY = 0;
+        this.worldAngle = 0;
+
+        if (!parent) {
+          this.startX = basePos.x;
+          this.startY = basePos.y;
+        }
+      }
+
+      updateTransform() {
+        if (this.parent) {
+          this.startX = this.parent.endX;
+          this.startY = this.parent.endY;
+          this.worldAngle = this.parent.worldAngle + this.localAngle;
+        } else {
+          this.worldAngle = this.localAngle;
+        }
+
+        this.endX = this.startX + Math.cos(this.worldAngle) * this.length;
+        this.endY = this.startY + Math.sin(this.worldAngle) * this.length;
+      }
+
+      worldToLocal(point) {
+        const dx = point.x - this.startX;
+        const dy = point.y - this.startY;
+        const cos = Math.cos(-this.worldAngle);
+        const sin = Math.sin(-this.worldAngle);
+        return { x: dx * cos - dy * sin, y: dx * sin + dy * cos };
+      }
+
+      localToWorld(point) {
+        const cos = Math.cos(this.worldAngle);
+        const sin = Math.sin(this.worldAngle);
+        return {
+          x: this.startX + (point.x * cos - point.y * sin),
+          y: this.startY + (point.x * sin + point.y * cos)
+        };
+      }
+    }
+
+    function setMode(newMode) {
+      mode = newMode;
+      document.querySelectorAll('#sidebar button').forEach(b => b.classList.remove('active'));
+      
+      if (mode === 'ADD_BONE') document.getElementById('btn-mode-bone').classList.add('active');
+      if (mode === 'DRAW_MESH') document.getElementById('btn-mode-draw').classList.add('active');
+      if (mode === 'POSE') document.getElementById('btn-mode-pose').classList.add('active');
+
+      document.getElementById('pose-controls').style.display = (mode === 'POSE') ? 'flex' : 'none';
+      render();
+    }
+
+    function setTransformTarget(target) {
+      transformTarget = target;
+      document.getElementById('btn-target-bone').classList.toggle('active', target === 'BONE');
+      document.getElementById('btn-target-image').classList.toggle('active', target === 'IMAGE');
+      
+      document.getElementById('bone-transform-box').style.display = (target === 'BONE') ? 'flex' : 'none';
+      document.getElementById('image-transform-box').style.display = (target === 'IMAGE') ? 'flex' : 'none';
+      
+      if (target === 'IMAGE') updateSpriteDropdown();
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mousePos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      isMouseDown = true;
+
+      if (mode === 'ADD_BONE') {
+        let parentBone = selectedBone || (bones.length > 0 ? bones[bones.length - 1] : null);
+        let startPos = parentBone ? { x: parentBone.endX, y: parentBone.endY } : mousePos;
+        dragStartPos = startPos;
+      } 
+      else if (mode === 'DRAW_MESH') {
+        if (!selectedBone && bones.length > 0) selectedBone = bones[0];
+        if (selectedBone) {
+          currentDrawingStroke = [selectedBone.worldToLocal(mousePos)];
+        }
+      } 
+      else if (mode === 'POSE') {
+        let closestBone = null;
+        let minDist = 25;
+
+        bones.forEach(b => {
+          const dist = Math.hypot(b.endX - mousePos.x, b.endY - mousePos.y);
+          if (dist < minDist) {
+            minDist = dist;
+            closestBone = b;
+          }
+        });
+
+        if (closestBone) selectBone(closestBone);
+      }
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mousePos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+
+      if (!isMouseDown) return;
+
+      if (mode === 'ADD_BONE' && dragStartPos) {
+        render();
+        ctx.beginPath();
+        ctx.moveTo(dragStartPos.x, dragStartPos.y);
+        ctx.lineTo(mousePos.x, mousePos.y);
+        ctx.strokeStyle = '#00d2ff';
+        ctx.setLineDash([5, 5]);
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.setLineDash([]);
+      } 
+      else if (mode === 'DRAW_MESH' && selectedBone) {
+        currentDrawingStroke.push(selectedBone.worldToLocal(mousePos));
+        render();
+
+        ctx.beginPath();
+        ctx.strokeStyle = '#ff0055';
+        ctx.lineWidth = 3;
+        for (let i = 0; i < currentDrawingStroke.length - 1; i++) {
+          const pt1 = selectedBone.localToWorld(currentDrawingStroke[i]);
+          const pt2 = selectedBone.localToWorld(currentDrawingStroke[i + 1]);
+          ctx.moveTo(pt1.x, pt1.y);
+          ctx.lineTo(pt2.x, pt2.y);
+        }
+        ctx.stroke();
+      }
+    });
+
+    canvas.addEventListener('mouseup', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mousePos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+
+      if (mode === 'ADD_BONE' && isMouseDown && dragStartPos) {
+        const dx = mousePos.x - dragStartPos.x;
+        const dy = mousePos.y - dragStartPos.y;
+        const length = Math.hypot(dx, dy);
+
+        if (length > 15) {
+          let parentBone = selectedBone || (bones.length > 0 ? bones[bones.length - 1] : null);
+          let worldAngle = Math.atan2(dy, dx);
+          let localAngle = parentBone ? worldAngle - parentBone.worldAngle : worldAngle;
+
+          const newBone = new Bone(`Osso_${bones.length + 1}`, parentBone, length, localAngle, dragStartPos);
+          bones.push(newBone);
+          selectBone(newBone);
+        }
+      } 
+      else if (mode === 'DRAW_MESH' && isMouseDown && selectedBone) {
+        if (currentDrawingStroke.length > 1) {
+          selectedBone.meshStrokes.push([...currentDrawingStroke]);
+        }
+        currentDrawingStroke = [];
+      }
+
+      isMouseDown = false;
+      dragStartPos = null;
+      render();
+    });
+
+    const angleSlider = document.getElementById('angle-slider');
+    angleSlider.addEventListener('input', (e) => {
+      if (selectedBone && mode === 'POSE' && transformTarget === 'BONE') {
+        selectedBone.localAngle = (e.target.value * Math.PI) / 180;
+        render();
+      }
+    });
+
+    const offXSlider = document.getElementById('sprite-offx');
+    const offYSlider = document.getElementById('sprite-offy');
+    const scaleSlider = document.getElementById('sprite-scale');
+    const rotSlider = document.getElementById('sprite-rot');
+
+    function updateSpriteFromSliders() {
+      if (selectedBone && selectedBone.attachedSprites[selectedSpriteIndex] && transformTarget === 'IMAGE') {
+        const sprite = selectedBone.attachedSprites[selectedSpriteIndex];
+        sprite.offX = parseFloat(offXSlider.value);
+        sprite.offY = parseFloat(offYSlider.value);
+        sprite.scale = parseFloat(scaleSlider.value);
+        sprite.rot = (parseFloat(rotSlider.value) * Math.PI) / 180;
+        render();
+      }
+    }
+
+    [offXSlider, offYSlider, scaleSlider, rotSlider].forEach(s => s.addEventListener('input', updateSpriteFromSliders));
+
+    function selectBone(bone) {
+      selectedBone = bone;
+      selectedSpriteIndex = bone.attachedSprites.length > 0 ? bone.attachedSprites.length - 1 : -1;
+      updateUI();
+      render();
+    }
+
+    function updateSpriteDropdown() {
+      const select = document.getElementById('sprite-select');
+      select.innerHTML = '';
+
+      if (!selectedBone || selectedBone.attachedSprites.length === 0) {
+        select.innerHTML = '<option value="-1">Nenhuma imagem anexada</option>';
+        document.getElementById('sprite-editor-controls').style.display = 'none';
+        return;
+      }
+
+      document.getElementById('sprite-editor-controls').style.display = 'flex';
+      selectedBone.attachedSprites.forEach((sprite, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        option.text = sprite.name || `Imagem #${index + 1}`;
+        if (index === selectedSpriteIndex) option.selected = true;
+        select.appendChild(option);
+      });
+
+      onSpriteSelected();
+    }
+
+    function onSpriteSelected() {
+      const select = document.getElementById('sprite-select');
+      selectedSpriteIndex = parseInt(select.value);
+
+      if (selectedBone && selectedBone.attachedSprites[selectedSpriteIndex]) {
+        const sprite = selectedBone.attachedSprites[selectedSpriteIndex];
+        offXSlider.value = sprite.offX;
+        offYSlider.value = sprite.offY;
+        scaleSlider.value = sprite.scale;
+        rotSlider.value = Math.round((sprite.rot * 180) / Math.PI);
+      }
+    }
+
+    function updateUI() {
+      const infoBox = document.getElementById('hierarchy-info');
+      const lblName = document.getElementById('lbl-bone-name');
+
+      if (selectedBone) {
+        infoBox.innerHTML = `
+          <b>Selecionado:</b> ${selectedBone.id}<br>
+          <b>Comprimento:</b> ${Math.round(selectedBone.length)}px<br>
+          <b>Pai:</b> ${selectedBone.parent ? selectedBone.parent.id : 'Nenhum'}<br>
+          <b>Imagens Anexadas:</b> ${selectedBone.attachedSprites.length}
+        `;
+        
+        lblName.innerText = `Rotacionar Osso: ${selectedBone.id}`;
+        angleSlider.value = Math.round((selectedBone.localAngle * 180) / Math.PI);
+
+        updateSpriteDropdown();
+      } else {
+        infoBox.innerHTML = 'Nenhum osso selecionado.';
+      }
+
+      document.getElementById('frame-counter').innerText = `Frame: ${currentFrame} / ${maxFrames}`;
+      const hasKeyframe = !!keyframes[currentFrame];
+      document.getElementById('keyframe-info').innerText = hasKeyframe ? '★ Keyframe Gravado Neste Frame' : '';
+    }
+
+    function removeSelectedSprite() {
+      if (selectedBone && selectedSpriteIndex >= 0) {
+        selectedBone.attachedSprites.splice(selectedSpriteIndex, 1);
+        selectedSpriteIndex = selectedBone.attachedSprites.length - 1;
+        updateUI();
+        render();
+      }
+    }
+
+    function clearAll() {
+      bones = [];
+      selectedBone = null;
+      selectedSpriteIndex = -1;
+      currentDrawingStroke = [];
+      keyframes = {};
+      updateUI();
+      render();
+    }
+
+    // --- SISTEMA DE TIMELINE & ANIMAÇÃO ---
+    function onTimelineSeek(frame) {
+      currentFrame = parseInt(frame);
+      applyKeyframeState(currentFrame);
+      updateUI();
+      render();
+    }
+
+    function addKeyframe() {
+      if (bones.length === 0) return;
+      
+      const frameData = {};
+      bones.forEach(bone => {
+        frameData[bone.id] = bone.localAngle;
+      });
+
+      keyframes[currentFrame] = frameData;
+      updateUI();
+    }
+
+    function removeKeyframe() {
+      delete keyframes[currentFrame];
+      updateUI();
+    }
+
+    function applyKeyframeState(frame) {
+      const activeFrames = Object.keys(keyframes).map(Number).sort((a, b) => a - b);
+      if (activeFrames.length === 0) return;
+
+      // Se exatamente no keyframe
+      if (keyframes[frame]) {
+        bones.forEach(bone => {
+          if (keyframes[frame][bone.id] !== undefined) {
+            bone.localAngle = keyframes[frame][bone.id];
+          }
+        });
+        return;
+      }
+
+      // Interpolação entre o Keyframe Anterior e Próximo
+      let prevFrame = null;
+      let nextFrame = null;
+
+      for (let f of activeFrames) {
+        if (f <= frame) prevFrame = f;
+        if (f >= frame && nextFrame === null) nextFrame = f;
+      }
+
+      if (prevFrame !== null && nextFrame !== null && prevFrame !== nextFrame) {
+        const factor = (frame - prevFrame) / (nextFrame - prevFrame);
+        bones.forEach(bone => {
+          const anglePrev = keyframes[prevFrame][bone.id] || 0;
+          const angleNext = keyframes[nextFrame][bone.id] || 0;
+          bone.localAngle = anglePrev + (angleNext - anglePrev) * factor;
+        });
+      } else if (prevFrame !== null) {
+        bones.forEach(bone => {
+          bone.localAngle = keyframes[prevFrame][bone.id] || bone.localAngle;
+        });
+      }
+    }
+
+    function togglePlay() {
+      isPlaying = !isPlaying;
+      const btn = document.getElementById('btn-play');
+
+      if (isPlaying) {
+        btn.innerText = '⏸ Pause';
+        animationInterval = setInterval(() => {
+          currentFrame = (currentFrame + 1) % (maxFrames + 1);
+          document.getElementById('timeline-slider').value = currentFrame;
+          applyKeyframeState(currentFrame);
+          updateUI();
+          render();
+        }, 1000 / 24); // 24 FPS
+      } else {
+        btn.innerText = '▶ Play';
+        clearInterval(animationInterval);
+      }
+    }
+
+    // --- PERSISTÊNCIA DE DADOS (LOCALSTORAGE & JSON) ---
+    function serializeProject() {
+      const projectData = {
+        bones: bones.map(bone => ({
+          id: bone.id,
+          parentId: bone.parent ? bone.parent.id : null,
+          length: bone.length,
+          localAngle: bone.localAngle,
+          startX: bone.startX,
+          startY: bone.startY,
+          meshStrokes: bone.meshStrokes,
+          attachedSprites: bone.attachedSprites.map(s => ({
+            name: s.name,
+            offX: s.offX,
+            offY: s.offY,
+            scale: s.scale,
+            rot: s.rot,
+            dataUrl: s.imageCanvas.toDataURL()
+          }))
+        })),
+        keyframes: keyframes
+      };
+      return JSON.stringify(projectData);
+    }
+
+    function deserializeProject(jsonString) {
+      try {
+        const data = JSON.parse(jsonString);
+        bones = [];
+        selectedBone = null;
+        keyframes = data.keyframes || {};
+
+        const boneMap = {};
+
+        // Passagem 1: Reconstruir ossos básicos
+        data.bones.forEach(bData => {
+          const bone = new Bone(bData.id, null, bData.length, bData.localAngle, { x: bData.startX, y: bData.startY });
+          bone.meshStrokes = bData.meshStrokes || [];
+          boneMap[bData.id] = { instance: bone, parentId: bData.parentId, rawSprites: bData.attachedSprites };
+          bones.push(bone);
+        });
+
+        // Passagem 2: Conectar parentesco e carregar Imagens
+        bones.forEach(bone => {
+          const raw = boneMap[bone.id];
+          if (raw.parentId && boneMap[raw.parentId]) {
+            bone.parent = boneMap[raw.parentId].instance;
+          }
+
+          if (raw.rawSprites) {
+            raw.rawSprites.forEach(sData => {
+              const img = new Image();
+              img.onload = () => {
+                const offCanvas = document.createElement('canvas');
+                offCanvas.width = img.width;
+                offCanvas.height = img.height;
+                const oCtx = offCanvas.getContext('2d');
+                oCtx.drawImage(img, 0, 0);
+
+                bone.attachedSprites.push({
+                  name: sData.name,
+                  imageCanvas: offCanvas,
+                  offX: sData.offX,
+                  offY: sData.offY,
+                  scale: sData.scale,
+                  rot: sData.rot
+                });
+                render();
+              };
+              img.src = sData.dataUrl;
+            });
+          }
+        });
+
+        if (bones.length > 0) selectBone(bones[0]);
+        render();
+        alert("Projeto carregado com sucesso!");
+      } catch (err) {
+        alert("Erro ao carregar dados do projeto.");
+        console.error(err);
+      }
+    }
+
+    function saveToLocalStorage() {
+      localStorage.setItem('2d_rigging_project', serializeProject());
+      alert("Projeto salvo localmente no seu navegador!");
+    }
+
+    function loadFromLocalStorage() {
+      const data = localStorage.getItem('2d_rigging_project');
+      if (data) {
+        deserializeProject(data);
+      } else {
+        alert("Nenhum projeto salvo encontrado no navegador.");
+      }
+    }
+
+    function exportJSON() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(serializeProject());
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", " rig_animation_project.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function importJSON(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        deserializeProject(event.target.result);
+      };
+      reader.readAsText(file);
+    }
+
+    // --- MODAL RECORTE POLIGONAL ---
+    function openImageModal() {
+      if (!selectedBone) {
+        alert("Selecione um osso primeiro para poder anexar uma imagem recortada.");
+        return;
+      }
+      document.getElementById('image-modal').style.display = 'flex';
+      const container = document.getElementById('crop-canvas-container');
+      cropCanvas.width = container.clientWidth;
+      cropCanvas.height = container.clientHeight;
+      drawCropCanvas();
+    }
+
+    function closeImageModal() {
+      document.getElementById('image-modal').style.display = 'none';
+      polyPoints = [];
+      isPolyClosed = false;
+    }
+
+    document.getElementById('image-loader').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        loadedImage = new Image();
+        loadedImage.onload = () => {
+          resetCropZoom();
+        };
+        loadedImage.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function resetCropZoom() {
+      if (!loadedImage) return;
+      cropZoom = Math.min(cropCanvas.width / loadedImage.width, cropCanvas.height / loadedImage.height) * 0.9;
+      cropPan.x = (cropCanvas.width - loadedImage.width * cropZoom) / 2;
+      cropPan.y = (cropCanvas.height - loadedImage.height * cropZoom) / 2;
+      polyPoints = [];
+      isPolyClosed = false;
+      drawCropCanvas();
+    }
+
+    function canvasToImageCoords(cx, cy) {
+      return {
+        x: (cx - cropPan.x) / cropZoom,
+        y: (cy - cropPan.y) / cropZoom
+      };
+    }
+
+    function imageToCanvasCoords(ix, iy) {
+      return {
+        x: ix * cropZoom + cropPan.x,
+        y: iy * cropZoom + cropPan.y
+      };
+    }
+
+    cropCanvas.addEventListener('contextmenu', e => e.preventDefault());
+
+    cropCanvas.addEventListener('mousedown', (e) => {
+      if (!loadedImage) return;
+      const rect = cropCanvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      if (e.button === 2) {
+        isPanning = true;
+        panStart = { x: mx - cropPan.x, y: my - cropPan.y };
+        return;
+      }
+
+      if (e.button === 0 && !isPolyClosed) {
+        const imgPt = canvasToImageCoords(mx, my);
+        polyPoints.push(imgPt);
+        drawCropCanvas();
+      }
+    });
+
+    cropCanvas.addEventListener('mousemove', (e) => {
+      const rect = cropCanvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      if (isPanning) {
+        cropPan.x = mx - panStart.x;
+        cropPan.y = my - panStart.y;
+        drawCropCanvas();
+        return;
+      }
+
+      if (loadedImage && polyPoints.length > 0 && !isPolyClosed) {
+        drawCropCanvas();
+        const lastPt = imageToCanvasCoords(polyPoints[polyPoints.length - 1].x, polyPoints[polyPoints.length - 1].y);
+        cropCtx.beginPath();
+        cropCtx.moveTo(lastPt.x, lastPt.y);
+        cropCtx.lineTo(mx, my);
+        cropCtx.strokeStyle = '#00d2ff';
+        cropCtx.setLineDash([4, 4]);
+        cropCtx.lineWidth = 1.5;
+        cropCtx.stroke();
+        cropCtx.setLineDash([]);
+      }
+    });
+
+    cropCanvas.addEventListener('mouseup', (e) => {
+      if (e.button === 2) isPanning = false;
+    });
+
+    cropCanvas.addEventListener('dblclick', () => {
+      finishPolygon();
+    });
+
+    cropCanvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      if (!loadedImage) return;
+
+      const rect = cropCanvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
+      const newZoom = Math.max(0.1, Math.min(20, cropZoom * zoomFactor));
+
+      cropPan.x = mx - (mx - cropPan.x) * (newZoom / cropZoom);
+      cropPan.y = my - (my - cropPan.y) * (newZoom / cropZoom);
+      cropZoom = newZoom;
+
+      drawCropCanvas();
+    });
+
+    function undoCropPoint() {
+      if (polyPoints.length > 0 && !isPolyClosed) {
+        polyPoints.pop();
+        drawCropCanvas();
+      }
+    }
+
+    function finishPolygon() {
+      if (polyPoints.length >= 3) {
+        isPolyClosed = true;
+        drawCropCanvas();
+      }
+    }
+
+    function drawCropCanvas() {
+      cropCtx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
+
+      if (!loadedImage) return;
+
+      cropCtx.save();
+      cropCtx.translate(cropPan.x, cropPan.y);
+      cropCtx.scale(cropZoom, cropZoom);
+      cropCtx.drawImage(loadedImage, 0, 0);
+      cropCtx.restore();
+
+      if (polyPoints.length > 0) {
+        cropCtx.beginPath();
+        const first = imageToCanvasCoords(polyPoints[0].x, polyPoints[0].y);
+        cropCtx.moveTo(first.x, first.y);
+
+        for (let i = 1; i < polyPoints.length; i++) {
+          const pt = imageToCanvasCoords(polyPoints[i].x, polyPoints[i].y);
+          cropCtx.lineTo(pt.x, pt.y);
+        }
+
+        if (isPolyClosed) {
+          cropCtx.closePath();
+          cropCtx.fillStyle = 'rgba(0, 210, 255, 0.25)';
+          cropCtx.fill();
+        }
+
+        cropCtx.strokeStyle = '#00d2ff';
+        cropCtx.lineWidth = 2;
+        cropCtx.stroke();
+
+        polyPoints.forEach((p, idx) => {
+          const pt = imageToCanvasCoords(p.x, p.y);
+          cropCtx.beginPath();
+          cropCtx.arc(pt.x, pt.y, idx === 0 ? 6 : 4, 0, Math.PI * 2);
+          cropCtx.fillStyle = idx === 0 ? '#ffcc00' : '#00ff88';
+          cropCtx.fill();
+        });
+      }
+    }
+
+    function confirmCrop() {
+      if (!loadedImage || polyPoints.length < 3) {
+        alert("Crie ao menos 3 pontos de retas conectadas para definir o recorte.");
+        return;
+      }
+
+      if (!isPolyClosed) finishPolygon();
+
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      polyPoints.forEach(p => {
+        if (p.x < minX) minX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y > maxY) maxY = p.y;
+      });
+
+      const width = maxX - minX;
+      const height = maxY - minY;
+
+      if (width <= 0 || height <= 0) return;
+
+      const offCanvas = document.createElement('canvas');
+      offCanvas.width = width;
+      offCanvas.height = height;
+      const offCtx = offCanvas.getContext('2d');
+
+      // 1. Aplica a Máscara Poligonal
+      offCtx.beginPath();
+      offCtx.moveTo(polyPoints[0].x - minX, polyPoints[0].y - minY);
+      for (let i = 1; i < polyPoints.length; i++) {
+        offCtx.lineTo(polyPoints[i].x - minX, polyPoints[i].y - minY);
+      }
+      offCtx.closePath();
+      offCtx.clip();
+
+      // 2. Desenha o recorte da imagem original
+      offCtx.drawImage(loadedImage, -minX, -minY);
+
+      // 3. REMOÇÃO DE FUNDO BRANCO
+      const removeWhite = document.getElementById('chk-remove-white').checked;
+      if (removeWhite) {
+        const imgData = offCtx.getImageData(0, 0, width, height);
+        const data = imgData.data;
+
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+
+          if (r > 225 && g > 225 && b > 225) {
+            data[i + 3] = 0; // Transparência
+          }
+        }
+        offCtx.putImageData(imgData, 0, 0);
+      }
+
+      const newSprite = {
+        name: `Recorte_${selectedBone.attachedSprites.length + 1}`,
+        imageCanvas: offCanvas,
+        offX: 0,
+        offY: 0,
+        scale: 1.0,
+        rot: 0
+      };
+
+      selectedBone.attachedSprites.push(newSprite);
+      selectedSpriteIndex = selectedBone.attachedSprites.length - 1;
+
+      closeImageModal();
+      setTransformTarget('IMAGE');
+      updateUI();
+      render();
+    }
+
+    // --- RENDERIZAÇÃO DO STAGE ---
+    function render() {
+      bones.forEach(b => b.updateTransform());
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 1. Desenhar TODAS as Imagens/Sprites Anexadas
+      bones.forEach(bone => {
+        bone.attachedSprites.forEach(s => {
+          ctx.save();
+          ctx.translate(bone.startX, bone.startY);
+          ctx.rotate(bone.worldAngle);
+
+          ctx.translate(s.offX, s.offY);
+          ctx.rotate(s.rot);
+          ctx.scale(s.scale, s.scale);
+
+          ctx.drawImage(s.imageCanvas, -s.imageCanvas.width / 2, -s.imageCanvas.height / 2);
+          ctx.restore();
+        });
+      });
+
+      // 2. Desenhar Desenhos em Retas
+      bones.forEach(bone => {
+        ctx.strokeStyle = '#ff0055';
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        bone.meshStrokes.forEach(stroke => {
+          ctx.beginPath();
+          for (let i = 0; i < stroke.length - 1; i++) {
+            const p1 = bone.localToWorld(stroke[i]);
+            const p2 = bone.localToWorld(stroke[i + 1]);
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+          }
+          ctx.stroke();
+        });
+      });
+
+      // 3. Desenhar Esqueleto e Pontos de Ancoragem (Controle)
+      bones.forEach(bone => {
+        const isSelected = bone === selectedBone;
+
+        // Reta do Osso
+        ctx.beginPath();
+        ctx.moveTo(bone.startX, bone.startY);
+        ctx.lineTo(bone.endX, bone.endY);
+        ctx.strokeStyle = isSelected ? '#00d2ff' : 'rgba(255,255,255,0.7)';
+        ctx.lineWidth = isSelected ? 3 : 1.5;
+        ctx.stroke();
+
+        // Ponta Final (Tip Node)
+        ctx.beginPath();
+        ctx.arc(bone.endX, bone.endY, isSelected ? 7 : 5, 0, Math.PI * 2);
+        ctx.fillStyle = isSelected ? '#00d2ff' : '#00ff88';
+        ctx.fill();
+        ctx.strokeStyle = '#000';
+        ctx.stroke();
+
+        // PONTO DE ANCORAGEM/PIVOT (Base Node com Círculo Pontilhado Reforçado)
+        ctx.save();
+        
+        ctx.beginPath();
+        ctx.arc(bone.startX, bone.startY, isSelected ? 12 : 9, 0, Math.PI * 2);
+        ctx.setLineDash([4, 3]);
+        ctx.strokeStyle = isSelected ? '#00d2ff' : '#ffcc00';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.beginPath();
+        ctx.arc(bone.startX, bone.startY, isSelected ? 6 : 4, 0, Math.PI * 2);
+        ctx.fillStyle = isSelected ? '#00d2ff' : '#ffcc00';
+        ctx.fill();
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.restore();
+      });
+    }
+
+    resizeCanvas();
+    setMode('ADD_BONE');
+  </script>
+</body>
+</html>
