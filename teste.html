@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>2D Rigging Studio - Animação, Timeline e Persistência</title>
+  <title>2D Rigging Studio - Marcadores Nítidos de Keyframe (KF)</title>
   <style>
     * {
       box-sizing: border-box;
@@ -25,7 +25,7 @@
     #app-container {
       display: flex;
       flex: 1;
-      height: calc(100vh - 120px);
+      height: calc(100vh - 160px);
     }
 
     #sidebar {
@@ -149,9 +149,9 @@
       background-color: #121216;
     }
 
-    /* BARRA INFERIOR / TIMELINE */
+    /* TIMELINE BARRA INFERIOR */
     #timeline-bar {
-      height: 120px;
+      height: 160px;
       background-color: #18181f;
       border-top: 2px solid #3f3f52;
       display: flex;
@@ -163,14 +163,23 @@
     .timeline-controls {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
 
-    .timeline-slider-container {
+    .timeline-track-container {
       display: flex;
-      align-items: center;
-      gap: 10px;
-      flex: 1;
+      flex-direction: column;
+      gap: 4px;
+      width: 100%;
+    }
+
+    canvas#timeline-canvas {
+      width: 100%;
+      height: 50px;
+      background-color: #121216;
+      border: 1px solid #3f3f52;
+      border-radius: 4px;
+      cursor: pointer;
     }
 
     /* Modal Styles */
@@ -283,7 +292,6 @@
             <label>Rotação Própria (°):</label>
             <input type="range" id="sprite-rot" min="-180" max="180" value="0">
 
-            <!-- LIBERDADE TOTAL DE TRANSLADO DE -1000px A +1000px -->
             <label>Offset X (Translada Livre):</label>
             <input type="range" id="sprite-offx" min="-1000" max="1000" value="0">
 
@@ -328,17 +336,20 @@
     </div>
   </div>
 
-  <!-- TIMELINE E CONTROLE DE ANIMAÇÃO -->
+  <!-- TIMELINE COM RÉGUA E MARCADOR NITIDO "KF" -->
   <div id="timeline-bar">
     <div class="timeline-controls">
       <button id="btn-play" class="accent-btn" onclick="togglePlay()">▶ Play</button>
-      <button onclick="addKeyframe()">+ Add Keyframe</button>
-      <button class="danger-btn" onclick="removeKeyframe()">- Remover Keyframe</button>
-      <span id="frame-counter" style="font-weight: bold; color: #00d2ff;">Frame: 0 / 60</span>
-      <span id="keyframe-info" style="font-size:0.8rem; color:#aaa; margin-left:auto;"></span>
+      <button onclick="jumpToKeyframe(-1)">&lt; KF</button>
+      <button onclick="jumpToKeyframe(1)">KF &gt;</button>
+      <button class="accent-btn" onclick="addKeyframe()">+ Gravar Keyframe (KF)</button>
+      <button class="danger-btn" onclick="removeKeyframe()">- Remover KF</button>
+      <span id="frame-counter" style="font-weight: bold; color: #00d2ff; margin-left:10px;">Frame: 0 / 60</span>
+      <span id="keyframe-info" style="font-size:0.8rem; color:#ffcc00; font-weight:bold; margin-left:auto;"></span>
     </div>
-    <div class="timeline-slider-container">
-      <label>Linha do Tempo:</label>
+
+    <div class="timeline-track-container">
+      <canvas id="timeline-canvas"></canvas>
       <input type="range" id="timeline-slider" min="0" max="60" value="0" oninput="onTimelineSeek(this.value)">
     </div>
   </div>
@@ -381,6 +392,9 @@
   <script>
     const canvas = document.getElementById('stage');
     const ctx = canvas.getContext('2d');
+
+    const timelineCanvas = document.getElementById('timeline-canvas');
+    const tCtx = timelineCanvas.getContext('2d');
     
     let mode = 'ADD_BONE'; 
     let transformTarget = 'BONE';
@@ -394,7 +408,7 @@
     // Animation & Keyframes
     let currentFrame = 0;
     const maxFrames = 60;
-    let keyframes = {}; // Estrutura: { [frameIndex]: { [boneId]: localAngle } }
+    let keyframes = {}; // { [frameIndex]: { [boneId]: localAngle } }
     let isPlaying = false;
     let animationInterval = null;
 
@@ -413,7 +427,12 @@
     function resizeCanvas() {
       canvas.width = canvas.parentElement.clientWidth;
       canvas.height = canvas.parentElement.clientHeight;
+
+      timelineCanvas.width = timelineCanvas.parentElement.clientWidth;
+      timelineCanvas.height = 50;
+
       render();
+      drawTimelineCanvas();
     }
     window.addEventListener('resize', resizeCanvas);
 
@@ -679,7 +698,9 @@
 
       document.getElementById('frame-counter').innerText = `Frame: ${currentFrame} / ${maxFrames}`;
       const hasKeyframe = !!keyframes[currentFrame];
-      document.getElementById('keyframe-info').innerText = hasKeyframe ? '★ Keyframe Gravado Neste Frame' : '';
+      document.getElementById('keyframe-info').innerText = hasKeyframe ? '★ KEYFRAME (KF) GRAVADO' : '';
+
+      drawTimelineCanvas();
     }
 
     function removeSelectedSprite() {
@@ -701,7 +722,89 @@
       render();
     }
 
-    // --- SISTEMA DE TIMELINE & ANIMAÇÃO ---
+    // --- TIMELINE VISUAL CANVAS (INDICADOR NITIDO "KF") ---
+    function drawTimelineCanvas() {
+      const w = timelineCanvas.width;
+      const h = timelineCanvas.height;
+      tCtx.clearRect(0, 0, w, h);
+
+      const padding = 15;
+      const trackWidth = w - padding * 2;
+      const step = trackWidth / maxFrames;
+
+      // 1. Grade de Ticks/Régua de Frames
+      tCtx.strokeStyle = '#3f3f52';
+      tCtx.lineWidth = 1;
+      tCtx.fillStyle = '#888';
+      tCtx.font = '9px sans-serif';
+      tCtx.textAlign = 'center';
+
+      for (let i = 0; i <= maxFrames; i += 5) {
+        const x = padding + i * step;
+        tCtx.beginPath();
+        tCtx.moveTo(x, 0);
+        tCtx.lineTo(x, 10);
+        tCtx.stroke();
+        tCtx.fillText(i, x, 20);
+      }
+
+      // 2. DESENHAR KEYFRAMES (Linha Vertical Nítida Amarela + Rótulo "KF")
+      Object.keys(keyframes).forEach(fStr => {
+        const f = parseInt(fStr);
+        const x = padding + f * step;
+
+        // Traço Nítido Amarelo
+        tCtx.beginPath();
+        tCtx.moveTo(x, 12);
+        tCtx.lineTo(x, h - 5);
+        tCtx.strokeStyle = '#ffcc00';
+        tCtx.lineWidth = 2;
+        tCtx.stroke();
+
+        // Quadrado com Texto KF
+        tCtx.fillStyle = '#ffcc00';
+        tCtx.fillRect(x - 10, 24, 20, 14);
+        
+        tCtx.fillStyle = '#121216';
+        tCtx.font = 'bold 9px sans-serif';
+        tCtx.fillText('KF', x, 35);
+      });
+
+      // 3. INDICADOR ATUAL (PLAYHEAD AZUL CIANO)
+      const currentX = padding + currentFrame * step;
+
+      // Linha Vertical Ciano
+      tCtx.beginPath();
+      tCtx.moveTo(currentX, 0);
+      tCtx.lineTo(currentX, h);
+      tCtx.strokeStyle = '#00d2ff';
+      tCtx.lineWidth = 2;
+      tCtx.stroke();
+
+      // Triângulo no topo
+      tCtx.beginPath();
+      tCtx.moveTo(currentX - 6, 0);
+      tCtx.lineTo(currentX + 6, 0);
+      tCtx.lineTo(currentX, 8);
+      tCtx.closePath();
+      tCtx.fillStyle = '#00d2ff';
+      tCtx.fill();
+    }
+
+    // Clique direto no Canvas da Timeline para interagir
+    timelineCanvas.addEventListener('mousedown', (e) => {
+      const rect = timelineCanvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const padding = 15;
+      const trackWidth = timelineCanvas.width - padding * 2;
+      
+      let frame = Math.round(((clickX - padding) / trackWidth) * maxFrames);
+      frame = Math.max(0, Math.min(maxFrames, frame));
+
+      document.getElementById('timeline-slider').value = frame;
+      onTimelineSeek(frame);
+    });
+
     function onTimelineSeek(frame) {
       currentFrame = parseInt(frame);
       applyKeyframeState(currentFrame);
@@ -710,7 +813,10 @@
     }
 
     function addKeyframe() {
-      if (bones.length === 0) return;
+      if (bones.length === 0) {
+        alert("Crie ao menos um osso antes de gravar keyframes.");
+        return;
+      }
       
       const frameData = {};
       bones.forEach(bone => {
@@ -726,11 +832,23 @@
       updateUI();
     }
 
+    function jumpToKeyframe(direction) {
+      const activeFrames = Object.keys(keyframes).map(Number).sort((a, b) => a - b);
+      if (activeFrames.length === 0) return;
+
+      if (direction > 0) {
+        const next = activeFrames.find(f => f > currentFrame);
+        if (next !== undefined) onTimelineSeek(next);
+      } else {
+        const prev = activeFrames.filter(f => f < currentFrame).pop();
+        if (prev !== undefined) onTimelineSeek(prev);
+      }
+    }
+
     function applyKeyframeState(frame) {
       const activeFrames = Object.keys(keyframes).map(Number).sort((a, b) => a - b);
       if (activeFrames.length === 0) return;
 
-      // Se exatamente no keyframe
       if (keyframes[frame]) {
         bones.forEach(bone => {
           if (keyframes[frame][bone.id] !== undefined) {
@@ -740,7 +858,6 @@
         return;
       }
 
-      // Interpolação entre o Keyframe Anterior e Próximo
       let prevFrame = null;
       let nextFrame = null;
 
@@ -775,7 +892,7 @@
           applyKeyframeState(currentFrame);
           updateUI();
           render();
-        }, 1000 / 24); // 24 FPS
+        }, 1000 / 24);
       } else {
         btn.innerText = '▶ Play';
         clearInterval(animationInterval);
@@ -816,7 +933,6 @@
 
         const boneMap = {};
 
-        // Passagem 1: Reconstruir ossos básicos
         data.bones.forEach(bData => {
           const bone = new Bone(bData.id, null, bData.length, bData.localAngle, { x: bData.startX, y: bData.startY });
           bone.meshStrokes = bData.meshStrokes || [];
@@ -824,7 +940,6 @@
           bones.push(bone);
         });
 
-        // Passagem 2: Conectar parentesco e carregar Imagens
         bones.forEach(bone => {
           const raw = boneMap[bone.id];
           if (raw.parentId && boneMap[raw.parentId]) {
@@ -857,8 +972,9 @@
         });
 
         if (bones.length > 0) selectBone(bones[0]);
+        updateUI();
         render();
-        alert("Projeto carregado com sucesso!");
+        alert("Projeto e Keyframes carregados com sucesso!");
       } catch (err) {
         alert("Erro ao carregar dados do projeto.");
         console.error(err);
@@ -883,7 +999,7 @@
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(serializeProject());
       const downloadAnchor = document.createElement('a');
       downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", " rig_animation_project.json");
+      downloadAnchor.setAttribute("download", "rig_animation_project.json");
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
@@ -1121,7 +1237,7 @@
       offCtx.closePath();
       offCtx.clip();
 
-      // 2. Desenha o recorte da imagem original
+      // 2. Desenha a imagem original
       offCtx.drawImage(loadedImage, -minX, -minY);
 
       // 3. REMOÇÃO DE FUNDO BRANCO
