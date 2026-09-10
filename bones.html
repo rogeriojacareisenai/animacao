@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>2D Rigging Studio - Edição Visual & Timeline</title>
+  <title>2D Rigging Studio - Âncoras, Escala & Floating Menu</title>
   <style>
     * {
       box-sizing: border-box;
@@ -141,6 +141,7 @@
       flex: 1;
       position: relative;
       cursor: crosshair;
+      overflow: hidden;
     }
 
     canvas#stage {
@@ -148,6 +149,42 @@
       width: 100%;
       height: 100%;
       background-color: #121216;
+    }
+
+    /* Floating Window / Menu Flutuante */
+    .floating-window {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 220px;
+      background-color: #2b2b36;
+      border: 1px solid #00d2ff;
+      border-radius: 8px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+      z-index: 40;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .floating-header {
+      background-color: #18181f;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      color: #00d2ff;
+      cursor: move;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #3f3f52;
+    }
+
+    .floating-body {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
 
     .fab-btn {
@@ -167,7 +204,7 @@
       justify-content: center;
       font-size: 1.5rem;
       font-weight: bold;
-      z-index: 50;
+      z-index: 30;
       transition: transform 0.2s, background-color 0.2s;
     }
 
@@ -282,6 +319,7 @@
       <div class="section">
         <label>Ações Rápidas</label>
         <button onclick="undo()">↶ Desfazer (Ctrl+Z)</button>
+        <button onclick="resetStageZoom()">🔍 Resetar Zoom / Pan</button>
       </div>
 
       <div class="section">
@@ -314,6 +352,9 @@
           <label id="lbl-bone-name">Rotacionar Osso (°)</label>
           <input type="range" id="angle-slider" min="-180" max="180" value="0">
 
+          <label>Comprimento (Escala Osso):</label>
+          <input type="range" id="bone-len-slider" min="10" max="500" value="100">
+
           <label>Translação X:</label>
           <input type="range" id="bone-posx-slider" min="-1000" max="1000" value="0">
 
@@ -341,22 +382,12 @@
             <label>Offset Y:</label>
             <input type="range" id="sprite-offy" min="-1000" max="1000" value="0">
 
-            <label>Escala:</label>
+            <label>Escala Imagem:</label>
             <input type="range" id="sprite-scale" min="0.05" max="5" step="0.05" value="1">
             
             <button class="danger-btn" onclick="removeSelectedSprite()">Remover Imagem Selecionada</button>
           </div>
         </div>
-      </div>
-
-      <div class="section">
-        <label>3. Importar / Exportar / Carregar</label>
-        <div class="btn-group">
-          <button onclick="exportJSON()">Exportar JSON</button>
-          <button onclick="document.getElementById('file-input-json').click()">Importar JSON</button>
-        </div>
-        <button style="margin-top: 4px;" class="accent-btn" onclick="loadFromLocalStorage()">📂 Carregar Salvo (Local)</button>
-        <input type="file" id="file-input-json" accept=".json" style="display: none;" onchange="importJSON(event)">
       </div>
 
       <div class="section">
@@ -373,6 +404,21 @@
 
     <div id="canvas-container">
       <canvas id="stage"></canvas>
+
+      <!-- Menu Flutuante Arrastável -->
+      <div class="floating-window" id="floating-menu">
+        <div class="floating-header" id="floating-menu-header">
+          <span>📁 Arquivo / Dados</span>
+          <span style="font-size: 0.7rem; color: #888;">⠿ Drag</span>
+        </div>
+        <div class="floating-body">
+          <button class="accent-btn" onclick="loadFromLocalStorage()">📂 Carregar Salvo (Local)</button>
+          <button onclick="exportJSON()">💾 Exportar JSON</button>
+          <button onclick="document.getElementById('file-input-json').click()">📥 Importar JSON</button>
+          <input type="file" id="file-input-json" accept=".json" style="display: none;" onchange="importJSON(event)">
+        </div>
+      </div>
+
       <button class="fab-btn" onclick="saveToLocalStorage()" title="Salvar Projeto (Local)">💾</button>
     </div>
   </div>
@@ -445,6 +491,12 @@
     const timelineCanvas = document.getElementById('timeline-canvas');
     const tCtx = timelineCanvas.getContext('2d');
     
+    // Zoom & Pan no Stage Principal
+    let stageZoom = 1;
+    let stagePan = { x: 0, y: 0 };
+    let isStagePanning = false;
+    let stagePanStart = { x: 0, y: 0 };
+
     let mode = 'ADD_BONE_ROOT'; 
     let transformTarget = 'BONE';
     let bones = [];
@@ -452,7 +504,7 @@
     let selectedSpriteIndex = -1;
     let isMouseDown = false;
     
-    // Tipos de Arraste Visual no Canvas: 'BONE_TRANSLATE', 'BONE_ROTATE', 'SPRITE_TRANSLATE', 'SPRITE_ROTATE', 'SPRITE_SCALE'
+    // Tipos de Arraste Visual no Canvas: 'BONE_TRANSLATE', 'BONE_ROTATE', 'BONE_SCALE', 'SPRITE_TRANSLATE', 'SPRITE_ROTATE', 'SPRITE_SCALE'
     let dragMode = null;
     let dragStartPos = null;
     let dragInitialState = {};
@@ -480,6 +532,40 @@
 
     const cropCanvas = document.getElementById('crop-canvas');
     const cropCtx = cropCanvas.getContext('2d');
+
+    // Lógica do Menu Flutuante Arrastável
+    makeDraggable(document.getElementById("floating-menu"), document.getElementById("floating-menu-header"));
+
+    function makeDraggable(elmnt, header) {
+      let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+      header.onmousedown = dragMouseDown;
+
+      function dragMouseDown(e) {
+        e = e || window.event;
+        e.preventDefault();
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        document.onmouseup = closeDragElement;
+        document.onmousemove = elementDrag;
+      }
+
+      function elementDrag(e) {
+        e = e || window.event;
+        e.preventDefault();
+        pos1 = pos3 - e.clientX;
+        pos2 = pos4 - e.clientY;
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+        elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+        elmnt.style.right = "auto";
+      }
+
+      function closeDragElement() {
+        document.onmouseup = null;
+        document.onmousemove = null;
+      }
+    }
 
     function saveState() {
       undoStack.push(serializeProject());
@@ -511,6 +597,28 @@
       drawTimelineCanvas();
     }
     window.addEventListener('resize', resizeCanvas);
+
+    // Converte coordenadas de tela para coordenadas do mundo com Zoom/Pan
+    function screenToWorld(sp) {
+      return {
+        x: (sp.x - stagePan.x) / stageZoom,
+        y: (sp.y - stagePan.y) / stageZoom
+      };
+    }
+
+    // Converte coordenadas do mundo para coordenadas de tela
+    function worldToScreen(wp) {
+      return {
+        x: wp.x * stageZoom + stagePan.x,
+        y: wp.y * stageZoom + stagePan.y
+      };
+    }
+
+    function resetStageZoom() {
+      stageZoom = 1;
+      stagePan = { x: 0, y: 0 };
+      render();
+    }
 
     class Bone {
       constructor(id, parent, length, angle, basePos = {x: 0, y: 0}) {
@@ -588,7 +696,6 @@
       render();
     }
 
-    // Retorna a transformação de tela da alça visual do Sprite selecionado
     function getSelectedSpriteBoundingBox() {
       if (!selectedBone || selectedSpriteIndex < 0 || !selectedBone.attachedSprites[selectedSpriteIndex]) return null;
       const sprite = selectedBone.attachedSprites[selectedSpriteIndex];
@@ -607,54 +714,81 @@
       return { sprite, w, h, centerWorld, spriteWorldAngle };
     }
 
+    // Prevenir menu de contexto no canvas
+    canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+    // Zoom pelo Scroll do Mouse no Stage Principal
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const screenPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+
+      const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
+      const newZoom = Math.max(0.1, Math.min(10, stageZoom * zoomFactor));
+
+      stagePan.x = screenPos.x - (screenPos.x - stagePan.x) * (newZoom / stageZoom);
+      stagePan.y = screenPos.y - (screenPos.y - stagePan.y) * (newZoom / stageZoom);
+      stageZoom = newZoom;
+
+      render();
+    });
+
     canvas.addEventListener('mousedown', (e) => {
       const rect = canvas.getBoundingClientRect();
-      const mousePos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      const screenPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      const worldPos = screenToWorld(screenPos);
       isMouseDown = true;
       dragMode = null;
 
+      // Pan com Botão Direito
+      if (e.button === 2) {
+        isStagePanning = true;
+        stagePanStart = { x: screenPos.x - stagePan.x, y: screenPos.y - stagePan.y };
+        return;
+      }
+
       if (mode === 'ADD_BONE_ROOT') {
-        dragStartPos = mousePos;
+        dragStartPos = worldPos;
       }
       else if (mode === 'ADD_BONE_CHILD') {
         if (!selectedBone && bones.length > 0) {
           selectedBone = bones[bones.length - 1];
         }
-        dragStartPos = selectedBone ? { x: selectedBone.endX, y: selectedBone.endY } : mousePos;
+        dragStartPos = selectedBone ? { x: selectedBone.endX, y: selectedBone.endY } : worldPos;
       } 
       else if (mode === 'DRAW_MESH') {
         if (!selectedBone && bones.length > 0) selectedBone = bones[0];
         if (selectedBone) {
-          currentDrawingStroke = [selectedBone.worldToLocal(mousePos)];
+          currentDrawingStroke = [selectedBone.worldToLocal(worldPos)];
         }
       } 
       else if (mode === 'POSE') {
-        // Checar alças do Sprite primeiro se estiver em modo Imagem
+        // 1. Checar alças do Sprite primeiro se estiver em modo Imagem
         if (transformTarget === 'IMAGE') {
           const bbox = getSelectedSpriteBoundingBox();
           if (bbox) {
-            const rotHandleDist = Math.hypot(mousePos.x - (bbox.centerWorld.x + Math.sin(bbox.spriteWorldAngle) * (bbox.h/2 + 25)), mousePos.y - (bbox.centerWorld.y - Math.cos(bbox.spriteWorldAngle) * (bbox.h/2 + 25)));
-            if (rotHandleDist < 15) {
+            const rotHandleDist = Math.hypot(worldPos.x - (bbox.centerWorld.x + Math.sin(bbox.spriteWorldAngle) * (bbox.h/2 + 25)), worldPos.y - (bbox.centerWorld.y - Math.cos(bbox.spriteWorldAngle) * (bbox.h/2 + 25)));
+            if (rotHandleDist < 18 / stageZoom) {
               dragMode = 'SPRITE_ROTATE';
-              dragStartPos = mousePos;
+              dragStartPos = worldPos;
               dragInitialState = { rot: bbox.sprite.rot };
               saveState();
               return;
             }
 
-            const scaleHandleDist = Math.hypot(mousePos.x - (bbox.centerWorld.x + Math.cos(bbox.spriteWorldAngle) * bbox.w/2 + Math.sin(bbox.spriteWorldAngle) * bbox.h/2), mousePos.y - (bbox.centerWorld.y + Math.sin(bbox.spriteWorldAngle) * bbox.w/2 - Math.cos(bbox.spriteWorldAngle) * bbox.h/2));
-            if (scaleHandleDist < 15) {
+            const scaleHandleDist = Math.hypot(worldPos.x - (bbox.centerWorld.x + Math.cos(bbox.spriteWorldAngle) * bbox.w/2 + Math.sin(bbox.spriteWorldAngle) * bbox.h/2), worldPos.y - (bbox.centerWorld.y + Math.sin(bbox.spriteWorldAngle) * bbox.w/2 - Math.cos(bbox.spriteWorldAngle) * bbox.h/2));
+            if (scaleHandleDist < 18 / stageZoom) {
               dragMode = 'SPRITE_SCALE';
-              dragStartPos = mousePos;
-              dragInitialState = { scale: bbox.sprite.scale, dist: Math.hypot(mousePos.x - bbox.centerWorld.x, mousePos.y - bbox.centerWorld.y) };
+              dragStartPos = worldPos;
+              dragInitialState = { scale: bbox.sprite.scale, dist: Math.hypot(worldPos.x - bbox.centerWorld.x, worldPos.y - bbox.centerWorld.y) };
               saveState();
               return;
             }
 
-            const spriteCenterDist = Math.hypot(mousePos.x - bbox.centerWorld.x, mousePos.y - bbox.centerWorld.y);
+            const spriteCenterDist = Math.hypot(worldPos.x - bbox.centerWorld.x, worldPos.y - bbox.centerWorld.y);
             if (spriteCenterDist < Math.max(bbox.w, bbox.h) / 2) {
               dragMode = 'SPRITE_TRANSLATE';
-              dragStartPos = mousePos;
+              dragStartPos = worldPos;
               dragInitialState = { offX: bbox.sprite.offX, offY: bbox.sprite.offY };
               saveState();
               return;
@@ -662,52 +796,65 @@
           }
         }
 
-        // Interação com o Osso (Raiz -> Translação, Ponta -> Rotação)
+        // 2. Interação com o Osso (Raiz -> Translação, Centro -> Escala, Ponta -> Rotação)
         let closestBone = null;
-        let minDist = 25;
-        let isTip = false;
-        let isRoot = false;
+        let minDist = 25 / stageZoom;
+        let activeAnchorType = null; // 'ROOT', 'SCALE', 'TIP'
 
         bones.forEach(b => {
-          const rootDist = Math.hypot(b.startX - mousePos.x, b.startY - mousePos.y);
-          const tipDist = Math.hypot(b.endX - mousePos.x, b.endY - mousePos.y);
+          const rootDist = Math.hypot(b.startX - worldPos.x, b.startY - worldPos.y);
+          const tipDist = Math.hypot(b.endX - worldPos.x, b.endY - worldPos.y);
+          
+          const midX = (b.startX + b.endX) / 2;
+          const midY = (b.startY + b.endY) / 2;
+          const scaleDist = Math.hypot(midX - worldPos.x, midY - worldPos.y);
+
           if (rootDist < minDist) {
-            minDist = rootDist;
-            closestBone = b;
-            isRoot = true; isTip = false;
+            minDist = rootDist; closestBone = b; activeAnchorType = 'ROOT';
+          }
+          if (scaleDist < minDist) {
+            minDist = scaleDist; closestBone = b; activeAnchorType = 'SCALE';
           }
           if (tipDist < minDist) {
-            minDist = tipDist;
-            closestBone = b;
-            isTip = true; isRoot = false;
+            minDist = tipDist; closestBone = b; activeAnchorType = 'TIP';
           }
         });
 
         if (closestBone) {
           selectBone(closestBone);
-          dragStartPos = mousePos;
+          dragStartPos = worldPos;
           saveState();
 
-          if (isRoot) {
-            dragMode = 'BONE_TRANSLATE';
-          } else if (isTip) {
-            dragMode = 'BONE_ROTATE';
+          if (activeAnchorType === 'ROOT') dragMode = 'BONE_TRANSLATE';
+          else if (activeAnchorType === 'SCALE') {
+            dragMode = 'BONE_SCALE';
+            dragInitialState = { length: closestBone.length };
           }
+          else if (activeAnchorType === 'TIP') dragMode = 'BONE_ROTATE';
         }
       }
     });
 
     canvas.addEventListener('mousemove', (e) => {
       const rect = canvas.getBoundingClientRect();
-      const mousePos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      const screenPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      const worldPos = screenToWorld(screenPos);
+
+      if (isStagePanning) {
+        stagePan.x = screenPos.x - stagePanStart.x;
+        stagePan.y = screenPos.y - stagePanStart.y;
+        render();
+        return;
+      }
 
       if (!isMouseDown) return;
 
       if ((mode === 'ADD_BONE_ROOT' || mode === 'ADD_BONE_CHILD') && dragStartPos) {
         render();
+        const startScreen = worldToScreen(dragStartPos);
         ctx.beginPath();
-        ctx.moveTo(dragStartPos.x, dragStartPos.y);
-        ctx.lineTo(mousePos.x, mousePos.y);
+        ctx.moveTo(startScreen.x, startScreen.y);
+        ctx.lineTo(screenPos.x, screenPos.y);
         ctx.strokeStyle = '#00d2ff';
         ctx.setLineDash([5, 5]);
         ctx.lineWidth = 2;
@@ -715,12 +862,15 @@
         ctx.setLineDash([]);
       } 
       else if (mode === 'DRAW_MESH' && selectedBone) {
-        currentDrawingStroke.push(selectedBone.worldToLocal(mousePos));
+        currentDrawingStroke.push(selectedBone.worldToLocal(worldPos));
         render();
 
+        ctx.save();
+        ctx.translate(stagePan.x, stagePan.y);
+        ctx.scale(stageZoom, stageZoom);
         ctx.beginPath();
         ctx.strokeStyle = '#ff0055';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 3 / stageZoom;
         for (let i = 0; i < currentDrawingStroke.length - 1; i++) {
           const pt1 = selectedBone.localToWorld(currentDrawingStroke[i]);
           const pt2 = selectedBone.localToWorld(currentDrawingStroke[i + 1]);
@@ -728,21 +878,32 @@
           ctx.lineTo(pt2.x, pt2.y);
         }
         ctx.stroke();
+        ctx.restore();
       }
       else if (mode === 'POSE' && selectedBone) {
         if (dragMode === 'BONE_TRANSLATE') {
-          const dx = mousePos.x - dragStartPos.x;
-          const dy = mousePos.y - dragStartPos.y;
+          const dx = worldPos.x - dragStartPos.x;
+          const dy = worldPos.y - dragStartPos.y;
           selectedBone.posX += dx;
           selectedBone.posY += dy;
-          dragStartPos = mousePos;
+          dragStartPos = worldPos;
           addKeyframeAuto();
           updateUI();
           render();
         } 
+        else if (dragMode === 'BONE_SCALE') {
+          const dx = worldPos.x - selectedBone.startX;
+          const dy = worldPos.y - selectedBone.startY;
+          // Projeção do ponto no vetor de direção do osso
+          const projLen = dx * Math.cos(selectedBone.worldAngle) + dy * Math.sin(selectedBone.worldAngle);
+          selectedBone.length = Math.max(10, projLen);
+          addKeyframeAuto();
+          updateUI();
+          render();
+        }
         else if (dragMode === 'BONE_ROTATE') {
           const baseAngle = selectedBone.parent ? selectedBone.parent.worldAngle : 0;
-          const newWorldAngle = Math.atan2(mousePos.y - selectedBone.startY, mousePos.x - selectedBone.startX);
+          const newWorldAngle = Math.atan2(worldPos.y - selectedBone.startY, worldPos.x - selectedBone.startX);
           selectedBone.localAngle = newWorldAngle - baseAngle;
           addKeyframeAuto();
           updateUI();
@@ -750,21 +911,21 @@
         }
         else if (dragMode === 'SPRITE_TRANSLATE' && selectedSpriteIndex >= 0) {
           const sprite = selectedBone.attachedSprites[selectedSpriteIndex];
-          const dx = mousePos.x - dragStartPos.x;
-          const dy = mousePos.y - dragStartPos.y;
+          const dx = worldPos.x - dragStartPos.x;
+          const dy = worldPos.y - dragStartPos.y;
           const cos = Math.cos(-selectedBone.worldAngle);
           const sin = Math.sin(-selectedBone.worldAngle);
           
           sprite.offX += dx * cos - dy * sin;
           sprite.offY += dx * sin + dy * cos;
-          dragStartPos = mousePos;
+          dragStartPos = worldPos;
           updateUI();
           render();
         }
         else if (dragMode === 'SPRITE_ROTATE' && selectedSpriteIndex >= 0) {
           const bbox = getSelectedSpriteBoundingBox();
           if (bbox) {
-            const angle = Math.atan2(mousePos.y - bbox.centerWorld.y, mousePos.x - bbox.centerWorld.x);
+            const angle = Math.atan2(worldPos.y - bbox.centerWorld.y, worldPos.x - bbox.centerWorld.x);
             bbox.sprite.rot = angle - selectedBone.worldAngle + Math.PI/2;
             updateUI();
             render();
@@ -773,7 +934,7 @@
         else if (dragMode === 'SPRITE_SCALE' && selectedSpriteIndex >= 0) {
           const bbox = getSelectedSpriteBoundingBox();
           if (bbox && dragInitialState.dist > 0) {
-            const currentDist = Math.hypot(mousePos.x - bbox.centerWorld.x, mousePos.y - bbox.centerWorld.y);
+            const currentDist = Math.hypot(worldPos.x - bbox.centerWorld.x, worldPos.y - bbox.centerWorld.y);
             bbox.sprite.scale = Math.max(0.05, dragInitialState.scale * (currentDist / dragInitialState.dist));
             updateUI();
             render();
@@ -783,12 +944,17 @@
     });
 
     canvas.addEventListener('mouseup', (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const mousePos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      if (e.button === 2) {
+        isStagePanning = false;
+      }
 
-      if ((mode === 'ADD_BONE_ROOT' || mode === 'ADD_BONE_CHILD') && isMouseDown && dragStartPos) {
-        const dx = mousePos.x - dragStartPos.x;
-        const dy = mousePos.y - dragStartPos.y;
+      const rect = canvas.getBoundingClientRect();
+      const screenPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      const worldPos = screenToWorld(screenPos);
+
+      if ((mode === 'ADD_BONE_ROOT' || mode === 'ADD_BONE_CHILD') && isMouseDown && dragStartPos && e.button === 0) {
+        const dx = worldPos.x - dragStartPos.x;
+        const dy = worldPos.y - dragStartPos.y;
         const length = Math.hypot(dx, dy);
 
         if (length > 15) {
@@ -809,7 +975,7 @@
           resizeCanvas();
         }
       } 
-      else if (mode === 'DRAW_MESH' && isMouseDown && selectedBone) {
+      else if (mode === 'DRAW_MESH' && isMouseDown && selectedBone && e.button === 0) {
         if (currentDrawingStroke.length > 1) {
           saveState();
           selectedBone.meshStrokes.push([...currentDrawingStroke]);
@@ -824,12 +990,21 @@
     });
 
     const angleSlider = document.getElementById('angle-slider');
+    const boneLenSlider = document.getElementById('bone-len-slider');
     const bonePosXSlider = document.getElementById('bone-posx-slider');
     const bonePosYSlider = document.getElementById('bone-posy-slider');
 
     angleSlider.addEventListener('input', (e) => {
       if (selectedBone && mode === 'POSE' && transformTarget === 'BONE') {
         selectedBone.localAngle = (e.target.value * Math.PI) / 180;
+        addKeyframeAuto();
+        render();
+      }
+    });
+
+    boneLenSlider.addEventListener('input', (e) => {
+      if (selectedBone && mode === 'POSE' && transformTarget === 'BONE') {
+        selectedBone.length = parseFloat(e.target.value);
         addKeyframeAuto();
         render();
       }
@@ -959,6 +1134,7 @@
         
         lblName.innerText = `Rotacionar Osso: ${selectedBone.id}`;
         angleSlider.value = Math.round((selectedBone.localAngle * 180) / Math.PI);
+        boneLenSlider.value = Math.round(selectedBone.length);
         bonePosXSlider.value = Math.round(selectedBone.posX);
         bonePosYSlider.value = Math.round(selectedBone.posY);
 
@@ -1108,7 +1284,7 @@
       tCtx.fill();
     }
 
-    // Clique Duplo na Timeline para Renomear Osso
+    // Clique duplo para renomear osso na linha do tempo
     timelineCanvas.addEventListener('dblclick', (e) => {
       const rect = timelineCanvas.getBoundingClientRect();
       const clickX = e.clientX - rect.left;
@@ -1233,7 +1409,8 @@
       boneKeyframes[selectedBone.id][currentFrame] = {
         angle: selectedBone.localAngle,
         posX: selectedBone.posX,
-        posY: selectedBone.posY
+        posY: selectedBone.posY,
+        length: selectedBone.length
       };
     }
 
@@ -1292,6 +1469,7 @@
           bone.localAngle = kfs[frame].angle;
           bone.posX = kfs[frame].posX;
           bone.posY = kfs[frame].posY;
+          if (kfs[frame].length !== undefined) bone.length = kfs[frame].length;
           return;
         }
 
@@ -1308,10 +1486,16 @@
           bone.localAngle = kfs[prevFrame].angle + (kfs[nextFrame].angle - kfs[prevFrame].angle) * factor;
           bone.posX = kfs[prevFrame].posX + (kfs[nextFrame].posX - kfs[prevFrame].posX) * factor;
           bone.posY = kfs[prevFrame].posY + (kfs[nextFrame].posY - kfs[prevFrame].posY) * factor;
+          
+          const pLen = kfs[prevFrame].length || bone.length;
+          const nLen = kfs[nextFrame].length || bone.length;
+          bone.length = pLen + (nLen - pLen) * factor;
+
         } else if (prevFrame !== null) {
           bone.localAngle = kfs[prevFrame].angle;
           bone.posX = kfs[prevFrame].posX;
           bone.posY = kfs[prevFrame].posY;
+          if (kfs[prevFrame].length !== undefined) bone.length = kfs[prevFrame].length;
         }
       });
     }
@@ -1500,8 +1684,6 @@
     function imageToCanvasCoords(ix, iy) {
       return { x: ix * cropZoom + cropPan.x, y: iy * cropZoom + cropPan.y };
     }
-
-    cropCanvas.addEventListener('contextmenu', e => e.preventDefault());
 
     cropCanvas.addEventListener('mousedown', (e) => {
       if (!loadedImage) return;
@@ -1696,7 +1878,12 @@
       bones.forEach(b => b.updateTransform());
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // 1. Renderizar Texturas
+      ctx.save();
+      // Aplicar Transformações Globais de Zoom & Pan do Stage
+      ctx.translate(stagePan.x, stagePan.y);
+      ctx.scale(stageZoom, stageZoom);
+
+      // 1. Renderizar Texturas / Imagens
       bones.forEach(bone => {
         const isSelectedBone = (bone === selectedBone);
 
@@ -1719,7 +1906,7 @@
             const w = s.imageCanvas.width;
             const h = s.imageCanvas.height;
 
-            ctx.lineWidth = 1.5 / s.scale;
+            ctx.lineWidth = 1.5 / (s.scale * stageZoom);
             ctx.setLineDash([4, 4]);
             ctx.strokeStyle = '#00d2ff';
             ctx.strokeRect(-w/2, -h/2, w, h);
@@ -1728,19 +1915,20 @@
             // Alça de Rotação (Topo)
             ctx.beginPath();
             ctx.moveTo(0, -h/2);
-            ctx.lineTo(0, -h/2 - 25 / s.scale);
+            ctx.lineTo(0, -h/2 - 25 / (s.scale * stageZoom));
             ctx.strokeStyle = '#00d2ff';
             ctx.stroke();
 
             ctx.beginPath();
-            ctx.arc(0, -h/2 - 25 / s.scale, 6 / s.scale, 0, Math.PI * 2);
+            ctx.arc(0, -h/2 - 25 / (s.scale * stageZoom), 6 / (s.scale * stageZoom), 0, Math.PI * 2);
             ctx.fillStyle = '#ffcc00';
             ctx.fill();
             ctx.stroke();
 
             // Alça de Escala (Canto inferior direito)
+            const sBox = 10 / (s.scale * stageZoom);
             ctx.beginPath();
-            ctx.rect(w/2 - 5 / s.scale, h/2 - 5 / s.scale, 10 / s.scale, 10 / s.scale);
+            ctx.rect(w/2 - sBox/2, h/2 - sBox/2, sBox, sBox);
             ctx.fillStyle = '#00ff88';
             ctx.fill();
             ctx.stroke();
@@ -1753,7 +1941,7 @@
       // 2. Renderizar Linhas Desenhadas
       bones.forEach(bone => {
         ctx.strokeStyle = '#ff0055';
-        ctx.lineWidth = 4;
+        ctx.lineWidth = 4 / stageZoom;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
 
@@ -1777,36 +1965,52 @@
         ctx.moveTo(bone.startX, bone.startY);
         ctx.lineTo(bone.endX, bone.endY);
         ctx.strokeStyle = isSelected ? '#00d2ff' : 'rgba(255,255,255,0.7)';
-        ctx.lineWidth = isSelected ? 3 : 1.5;
+        ctx.lineWidth = (isSelected ? 3 : 1.5) / stageZoom;
         ctx.stroke();
 
-        // Âncora de Rotação (Ponta do Osso)
+        // Âncora de Rotação (Ponta do Osso - Azul)
         ctx.beginPath();
-        ctx.arc(bone.endX, bone.endY, isSelected ? 8 : 5, 0, Math.PI * 2);
-        ctx.fillStyle = isSelected ? '#00d2ff' : '#00ff88';
+        ctx.arc(bone.endX, bone.endY, (isSelected ? 8 : 5) / stageZoom, 0, Math.PI * 2);
+        ctx.fillStyle = isSelected ? '#00d2ff' : '#00aaff';
         ctx.fill();
         ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1 / stageZoom;
         ctx.stroke();
 
-        // Âncora de Translação (Raiz do Osso)
+        // Âncora de Escala (Centro do Osso - Quadrado Verde)
+        const midX = (bone.startX + bone.endX) / 2;
+        const midY = (bone.startY + bone.endY) / 2;
+        const sqSize = (isSelected ? 10 : 8) / stageZoom;
+
+        ctx.beginPath();
+        ctx.rect(midX - sqSize/2, midY - sqSize/2, sqSize, sqSize);
+        ctx.fillStyle = isSelected ? '#00ff88' : '#00aa55';
+        ctx.fill();
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1 / stageZoom;
+        ctx.stroke();
+
+        // Âncora de Translação (Raiz do Osso - Círculo Amarelo Pontilhado)
         ctx.save();
         ctx.beginPath();
-        ctx.arc(bone.startX, bone.startY, isSelected ? 12 : 9, 0, Math.PI * 2);
-        ctx.setLineDash([4, 3]);
+        ctx.arc(bone.startX, bone.startY, (isSelected ? 12 : 9) / stageZoom, 0, Math.PI * 2);
+        ctx.setLineDash([4 / stageZoom, 3 / stageZoom]);
         ctx.strokeStyle = isSelected ? '#00d2ff' : '#ffcc00';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2 / stageZoom;
         ctx.stroke();
         ctx.setLineDash([]);
 
         ctx.beginPath();
-        ctx.arc(bone.startX, bone.startY, isSelected ? 6 : 4, 0, Math.PI * 2);
+        ctx.arc(bone.startX, bone.startY, (isSelected ? 6 : 4) / stageZoom, 0, Math.PI * 2);
         ctx.fillStyle = isSelected ? '#00d2ff' : '#ffcc00';
         ctx.fill();
         ctx.strokeStyle = '#000';
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 1 / stageZoom;
         ctx.stroke();
         ctx.restore();
       });
+
+      ctx.restore();
     }
 
     resizeCanvas();
