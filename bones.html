@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>2D Rigging Studio - Timeline por Osso & Opacidade</title>
+  <title>2D Rigging Studio - Timeline por Osso & Camadas</title>
   <style>
     * {
       box-sizing: border-box;
@@ -256,6 +256,11 @@
       <h2>2D Rigging Studio</h2>
 
       <div class="section">
+        <label>Ações Rápidas</label>
+        <button onclick="undo()">↶ Desfazer (Ctrl+Z)</button>
+      </div>
+
+      <div class="section">
         <label>1. Modo de Interação</label>
         <div class="btn-group">
           <button id="btn-mode-bone-root" class="active" onclick="setMode('ADD_BONE_ROOT')">+ Osso Raiz</button>
@@ -292,6 +297,12 @@
 
           <label>Translação Y:</label>
           <input type="range" id="bone-posy-slider" min="-1000" max="1000" value="0">
+
+          <label>Ordem na Renderização (Hierarquia):</label>
+          <div class="btn-group">
+            <button onclick="reorderBone(-1)">▲ Mover p/ Frente</button>
+            <button onclick="reorderBone(1)">▼ Mover p/ Trás</button>
+          </div>
         </div>
 
         <!-- Controles da Imagem Anexada -->
@@ -300,6 +311,12 @@
           <select id="sprite-select" onchange="onSpriteSelected()"></select>
 
           <div id="sprite-editor-controls" class="section" style="margin-top: 5px;">
+            <label>Ordem da Camada (Frente/Trás):</label>
+            <div class="btn-group">
+              <button onclick="moveSpriteOrder(1)">▲ Ir para Frente</button>
+              <button onclick="moveSpriteOrder(-1)">▼ Ir para Trás</button>
+            </div>
+
             <label>Rotação Própria (°):</label>
             <input type="range" id="sprite-rot" min="-180" max="180" value="0">
 
@@ -422,6 +439,9 @@
     let dragStartPos = null;
     let currentDrawingStroke = [];
 
+    // Sistema de Undo (Desfazer)
+    let undoStack = [];
+
     // Timeline Dragging & Resizing State
     let isResizingTimeline = false;
     let isScrubbingTimeline = false;
@@ -444,6 +464,25 @@
 
     const cropCanvas = document.getElementById('crop-canvas');
     const cropCtx = cropCanvas.getContext('2d');
+
+    function saveState() {
+      undoStack.push(serializeProject());
+      if (undoStack.length > 30) undoStack.shift();
+    }
+
+    function undo() {
+      if (undoStack.length > 0) {
+        const previousState = undoStack.pop();
+        deserializeProject(previousState, false);
+      }
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        undo();
+      }
+    });
 
     function resizeCanvas() {
       canvas.width = canvas.parentElement.clientWidth;
@@ -570,6 +609,7 @@
           selectBone(closestBone);
           isDraggingBonePose = true;
           dragStartPos = mousePos;
+          saveState();
         }
       }
     });
@@ -614,6 +654,7 @@
         selectedBone.posY += dy;
 
         dragStartPos = mousePos;
+        addKeyframeAuto();
         updateUI();
         render();
       }
@@ -629,6 +670,7 @@
         const length = Math.hypot(dx, dy);
 
         if (length > 15) {
+          saveState();
           let parentBone = (mode === 'ADD_BONE_CHILD') ? selectedBone : null;
           let worldAngle = Math.atan2(dy, dx);
           let localAngle = parentBone ? worldAngle - parentBone.worldAngle : worldAngle;
@@ -647,6 +689,7 @@
       } 
       else if (mode === 'DRAW_MESH' && isMouseDown && selectedBone) {
         if (currentDrawingStroke.length > 1) {
+          saveState();
           selectedBone.meshStrokes.push([...currentDrawingStroke]);
         }
         currentDrawingStroke = [];
@@ -665,6 +708,7 @@
     angleSlider.addEventListener('input', (e) => {
       if (selectedBone && mode === 'POSE' && transformTarget === 'BONE') {
         selectedBone.localAngle = (e.target.value * Math.PI) / 180;
+        addKeyframeAuto();
         render();
       }
     });
@@ -672,6 +716,7 @@
     bonePosXSlider.addEventListener('input', (e) => {
       if (selectedBone && mode === 'POSE' && transformTarget === 'BONE') {
         selectedBone.posX = parseFloat(e.target.value);
+        addKeyframeAuto();
         render();
       }
     });
@@ -679,9 +724,25 @@
     bonePosYSlider.addEventListener('input', (e) => {
       if (selectedBone && mode === 'POSE' && transformTarget === 'BONE') {
         selectedBone.posY = parseFloat(e.target.value);
+        addKeyframeAuto();
         render();
       }
     });
+
+    function reorderBone(direction) {
+      if (!selectedBone) return;
+      const index = bones.indexOf(selectedBone);
+      const targetIndex = index + direction;
+
+      if (targetIndex >= 0 && targetIndex < bones.length) {
+        saveState();
+        const temp = bones[index];
+        bones[index] = bones[targetIndex];
+        bones[targetIndex] = temp;
+        updateUI();
+        resizeCanvas();
+      }
+    }
 
     const offXSlider = document.getElementById('sprite-offx');
     const offYSlider = document.getElementById('sprite-offy');
@@ -701,9 +762,27 @@
 
     [offXSlider, offYSlider, scaleSlider, rotSlider].forEach(s => s.addEventListener('input', updateSpriteFromSliders));
 
+    function moveSpriteOrder(direction) {
+      if (!selectedBone || selectedSpriteIndex < 0) return;
+
+      const sprites = selectedBone.attachedSprites;
+      const targetIndex = selectedSpriteIndex + direction;
+
+      if (targetIndex >= 0 && targetIndex < sprites.length) {
+        saveState();
+        const temp = sprites[selectedSpriteIndex];
+        sprites[selectedSpriteIndex] = sprites[targetIndex];
+        sprites[targetIndex] = temp;
+
+        selectedSpriteIndex = targetIndex;
+        updateSpriteDropdown();
+        render();
+      }
+    }
+
     function selectBone(bone) {
       selectedBone = bone;
-      selectedSpriteIndex = bone.attachedSprites.length > 0 ? bone.attachedSprites.length - 1 : -1;
+      selectedSpriteIndex = bone && bone.attachedSprites.length > 0 ? bone.attachedSprites.length - 1 : -1;
       updateUI();
       render();
     }
@@ -776,6 +855,7 @@
 
     function removeSelectedSprite() {
       if (selectedBone && selectedSpriteIndex >= 0) {
+        saveState();
         selectedBone.attachedSprites.splice(selectedSpriteIndex, 1);
         selectedSpriteIndex = selectedBone.attachedSprites.length - 1;
         updateUI();
@@ -784,6 +864,7 @@
     }
 
     function clearAll() {
+      saveState();
       bones = [];
       selectedBone = null;
       selectedSpriteIndex = -1;
@@ -964,11 +1045,8 @@
       render();
     }
 
-    function addKeyframe() {
-      if (!selectedBone) {
-        alert("Selecione um osso para gravar seu keyframe.");
-        return;
-      }
+    function addKeyframeAuto() {
+      if (!selectedBone) return;
       
       if (!boneKeyframes[selectedBone.id]) {
         boneKeyframes[selectedBone.id] = {};
@@ -979,12 +1057,21 @@
         posX: selectedBone.posX,
         posY: selectedBone.posY
       };
+    }
 
+    function addKeyframe() {
+      if (!selectedBone) {
+        alert("Selecione um osso para gravar seu keyframe.");
+        return;
+      }
+      saveState();
+      addKeyframeAuto();
       updateUI();
     }
 
     function removeKeyframe() {
       if (selectedBone && boneKeyframes[selectedBone.id]) {
+        saveState();
         delete boneKeyframes[selectedBone.id][currentFrame];
         updateUI();
       }
@@ -1095,7 +1182,7 @@
       return JSON.stringify(projectData);
     }
 
-    function deserializeProject(jsonString) {
+    function deserializeProject(jsonString, alertOnSuccess = true) {
       try {
         const data = JSON.parse(jsonString);
         bones = [];
@@ -1146,7 +1233,7 @@
 
         if (bones.length > 0) selectBone(bones[0]);
         resizeCanvas();
-        alert("Projeto carregado com sucesso!");
+        if (alertOnSuccess) alert("Projeto carregado com sucesso!");
       } catch (err) {
         alert("Erro ao carregar dados do projeto.");
         console.error(err);
@@ -1159,6 +1246,7 @@
     }
 
     function loadFromLocalStorage() {
+      saveState();
       const data = localStorage.getItem('2d_rigging_project_v2');
       if (data) deserializeProject(data);
       else alert("Nenhum projeto salvo encontrado.");
@@ -1178,6 +1266,7 @@
       const file = e.target.files[0];
       if (!file) return;
 
+      saveState();
       const reader = new FileReader();
       reader.onload = (event) => deserializeProject(event.target.result);
       reader.readAsText(file);
@@ -1363,6 +1452,8 @@
         return;
       }
 
+      saveState();
+
       if (!isPolyClosed) finishPolygon();
 
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -1427,7 +1518,7 @@
       bones.forEach(b => b.updateTransform());
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // 1. Renderizar Texturas (Com opacidade adaptativa)
+      // 1. Renderizar Texturas (Seguindo a ordem de renderização dos ossos)
       bones.forEach(bone => {
         const isSelectedBone = (bone === selectedBone);
 
@@ -1436,7 +1527,6 @@
 
           ctx.save();
           
-          // Aplica opacidade reduzida caso a imagem não seja a selecionada
           ctx.globalAlpha = isSelectedSprite ? 1.0 : 0.5;
 
           ctx.translate(bone.startX, bone.startY);
