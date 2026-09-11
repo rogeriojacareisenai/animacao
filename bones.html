@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>2D Rigging Studio - Associação/Desassociação de Imagens</title>
+  <title>2D Rigging Studio - 1 Imagem por Osso</title>
   <style>
     * {
       box-sizing: border-box;
@@ -168,7 +168,11 @@
       border-radius: 4px;
       font-size: 0.75rem;
       color: #aaa;
-      line-height: 1.3;
+      line-height: 1.4;
+    }
+
+    .info-box b {
+      color: #00d2ff;
     }
 
     #canvas-container {
@@ -189,7 +193,7 @@
       position: absolute;
       top: 20px;
       right: 20px;
-      width: 220px;
+      width: 240px;
       background-color: #2b2b36;
       border: 1px solid #00d2ff;
       border-radius: 8px;
@@ -220,32 +224,6 @@
       gap: 8px;
     }
 
-    .fab-btn {
-      position: absolute;
-      bottom: 20px;
-      right: 25px;
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      background-color: #00d2ff;
-      color: #121216;
-      border: none;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.5rem;
-      font-weight: bold;
-      z-index: 30;
-      transition: transform 0.2s, background-color 0.2s;
-    }
-
-    .fab-btn:hover {
-      background-color: #00aaff;
-      transform: scale(1.08);
-    }
-
     #timeline-bar {
       height: 220px;
       background-color: #18181f;
@@ -263,21 +241,80 @@
       flex-wrap: wrap;
     }
 
-    .timeline-track-container {
+    .timeline-track-wrapper {
       display: flex;
-      flex-direction: column;
-      gap: 4px;
       width: 100%;
       flex: 1;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid #3f3f52;
+      border-radius: 4px;
+      background-color: #121216;
+    }
+
+    #bone-layers-panel {
+      width: 140px;
+      background: #18181f;
+      border-right: 1px solid #3f3f52;
+      margin-top: 30px;
+      display: flex;
+      flex-direction: column;
+      z-index: 5;
+    }
+
+    .bone-layer-row {
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 4px;
+      border-bottom: 1px solid #2b2b36;
+      font-size: 0.75rem;
+    }
+
+    .bone-layer-row.active {
+      background-color: #2a2a3a;
+    }
+
+    .bone-layer-label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: pointer;
+      flex: 1;
+      padding: 0 4px;
+    }
+
+    .layer-btn-group {
+      display: flex;
+      gap: 2px;
+    }
+
+    .btn-layer-order {
+      padding: 1px 4px;
+      font-size: 0.65rem;
+      line-height: 1;
+      background: #3f3f52;
+      border: 1px solid #575773;
+      border-radius: 2px;
+      cursor: pointer;
+    }
+
+    .btn-layer-order:hover {
+      background: #00d2ff;
+      color: #121216;
+    }
+
+    .timeline-canvas-container {
+      flex: 1;
       overflow-y: auto;
+      position: relative;
     }
 
     canvas#timeline-canvas {
+      display: block;
       width: 100%;
-      height: 120px;
-      background-color: #121216;
-      border: 1px solid #3f3f52;
-      border-radius: 4px;
+      height: 100%;
       cursor: pointer;
     }
 
@@ -359,7 +396,7 @@
         <label>1. Modo de Interação</label>
         <div class="btn-group">
           <button id="btn-mode-bone-root" class="active" onclick="setMode('ADD_BONE_ROOT')">+ Osso Raiz</button>
-          <button id="btn-mode-bone-child" onclick="setMode('ADD_BONE_CHILD')">+ Osso Filhado</button>
+          <button id="btn-mode-bone-child" onclick="setMode('ADD_BONE_CHILD')">+ Osso Filho</button>
         </div>
         <div class="btn-group" style="margin-top: 4px;">
           <button id="btn-mode-draw" onclick="setMode('DRAW_MESH')">Desenhar</button>
@@ -368,11 +405,11 @@
       </div>
 
       <div class="section">
-        <label>2. Gerenciador de Imagens</label>
+        <label>2. Importar Imagens</label>
         <button class="accent-btn" onclick="openImageModal()">📥 Importar / Recortar Nova Imagem</button>
-        
+
         <div id="unattached-images-box" class="section" style="margin-top: 6px; background: #18181f; padding: 8px; border-radius: 4px;">
-          <label style="color:#00d2ff; font-weight: bold;">Imagens Soltas (Sem Osso):</label>
+          <label style="color:#00d2ff; font-weight: bold;">Imagens Soltas (Não Associadas):</label>
           <select id="unattached-select" onchange="render()"></select>
           <button class="accent-btn" onclick="attachUnattachedImageToSelectedBone()" style="margin-top: 4px;">🔗 Associar ao Osso Selecionado</button>
         </div>
@@ -380,11 +417,11 @@
 
       <div class="section" id="pose-controls" style="display: none;">
         <label style="color:#00d2ff; font-weight: bold;">Transformação / Ajustes</label>
-        
+
         <label>Alvo da Operação:</label>
         <div class="btn-group">
           <button id="btn-target-bone" class="active" onclick="setTransformTarget('BONE')">Osso</button>
-          <button id="btn-target-image" onclick="setTransformTarget('IMAGE')">Imagens</button>
+          <button id="btn-target-image" onclick="setTransformTarget('IMAGE')">Imagem</button>
         </div>
 
         <div id="bone-transform-box" class="section">
@@ -402,17 +439,12 @@
         </div>
 
         <div id="image-transform-box" class="section" style="display: none;">
-          <label>Imagens Anexadas a este Osso:</label>
-          <select id="sprite-select" onchange="onSpriteSelected()"></select>
+          <div id="attached-image-info" style="font-size:0.8rem; color:#ffcc00; font-weight:bold; margin-bottom: 4px;">
+            Nenhuma imagem associada
+          </div>
 
-          <div id="sprite-editor-controls" class="section" style="margin-top: 5px;">
+          <div id="sprite-editor-controls" class="section">
             <button class="warning-btn" onclick="detachSelectedSprite()">🔓 Desassociar e Mover para Soltas</button>
-
-            <label style="margin-top: 6px;">Ordem da Camada:</label>
-            <div class="btn-group">
-              <button onclick="moveSpriteOrder(1)">▲ Ir para Frente</button>
-              <button onclick="moveSpriteOrder(-1)">▼ Ir para Trás</button>
-            </div>
 
             <label>Rotação Própria (°):</label>
             <input type="range" id="sprite-rot" min="-180" max="180" value="0">
@@ -423,16 +455,16 @@
             <label>Offset Y:</label>
             <input type="range" id="sprite-offy" min="-1000" max="1000" value="0">
 
-            <label>Escala Imagem (Arraste o quadrado verde no Canvas):</label>
+            <label>Escala Imagem:</label>
             <input type="range" id="sprite-scale" min="0.05" max="5" step="0.05" value="1">
-            
+
             <button class="danger-btn" onclick="removeSelectedSprite()">Excluir Imagem Definitivamente</button>
           </div>
         </div>
       </div>
 
       <div class="section">
-        <label>Estrutura do Rig</label>
+        <label>Identificação & Estrutura</label>
         <div class="info-box" id="hierarchy-info">
           Nenhum osso selecionado.
         </div>
@@ -448,7 +480,7 @@
 
       <div class="floating-window" id="floating-menu">
         <div class="floating-header" id="floating-menu-header">
-          <span>📁 Arquivo / Dados</span>
+          <span>📁 Opções de Importação & Arquivo</span>
           <span style="font-size: 0.7rem; color: #888;">⠿ Drag</span>
         </div>
         <div class="floating-body">
@@ -456,10 +488,9 @@
           <button onclick="exportJSON()">💾 Exportar JSON</button>
           <button onclick="document.getElementById('file-input-json').click()">📥 Importar JSON</button>
           <input type="file" id="file-input-json" accept=".json" style="display: none;" onchange="importJSON(event)">
+          <button class="accent-btn" onclick="saveToLocalStorage()" title="Salvar Projeto (Local)">💾 Salvar Projeto (Local)</button>
         </div>
       </div>
-
-      <button class="fab-btn" onclick="saveToLocalStorage()" title="Salvar Projeto (Local)">💾</button>
     </div>
   </div>
 
@@ -470,7 +501,7 @@
       <button onclick="jumpToKeyframe(1)">KF &gt;</button>
       <button class="accent-btn" onclick="addKeyframe()">+ Gravar KF (Osso Ativo)</button>
       <button class="danger-btn" onclick="removeKeyframe()">- Remover KF</button>
-      
+
       <div style="display:flex; align-items:center; gap:5px; margin-left:10px;">
         <label style="color:#00d2ff; font-weight:bold;">Frames:</label>
         <input type="number" id="max-frames-input" value="60" min="5" max="1000" style="width: 55px;" onchange="updateMaxFrames(this.value)">
@@ -485,8 +516,11 @@
       <span id="keyframe-info" style="font-size:0.8rem; color:#ffcc00; font-weight:bold; margin-left:auto;"></span>
     </div>
 
-    <div class="timeline-track-container">
-      <canvas id="timeline-canvas"></canvas>
+    <div class="timeline-track-wrapper">
+      <div id="bone-layers-panel"></div>
+      <div class="timeline-canvas-container">
+        <canvas id="timeline-canvas"></canvas>
+      </div>
     </div>
   </div>
 
@@ -541,9 +575,8 @@
     let bones = [];
     let unattachedImages = []; 
     let selectedBone = null;
-    let selectedSpriteIndex = -1;
     let isMouseDown = false;
-    
+
     let dragMode = null;
     let dragStartPos = null;
     let dragInitialState = {};
@@ -628,7 +661,8 @@
       canvas.width = canvas.parentElement.clientWidth;
       canvas.height = canvas.parentElement.clientHeight;
 
-      timelineCanvas.width = timelineCanvas.parentElement.clientWidth;
+      const container = timelineCanvas.parentElement;
+      timelineCanvas.width = container.clientWidth;
       timelineCanvas.height = Math.max(120, (bones.length + 1) * 24 + 30);
 
       render();
@@ -665,8 +699,8 @@
         this.posX = basePos.x;
         this.posY = basePos.y;
         this.meshStrokes = [];
-        this.attachedSprites = []; 
-        
+        this.attachedSprite = null; 
+
         this.startX = 0;
         this.startY = 0;
         this.endX = 0;
@@ -710,7 +744,7 @@
     function setMode(newMode) {
       mode = newMode;
       document.querySelectorAll('#sidebar button').forEach(b => b.classList.remove('active'));
-      
+
       if (mode === 'ADD_BONE_ROOT') document.getElementById('btn-mode-bone-root').classList.add('active');
       if (mode === 'ADD_BONE_CHILD') document.getElementById('btn-mode-bone-child').classList.add('active');
       if (mode === 'DRAW_MESH') document.getElementById('btn-mode-draw').classList.add('active');
@@ -724,30 +758,50 @@
       transformTarget = target;
       document.getElementById('btn-target-bone').classList.toggle('active', target === 'BONE');
       document.getElementById('btn-target-image').classList.toggle('active', target === 'IMAGE');
-      
+
       document.getElementById('bone-transform-box').style.display = (target === 'BONE') ? 'flex' : 'none';
       document.getElementById('image-transform-box').style.display = (target === 'IMAGE') ? 'flex' : 'none';
-      
-      if (target === 'IMAGE') updateSpriteDropdown();
+
+      if (target === 'IMAGE') updateSpritePanel();
       render();
     }
 
-    function getSelectedSpriteBoundingBox() {
-      if (!selectedBone || selectedSpriteIndex < 0 || !selectedBone.attachedSprites[selectedSpriteIndex]) return null;
-      const sprite = selectedBone.attachedSprites[selectedSpriteIndex];
+    function getSpriteBoundingBox(bone) {
+      if (!bone || !bone.attachedSprite) return null;
+      const sprite = bone.attachedSprite;
       const w = sprite.imageCanvas.width * sprite.scale;
       const h = sprite.imageCanvas.height * sprite.scale;
-      
-      const spriteWorldAngle = selectedBone.worldAngle + sprite.rot;
-      const cos = Math.cos(selectedBone.worldAngle);
-      const sin = Math.sin(selectedBone.worldAngle);
-      
+
+      const spriteWorldAngle = bone.worldAngle + sprite.rot;
+      const cos = Math.cos(bone.worldAngle);
+      const sin = Math.sin(bone.worldAngle);
+
       const centerWorld = {
-        x: selectedBone.startX + (sprite.offX * cos - sprite.offY * sin),
-        y: selectedBone.startY + (sprite.offX * sin + sprite.offY * cos)
+        x: bone.startX + (sprite.offX * cos - sprite.offY * sin),
+        y: bone.startY + (sprite.offX * sin + sprite.offY * cos)
       };
 
       return { sprite, w, h, centerWorld, spriteWorldAngle };
+    }
+
+    function getSelectedSpriteBoundingBox() {
+      return getSpriteBoundingBox(selectedBone);
+    }
+
+    function isPointInSprite(worldPos, bone) {
+      const bbox = getSpriteBoundingBox(bone);
+      if (!bbox) return false;
+
+      const dx = worldPos.x - bbox.centerWorld.x;
+      const dy = worldPos.y - bbox.centerWorld.y;
+
+      const cos = Math.cos(-bbox.spriteWorldAngle);
+      const sin = Math.sin(-bbox.spriteWorldAngle);
+
+      const localX = dx * cos - dy * sin;
+      const localY = dx * sin + dy * cos;
+
+      return Math.abs(localX) <= bbox.w / 2 && Math.abs(localY) <= bbox.h / 2;
     }
 
     canvas.addEventListener('contextmenu', e => e.preventDefault());
@@ -796,6 +850,14 @@
         }
       } 
       else if (mode === 'POSE') {
+        let hitSpriteBone = null;
+        for (let i = bones.length - 1; i >= 0; i--) {
+          if (isPointInSprite(worldPos, bones[i])) {
+            hitSpriteBone = bones[i];
+            break;
+          }
+        }
+
         if (transformTarget === 'IMAGE') {
           const bbox = getSelectedSpriteBoundingBox();
           if (bbox) {
@@ -835,7 +897,7 @@
         bones.forEach(b => {
           const rootDist = Math.hypot(b.startX - worldPos.x, b.startY - worldPos.y);
           const tipDist = Math.hypot(b.endX - worldPos.x, b.endY - worldPos.y);
-          
+
           const midX = (b.startX + b.endX) / 2;
           const midY = (b.startY + b.endY) / 2;
           const scaleDist = Math.hypot(midX - worldPos.x, midY - worldPos.y);
@@ -862,6 +924,16 @@
             dragInitialState = { length: closestBone.length };
           }
           else if (activeAnchorType === 'TIP') dragMode = 'BONE_ROTATE';
+        } else if (hitSpriteBone) {
+          selectBone(hitSpriteBone);
+          setTransformTarget('IMAGE');
+          const bbox = getSelectedSpriteBoundingBox();
+          if (bbox) {
+            dragMode = 'SPRITE_TRANSLATE';
+            dragStartPos = worldPos;
+            dragInitialState = { offX: bbox.sprite.offX, offY: bbox.sprite.offY };
+            saveState();
+          }
         }
       }
     });
@@ -939,20 +1011,20 @@
           updateUI();
           render();
         }
-        else if (dragMode === 'SPRITE_TRANSLATE' && selectedSpriteIndex >= 0) {
-          const sprite = selectedBone.attachedSprites[selectedSpriteIndex];
+        else if (dragMode === 'SPRITE_TRANSLATE' && selectedBone.attachedSprite) {
+          const sprite = selectedBone.attachedSprite;
           const dx = worldPos.x - dragStartPos.x;
           const dy = worldPos.y - dragStartPos.y;
           const cos = Math.cos(-selectedBone.worldAngle);
           const sin = Math.sin(-selectedBone.worldAngle);
-          
+
           sprite.offX += dx * cos - dy * sin;
           sprite.offY += dx * sin + dy * cos;
           dragStartPos = worldPos;
           updateUI();
           render();
         }
-        else if (dragMode === 'SPRITE_ROTATE' && selectedSpriteIndex >= 0) {
+        else if (dragMode === 'SPRITE_ROTATE' && selectedBone.attachedSprite) {
           const bbox = getSelectedSpriteBoundingBox();
           if (bbox) {
             const angle = Math.atan2(worldPos.y - bbox.centerWorld.y, worldPos.x - bbox.centerWorld.x);
@@ -961,7 +1033,7 @@
             render();
           }
         }
-        else if (dragMode === 'SPRITE_SCALE' && selectedSpriteIndex >= 0) {
+        else if (dragMode === 'SPRITE_SCALE' && selectedBone.attachedSprite) {
           const bbox = getSelectedSpriteBoundingBox();
           if (bbox && dragInitialState.dist > 0) {
             const currentDist = Math.hypot(worldPos.x - bbox.centerWorld.x, worldPos.y - bbox.centerWorld.y);
@@ -1076,8 +1148,8 @@
     const rotSlider = document.getElementById('sprite-rot');
 
     function updateSpriteFromSliders() {
-      if (selectedBone && selectedBone.attachedSprites[selectedSpriteIndex] && transformTarget === 'IMAGE') {
-        const sprite = selectedBone.attachedSprites[selectedSpriteIndex];
+      if (selectedBone && selectedBone.attachedSprite && transformTarget === 'IMAGE') {
+        const sprite = selectedBone.attachedSprite;
         sprite.offX = parseFloat(offXSlider.value);
         sprite.offY = parseFloat(offYSlider.value);
         sprite.scale = parseFloat(scaleSlider.value);
@@ -1088,55 +1160,35 @@
 
     [offXSlider, offYSlider, scaleSlider, rotSlider].forEach(s => s.addEventListener('input', updateSpriteFromSliders));
 
-    function moveSpriteOrder(direction) {
-      if (!selectedBone || selectedSpriteIndex < 0) return;
-
-      const sprites = selectedBone.attachedSprites;
-      const targetIndex = selectedSpriteIndex + direction;
-
-      if (targetIndex >= 0 && targetIndex < sprites.length) {
-        saveState();
-        const temp = sprites[selectedSpriteIndex];
-        sprites[selectedSpriteIndex] = sprites[targetIndex];
-        sprites[targetIndex] = temp;
-
-        selectedSpriteIndex = targetIndex;
-        updateSpriteDropdown();
-        render();
-      }
-    }
-
     function selectBone(bone) {
       selectedBone = bone;
-      selectedSpriteIndex = bone && bone.attachedSprites.length > 0 ? bone.attachedSprites.length - 1 : -1;
       updateUI();
       render();
     }
 
-    function updateSpriteDropdown() {
-      const select = document.getElementById('sprite-select');
-      select.innerHTML = '';
+    function updateSpritePanel() {
+      const infoText = document.getElementById('attached-image-info');
+      const editorBox = document.getElementById('sprite-editor-controls');
 
-      if (!selectedBone || selectedBone.attachedSprites.length === 0) {
-        select.innerHTML = '<option value="-1">Nenhuma imagem neste osso</option>';
-        document.getElementById('sprite-editor-controls').style.display = 'none';
+      if (!selectedBone || !selectedBone.attachedSprite) {
+        infoText.innerText = "Nenhuma imagem associada a este osso.";
+        editorBox.style.display = 'none';
         return;
       }
 
-      document.getElementById('sprite-editor-controls').style.display = 'flex';
-      selectedBone.attachedSprites.forEach((sprite, index) => {
-        const option = document.createElement('option');
-        option.value = index;
-        option.text = sprite.name || `Imagem #${index + 1}`;
-        if (index === selectedSpriteIndex) option.selected = true;
-        select.appendChild(option);
-      });
+      editorBox.style.display = 'flex';
+      const sprite = selectedBone.attachedSprite;
+      infoText.innerText = `Imagem: ${sprite.name}`;
 
-      onSpriteSelected();
+      offXSlider.value = sprite.offX;
+      offYSlider.value = sprite.offY;
+      scaleSlider.value = sprite.scale;
+      rotSlider.value = Math.round((sprite.rot * 180) / Math.PI);
+
+      render();
     }
 
     function updateUnattachedImagesList() {
-      const box = document.getElementById('unattached-images-box');
       const select = document.getElementById('unattached-select');
       select.innerHTML = '';
 
@@ -1164,9 +1216,14 @@
 
       if (idx >= 0 && unattachedImages[idx]) {
         saveState();
-        const imgObj = unattachedImages.splice(idx, 1)[0];
-        selectedBone.attachedSprites.push(imgObj);
-        selectedSpriteIndex = selectedBone.attachedSprites.length - 1;
+        
+        if (selectedBone.attachedSprite) {
+          unattachedImages.push(selectedBone.attachedSprite);
+        }
+
+        const newSprite = unattachedImages.splice(idx, 1)[0];
+        selectedBone.attachedSprite = newSprite;
+
         setTransformTarget('IMAGE');
         updateUI();
         render();
@@ -1174,28 +1231,14 @@
     }
 
     function detachSelectedSprite() {
-      if (!selectedBone || selectedSpriteIndex < 0 || !selectedBone.attachedSprites[selectedSpriteIndex]) return;
+      if (!selectedBone || !selectedBone.attachedSprite) return;
 
       saveState();
-      const sprite = selectedBone.attachedSprites.splice(selectedSpriteIndex, 1)[0];
+      const sprite = selectedBone.attachedSprite;
+      selectedBone.attachedSprite = null;
       unattachedImages.push(sprite);
 
-      selectedSpriteIndex = selectedBone.attachedSprites.length - 1;
       updateUI();
-      render();
-    }
-
-    function onSpriteSelected() {
-      const select = document.getElementById('sprite-select');
-      selectedSpriteIndex = parseInt(select.value);
-
-      if (selectedBone && selectedBone.attachedSprites[selectedSpriteIndex]) {
-        const sprite = selectedBone.attachedSprites[selectedSpriteIndex];
-        offXSlider.value = sprite.offX;
-        offYSlider.value = sprite.offY;
-        scaleSlider.value = sprite.scale;
-        rotSlider.value = Math.round((sprite.rot * 180) / Math.PI);
-      }
       render();
     }
 
@@ -1204,21 +1247,22 @@
       const lblName = document.getElementById('lbl-bone-name');
 
       if (selectedBone) {
+        const imageName = selectedBone.attachedSprite ? selectedBone.attachedSprite.name : 'Nenhuma';
         infoBox.innerHTML = `
-          <b>Selecionado:</b> ${selectedBone.id}<br>
+          <b>Osso Selecionado:</b> ${selectedBone.id}<br>
+          <b>Imagem Associada:</b> ${imageName}<br>
           <b>Comprimento:</b> ${Math.round(selectedBone.length)}px<br>
           <b>Posição Relativa:</b> X:${Math.round(selectedBone.posX)}, Y:${Math.round(selectedBone.posY)}<br>
-          <b>Pai:</b> ${selectedBone.parent ? selectedBone.parent.id : 'Nenhum'}<br>
-          <b>Imagens Anexadas:</b> ${selectedBone.attachedSprites.length}
+          <b>Pai:</b> ${selectedBone.parent ? selectedBone.parent.id : 'Nenhum'}
         `;
-        
+
         lblName.innerText = `Rotacionar Osso: ${selectedBone.id}`;
         angleSlider.value = Math.round((selectedBone.localAngle * 180) / Math.PI);
         boneLenSlider.value = Math.round(selectedBone.length);
         bonePosXSlider.value = Math.round(selectedBone.posX);
         bonePosYSlider.value = Math.round(selectedBone.posY);
 
-        updateSpriteDropdown();
+        updateSpritePanel();
       } else {
         infoBox.innerHTML = 'Nenhum osso selecionado.';
       }
@@ -1229,15 +1273,70 @@
       const hasKeyframe = selectedBone && boneKeyframes[selectedBone.id] && !!boneKeyframes[selectedBone.id][currentFrame];
       document.getElementById('keyframe-info').innerText = hasKeyframe ? '★ KEYFRAME (KF) GRAVADO' : '';
 
+      renderBoneLayersPanel();
       drawTimelineCanvas();
     }
 
+    function renderBoneLayersPanel() {
+      const panel = document.getElementById('bone-layers-panel');
+      panel.innerHTML = '';
+
+      bones.forEach((bone) => {
+        const row = document.createElement('div');
+        row.className = 'bone-layer-row' + (bone === selectedBone ? ' active' : '');
+
+        const label = document.createElement('span');
+        label.className = 'bone-layer-label';
+        label.innerText = bone.id;
+        label.title = bone.id;
+        label.onclick = () => selectBone(bone);
+        label.ondblclick = () => {
+          const newName = prompt("Digite o novo nome para o osso:", bone.id);
+          if (newName && newName.trim() !== "") {
+            saveState();
+            const oldId = bone.id;
+            const trimmedName = newName.trim();
+            bone.id = trimmedName;
+
+            if (boneKeyframes[oldId]) {
+              boneKeyframes[trimmedName] = boneKeyframes[oldId];
+              delete boneKeyframes[oldId];
+            }
+
+            updateUI();
+            render();
+          }
+        };
+
+        const btnGroup = document.createElement('div');
+        btnGroup.className = 'layer-btn-group';
+
+        const btnUp = document.createElement('button');
+        btnUp.className = 'btn-layer-order';
+        btnUp.innerText = '⬆';
+        btnUp.title = 'Mover Para Trás (Camada Inferior)';
+        btnUp.onclick = (e) => { e.stopPropagation(); reorderBone(bone, -1); };
+
+        const btnDown = document.createElement('button');
+        btnDown.className = 'btn-layer-order';
+        btnDown.innerText = '⬇';
+        btnDown.title = 'Mover Para Frente (Camada Superior)';
+        btnDown.onclick = (e) => { e.stopPropagation(); reorderBone(bone, 1); };
+
+        btnGroup.appendChild(btnUp);
+        btnGroup.appendChild(btnDown);
+
+        row.appendChild(label);
+        row.appendChild(btnGroup);
+        panel.appendChild(row);
+      });
+    }
+
     function removeSelectedSprite() {
-      if (selectedBone && selectedSpriteIndex >= 0) {
+      if (selectedBone && selectedBone.attachedSprite) {
         if (confirm("Tem certeza de que deseja excluir esta imagem permanentemente?")) {
           saveState();
-          selectedBone.attachedSprites.splice(selectedSpriteIndex, 1);
-          selectedSpriteIndex = selectedBone.attachedSprites.length - 1;
+          selectedBone.attachedSprite = null;
           updateUI();
           render();
         }
@@ -1249,7 +1348,6 @@
       bones = [];
       unattachedImages = [];
       selectedBone = null;
-      selectedSpriteIndex = -1;
       currentDrawingStroke = [];
       boneKeyframes = {};
       updateUI();
@@ -1277,15 +1375,14 @@
 
       const headerHeight = 30;
       const trackHeight = 24;
-      const labelWidth = 140;
       const paddingRight = 20;
 
-      const trackWidth = w - labelWidth - paddingRight;
+      const trackWidth = w - paddingRight;
       const step = trackWidth / maxFrames;
 
       tCtx.fillStyle = '#18181f';
       tCtx.fillRect(0, 0, w, headerHeight);
-      
+
       tCtx.strokeStyle = '#3f3f52';
       tCtx.lineWidth = 1;
       tCtx.fillStyle = '#888';
@@ -1293,7 +1390,7 @@
       tCtx.textAlign = 'center';
 
       for (let i = 0; i <= maxFrames; i += 5) {
-        const x = labelWidth + i * step;
+        const x = i * step;
         tCtx.beginPath();
         tCtx.moveTo(x, 0);
         tCtx.lineTo(x, 10);
@@ -1301,7 +1398,7 @@
         tCtx.fillText(i, x, 22);
       }
 
-      const resizeHandleX = labelWidth + maxFrames * step;
+      const resizeHandleX = maxFrames * step;
       tCtx.fillStyle = '#00d2ff';
       tCtx.fillRect(resizeHandleX - 4, 0, 8, headerHeight);
       tCtx.fillStyle = '#000';
@@ -1313,22 +1410,6 @@
         tCtx.fillStyle = (bone === selectedBone) ? '#2a2a3a' : (index % 2 === 0 ? '#14141a' : '#18181f');
         tCtx.fillRect(0, y, w, trackHeight);
 
-        tCtx.fillStyle = '#00d2ff';
-        tCtx.font = '10px sans-serif';
-        tCtx.textAlign = 'center';
-        tCtx.fillText('▲', 12, y + 16);
-        tCtx.fillText('▼', 26, y + 16);
-
-        tCtx.fillStyle = (bone === selectedBone) ? '#00d2ff' : '#aaa';
-        tCtx.font = (bone === selectedBone) ? 'bold 11px sans-serif' : '11px sans-serif';
-        tCtx.textAlign = 'left';
-        
-        let labelText = bone.id;
-        if (tCtx.measureText(labelText).width > 90) {
-          labelText = labelText.substring(0, 10) + '...';
-        }
-        tCtx.fillText(labelText, 40, y + 16);
-
         tCtx.strokeStyle = '#2b2b36';
         tCtx.beginPath();
         tCtx.moveTo(0, y + trackHeight);
@@ -1339,7 +1420,7 @@
         Object.keys(kfs).forEach(fStr => {
           const f = parseInt(fStr);
           if (f <= maxFrames) {
-            const kx = labelWidth + f * step;
+            const kx = f * step;
             const ky = y + trackHeight / 2;
 
             tCtx.beginPath();
@@ -1352,7 +1433,7 @@
         });
       });
 
-      const currentX = labelWidth + currentFrame * step;
+      const currentX = currentFrame * step;
       tCtx.beginPath();
       tCtx.moveTo(currentX, 0);
       tCtx.lineTo(currentX, h);
@@ -1369,38 +1450,6 @@
       tCtx.fill();
     }
 
-    timelineCanvas.addEventListener('dblclick', (e) => {
-      const rect = timelineCanvas.getBoundingClientRect();
-      const clickX = e.clientX - rect.left;
-      const clickY = e.clientY - rect.top;
-
-      const headerHeight = 30;
-      const trackHeight = 24;
-      const labelWidth = 140;
-
-      if (clickY > headerHeight && clickX >= 35 && clickX <= labelWidth) {
-        const boneIndex = Math.floor((clickY - headerHeight) / trackHeight);
-        if (boneIndex >= 0 && boneIndex < bones.length) {
-          const targetBone = bones[boneIndex];
-          const newName = prompt("Digite o novo nome para o osso:", targetBone.id);
-          if (newName && newName.trim() !== "") {
-            saveState();
-            const oldId = targetBone.id;
-            const trimmedName = newName.trim();
-            targetBone.id = trimmedName;
-
-            if (boneKeyframes[oldId]) {
-              boneKeyframes[trimmedName] = boneKeyframes[oldId];
-              delete boneKeyframes[oldId];
-            }
-
-            updateUI();
-            render();
-          }
-        }
-      }
-    });
-
     timelineCanvas.addEventListener('mousedown', (e) => {
       const rect = timelineCanvas.getBoundingClientRect();
       const clickX = e.clientX - rect.left;
@@ -1408,12 +1457,11 @@
 
       const headerHeight = 30;
       const trackHeight = 24;
-      const labelWidth = 140;
       const paddingRight = 20;
 
-      const trackWidth = timelineCanvas.width - labelWidth - paddingRight;
+      const trackWidth = timelineCanvas.width - paddingRight;
       const step = trackWidth / maxFrames;
-      const resizeHandleX = labelWidth + maxFrames * step;
+      const resizeHandleX = maxFrames * step;
 
       if (Math.abs(clickX - resizeHandleX) <= 8 && clickY <= headerHeight) {
         isResizingTimeline = true;
@@ -1423,17 +1471,7 @@
       if (clickY > headerHeight) {
         const boneIndex = Math.floor((clickY - headerHeight) / trackHeight);
         if (boneIndex >= 0 && boneIndex < bones.length) {
-          const targetBone = bones[boneIndex];
-
-          if (clickX >= 4 && clickX <= 18) {
-            reorderBone(targetBone, -1);
-            return;
-          } else if (clickX >= 20 && clickX <= 34) {
-            reorderBone(targetBone, 1);
-            return;
-          }
-
-          selectBone(targetBone);
+          selectBone(bones[boneIndex]);
         }
       }
 
@@ -1444,12 +1482,11 @@
     timelineCanvas.addEventListener('mousemove', (e) => {
       const rect = timelineCanvas.getBoundingClientRect();
       const clickX = e.clientX - rect.left;
-      const labelWidth = 140;
       const paddingRight = 20;
 
       if (isResizingTimeline) {
-        const trackWidth = timelineCanvas.width - labelWidth - paddingRight;
-        const newMax = Math.round(((clickX - labelWidth) / trackWidth) * maxFrames);
+        const trackWidth = timelineCanvas.width - paddingRight;
+        const newMax = Math.round((clickX / trackWidth) * maxFrames);
         if (newMax >= 5 && newMax <= 1000) {
           maxFrames = newMax;
           document.getElementById('max-frames-input').value = maxFrames;
@@ -1469,12 +1506,11 @@
     });
 
     function updateFrameFromClick(clickX) {
-      const labelWidth = 140;
       const paddingRight = 20;
-      const trackWidth = timelineCanvas.width - labelWidth - paddingRight;
+      const trackWidth = timelineCanvas.width - paddingRight;
       const step = trackWidth / maxFrames;
 
-      let frame = Math.round((clickX - labelWidth) / step);
+      let frame = Math.round(clickX / step);
       frame = Math.max(0, Math.min(maxFrames, frame));
 
       currentFrame = frame;
@@ -1485,7 +1521,7 @@
 
     function addKeyframeAuto() {
       if (!selectedBone) return;
-      
+
       if (!boneKeyframes[selectedBone.id]) {
         boneKeyframes[selectedBone.id] = {};
       }
@@ -1518,7 +1554,7 @@
 
     function jumpToKeyframe(direction) {
       if (!selectedBone || !boneKeyframes[selectedBone.id]) return;
-      
+
       const activeFrames = Object.keys(boneKeyframes[selectedBone.id]).map(Number).sort((a, b) => a - b);
       if (activeFrames.length === 0) return;
 
@@ -1570,7 +1606,7 @@
           bone.localAngle = kfs[prevFrame].angle + (kfs[nextFrame].angle - kfs[prevFrame].angle) * factor;
           bone.posX = kfs[prevFrame].posX + (kfs[nextFrame].posX - kfs[prevFrame].posX) * factor;
           bone.posY = kfs[prevFrame].posY + (kfs[nextFrame].posY - kfs[prevFrame].posY) * factor;
-          
+
           const pLen = kfs[prevFrame].length || bone.length;
           const nLen = kfs[nextFrame].length || bone.length;
           bone.length = pLen + (nLen - pLen) * factor;
@@ -1614,14 +1650,14 @@
           posX: bone.posX,
           posY: bone.posY,
           meshStrokes: bone.meshStrokes,
-          attachedSprites: bone.attachedSprites.map(s => ({
-            name: s.name,
-            offX: s.offX,
-            offY: s.offY,
-            scale: s.scale,
-            rot: s.rot,
-            dataUrl: s.imageCanvas.toDataURL()
-          }))
+          attachedSprite: bone.attachedSprite ? {
+            name: bone.attachedSprite.name,
+            offX: bone.attachedSprite.offX,
+            offY: bone.attachedSprite.offY,
+            scale: bone.attachedSprite.scale,
+            rot: bone.attachedSprite.rot,
+            dataUrl: bone.attachedSprite.imageCanvas.toDataURL()
+          } : null
         })),
         unattachedImages: unattachedImages.map(s => ({
           name: s.name,
@@ -1653,7 +1689,7 @@
         data.bones.forEach(bData => {
           const bone = new Bone(bData.id, null, bData.length, bData.localAngle, { x: bData.posX || 0, y: bData.posY || 0 });
           bone.meshStrokes = bData.meshStrokes || [];
-          boneMap[bData.id] = { instance: bone, parentId: bData.parentId, rawSprites: bData.attachedSprites };
+          boneMap[bData.id] = { instance: bone, parentId: bData.parentId, rawSprite: bData.attachedSprite };
           bones.push(bone);
         });
 
@@ -1688,28 +1724,27 @@
             bone.parent = boneMap[raw.parentId].instance;
           }
 
-          if (raw.rawSprites) {
-            raw.rawSprites.forEach(sData => {
-              const img = new Image();
-              img.onload = () => {
-                const offCanvas = document.createElement('canvas');
-                offCanvas.width = img.width;
-                offCanvas.height = img.height;
-                const oCtx = offCanvas.getContext('2d');
-                oCtx.drawImage(img, 0, 0);
+          if (raw.rawSprite) {
+            const sData = raw.rawSprite;
+            const img = new Image();
+            img.onload = () => {
+              const offCanvas = document.createElement('canvas');
+              offCanvas.width = img.width;
+              offCanvas.height = img.height;
+              const oCtx = offCanvas.getContext('2d');
+              oCtx.drawImage(img, 0, 0);
 
-                bone.attachedSprites.push({
-                  name: sData.name,
-                  imageCanvas: offCanvas,
-                  offX: sData.offX,
-                  offY: sData.offY,
-                  scale: sData.scale,
-                  rot: sData.rot
-                });
-                render();
+              bone.attachedSprite = {
+                name: sData.name,
+                imageCanvas: offCanvas,
+                offX: sData.offX,
+                offY: sData.offY,
+                scale: sData.scale,
+                rot: sData.rot
               };
-              img.src = sData.dataUrl;
-            });
+              render();
+            };
+            img.src = sData.dataUrl;
           }
         });
 
@@ -1723,13 +1758,13 @@
     }
 
     function saveToLocalStorage() {
-      localStorage.setItem('2d_rigging_project_v2', serializeProject());
+      localStorage.setItem('2d_rigging_project_v3', serializeProject());
       alert("Projeto salvo localmente!");
     }
 
     function loadFromLocalStorage() {
       saveState();
-      const data = localStorage.getItem('2d_rigging_project_v2');
+      const data = localStorage.getItem('2d_rigging_project_v3');
       if (data) deserializeProject(data);
       else alert("Nenhum projeto salvo encontrado.");
     }
@@ -1972,7 +2007,7 @@
 
       const imgCount = unattachedImages.length + 1;
       const newSprite = {
-        name: `Imagem_Solta_${imgCount}`,
+        name: `Img_Solta_${imgCount}`,
         imageCanvas: offCanvas,
         offX: 0,
         offY: 0,
@@ -2005,7 +2040,7 @@
           const centerX = canvas.width / (2 * stageZoom);
           const centerY = canvas.height / (2 * stageZoom);
           ctx.drawImage(imgObj.imageCanvas, centerX - imgObj.imageCanvas.width / 2, centerY - imgObj.imageCanvas.height / 2);
-          
+
           if (idx === activeUnattachedIdx) {
             ctx.lineWidth = 2 / stageZoom;
             ctx.setLineDash([4, 4]);
@@ -2018,32 +2053,33 @@
       }
 
       bones.forEach(bone => {
+        if (!bone.attachedSprite) return;
+
+        const s = bone.attachedSprite;
         const isSelectedBone = (bone === selectedBone);
 
-        bone.attachedSprites.forEach((s, sIdx) => {
-          const isSelectedSprite = isSelectedBone && (sIdx === selectedSpriteIndex);
+        ctx.save();
+        ctx.globalAlpha = isSelectedBone ? 1.0 : 0.75;
 
-          ctx.save();
-          ctx.globalAlpha = isSelectedSprite ? 1.0 : 0.65;
+        ctx.translate(bone.startX, bone.startY);
+        ctx.rotate(bone.worldAngle);
+        ctx.translate(s.offX, s.offY);
+        ctx.rotate(s.rot);
+        ctx.scale(s.scale, s.scale);
 
-          ctx.translate(bone.startX, bone.startY);
-          ctx.rotate(bone.worldAngle);
-          ctx.translate(s.offX, s.offY);
-          ctx.rotate(s.rot);
-          ctx.scale(s.scale, s.scale);
+        ctx.drawImage(s.imageCanvas, -s.imageCanvas.width / 2, -s.imageCanvas.height / 2);
 
-          ctx.drawImage(s.imageCanvas, -s.imageCanvas.width / 2, -s.imageCanvas.height / 2);
+        if (isSelectedBone) {
+          const w = s.imageCanvas.width;
+          const h = s.imageCanvas.height;
 
-          if (isSelectedSprite && mode === 'POSE' && transformTarget === 'IMAGE') {
-            const w = s.imageCanvas.width;
-            const h = s.imageCanvas.height;
+          ctx.lineWidth = 2 / (s.scale * stageZoom);
+          ctx.setLineDash([6, 4]);
+          ctx.strokeStyle = '#ffcc00';
+          ctx.strokeRect(-w/2, -h/2, w, h);
+          ctx.setLineDash([]);
 
-            ctx.lineWidth = 1.5 / (s.scale * stageZoom);
-            ctx.setLineDash([4, 4]);
-            ctx.strokeStyle = '#00d2ff';
-            ctx.strokeRect(-w/2, -h/2, w, h);
-            ctx.setLineDash([]);
-
+          if (mode === 'POSE' && transformTarget === 'IMAGE') {
             ctx.beginPath();
             ctx.moveTo(0, -h/2);
             ctx.lineTo(0, -h/2 - 25 / (s.scale * stageZoom));
@@ -2063,9 +2099,9 @@
             ctx.fill();
             ctx.stroke();
           }
+        }
 
-          ctx.restore();
-        });
+        ctx.restore();
       });
 
       bones.forEach(bone => {
