@@ -525,6 +525,7 @@
       <button id="btn-play" class="accent-btn" onclick="togglePlay()">▶ Play</button>
       <button onclick="jumpToKeyframe(-1)">&lt; KF</button>
       <button onclick="jumpToKeyframe(1)">KF &gt;</button>
+      <button id="btn-toggle-interp" onclick="toggleKeyframeInterpolation()" title="Ativar/Desativar interpolação entre esta keyframe e a próxima">⚡ Interpolação</button>
       <button class="accent-btn" onclick="addKeyframe()">+ Gravar KF (Osso Ativo)</button>
       <button class="danger-btn" onclick="removeKeyframe()">- Remover KF</button>
 
@@ -1307,8 +1308,21 @@
       updateUnattachedImagesList();
 
       document.getElementById('frame-counter').innerText = `Frame: ${currentFrame} / ${maxFrames}`;
-      const hasKeyframe = selectedBone && boneKeyframes[selectedBone.id] && !!boneKeyframes[selectedBone.id][currentFrame];
+      const kf = selectedBone && boneKeyframes[selectedBone.id] && boneKeyframes[selectedBone.id][currentFrame];
+      const hasKeyframe = !!kf;
       document.getElementById('keyframe-info').innerText = hasKeyframe ? '★ KEYFRAME (KF) GRAVADO' : '';
+
+      const btnInterp = document.getElementById('btn-toggle-interp');
+      if (hasKeyframe) {
+        btnInterp.disabled = false;
+        const isInterp = kf.interpolated !== false;
+        btnInterp.innerText = isInterp ? '⚡ Interpolando' : '⏹️ Estática (Hold)';
+        btnInterp.className = isInterp ? 'accent-btn' : 'warning-btn';
+      } else {
+        btnInterp.disabled = true;
+        btnInterp.innerText = '⚡ Interpolação';
+        btnInterp.className = '';
+      }
 
       renderBoneLayersPanel();
       drawTimelineCanvas();
@@ -1488,7 +1502,7 @@
 
             tCtx.beginPath();
             tCtx.arc(kx, ky, 5, 0, Math.PI * 2);
-            tCtx.fillStyle = '#ffcc00';
+            tCtx.fillStyle = (kfs[f].interpolated === false) ? '#d97706' : '#ffcc00';
             tCtx.fill();
             tCtx.strokeStyle = '#000';
             tCtx.stroke();
@@ -1589,12 +1603,23 @@
         boneKeyframes[selectedBone.id] = {};
       }
 
+      const existingKf = boneKeyframes[selectedBone.id][currentFrame];
       boneKeyframes[selectedBone.id][currentFrame] = {
         angle: selectedBone.localAngle,
         posX: selectedBone.posX,
         posY: selectedBone.posY,
-        length: selectedBone.length
+        length: selectedBone.length,
+        interpolated: existingKf ? (existingKf.interpolated !== false) : true
       };
+    }
+
+    function toggleKeyframeInterpolation() {
+      if (!selectedBone || !boneKeyframes[selectedBone.id] || !boneKeyframes[selectedBone.id][currentFrame]) return;
+      saveState();
+      const kf = boneKeyframes[selectedBone.id][currentFrame];
+      kf.interpolated = (kf.interpolated === false);
+      updateUI();
+      render();
     }
 
     function addKeyframe() {
@@ -1665,14 +1690,21 @@
         }
 
         if (prevFrame !== null && nextFrame !== null && prevFrame !== nextFrame) {
-          const factor = (frame - prevFrame) / (nextFrame - prevFrame);
-          bone.localAngle = kfs[prevFrame].angle + (kfs[nextFrame].angle - kfs[prevFrame].angle) * factor;
-          bone.posX = kfs[prevFrame].posX + (kfs[nextFrame].posX - kfs[prevFrame].posX) * factor;
-          bone.posY = kfs[prevFrame].posY + (kfs[nextFrame].posY - kfs[prevFrame].posY) * factor;
+          if (kfs[prevFrame].interpolated === false) {
+            bone.localAngle = kfs[prevFrame].angle;
+            bone.posX = kfs[prevFrame].posX;
+            bone.posY = kfs[prevFrame].posY;
+            if (kfs[prevFrame].length !== undefined) bone.length = kfs[prevFrame].length;
+          } else {
+            const factor = (frame - prevFrame) / (nextFrame - prevFrame);
+            bone.localAngle = kfs[prevFrame].angle + (kfs[nextFrame].angle - kfs[prevFrame].angle) * factor;
+            bone.posX = kfs[prevFrame].posX + (kfs[nextFrame].posX - kfs[prevFrame].posX) * factor;
+            bone.posY = kfs[prevFrame].posY + (kfs[nextFrame].posY - kfs[prevFrame].posY) * factor;
 
-          const pLen = kfs[prevFrame].length || bone.length;
-          const nLen = kfs[nextFrame].length || bone.length;
-          bone.length = pLen + (nLen - pLen) * factor;
+            const pLen = kfs[prevFrame].length || bone.length;
+            const nLen = kfs[nextFrame].length || bone.length;
+            bone.length = pLen + (nLen - pLen) * factor;
+          }
 
         } else if (prevFrame !== null) {
           bone.localAngle = kfs[prevFrame].angle;
