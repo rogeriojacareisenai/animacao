@@ -253,7 +253,7 @@
     }
 
     #bone-layers-panel {
-      width: 140px;
+      width: 180px;
       background: #18181f;
       border-right: 1px solid #3f3f52;
       margin-top: 30px;
@@ -288,10 +288,30 @@
     .layer-btn-group {
       display: flex;
       gap: 2px;
+      align-items: center;
+    }
+
+    .btn-layer-toggle {
+      padding: 0 3px;
+      font-size: 0.7rem;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      opacity: 0.8;
+    }
+
+    .btn-layer-toggle:hover {
+      opacity: 1;
+      background: transparent;
+    }
+
+    .btn-layer-toggle.hidden-item {
+      opacity: 0.3;
+      filter: grayscale(100%);
     }
 
     .btn-layer-order {
-      padding: 1px 4px;
+      padding: 1px 3px;
       font-size: 0.65rem;
       line-height: 1;
       background: #3f3f52;
@@ -390,6 +410,12 @@
         <label>Ações Rápidas</label>
         <button onclick="undo()">↶ Desfazer (Ctrl+Z)</button>
         <button onclick="resetStageZoom()">🔍 Resetar Zoom / Pan</button>
+      </div>
+
+      <div class="section">
+        <label>Visualização do Palco</label>
+        <label id="lbl-unselected-opacity">Opacidade dos Não Selecionados: 75%</label>
+        <input type="range" id="unselected-opacity-slider" min="0" max="1" step="0.05" value="0.75" oninput="updateUnselectedOpacity(this.value)">
       </div>
 
       <div class="section">
@@ -569,6 +595,7 @@
     let stagePan = { x: 0, y: 0 };
     let isStagePanning = false;
     let stagePanStart = { x: 0, y: 0 };
+    let unselectedOpacity = 0.75;
 
     let mode = 'ADD_BONE_ROOT'; 
     let transformTarget = 'BONE';
@@ -638,6 +665,12 @@
       }
     }
 
+    function updateUnselectedOpacity(val) {
+      unselectedOpacity = parseFloat(val);
+      document.getElementById('lbl-unselected-opacity').innerText = `Opacidade dos Não Selecionados: ${Math.round(unselectedOpacity * 100)}%`;
+      render();
+    }
+
     function saveState() {
       undoStack.push(serializeProject());
       if (undoStack.length > 30) undoStack.shift();
@@ -700,6 +733,9 @@
         this.posY = basePos.y;
         this.meshStrokes = [];
         this.attachedSprite = null; 
+
+        this.visibleBone = true;
+        this.visibleImage = true;
 
         this.startX = 0;
         this.startY = 0;
@@ -767,7 +803,7 @@
     }
 
     function getSpriteBoundingBox(bone) {
-      if (!bone || !bone.attachedSprite) return null;
+      if (!bone || !bone.attachedSprite || !bone.visibleImage) return null;
       const sprite = bone.attachedSprite;
       const w = sprite.imageCanvas.width * sprite.scale;
       const h = sprite.imageCanvas.height * sprite.scale;
@@ -852,7 +888,7 @@
       else if (mode === 'POSE') {
         let hitSpriteBone = null;
         for (let i = bones.length - 1; i >= 0; i--) {
-          if (isPointInSprite(worldPos, bones[i])) {
+          if (bones[i].visibleImage && isPointInSprite(worldPos, bones[i])) {
             hitSpriteBone = bones[i];
             break;
           }
@@ -895,6 +931,7 @@
         let activeAnchorType = null;
 
         bones.forEach(b => {
+          if (!b.visibleBone) return;
           const rootDist = Math.hypot(b.startX - worldPos.x, b.startY - worldPos.y);
           const tipDist = Math.hypot(b.endX - worldPos.x, b.endY - worldPos.y);
 
@@ -1277,6 +1314,18 @@
       drawTimelineCanvas();
     }
 
+    function toggleBoneVisibility(bone) {
+      bone.visibleBone = !bone.visibleBone;
+      renderBoneLayersPanel();
+      render();
+    }
+
+    function toggleImageVisibility(bone) {
+      bone.visibleImage = !bone.visibleImage;
+      renderBoneLayersPanel();
+      render();
+    }
+
     function renderBoneLayersPanel() {
       const panel = document.getElementById('bone-layers-panel');
       panel.innerHTML = '';
@@ -1311,6 +1360,18 @@
         const btnGroup = document.createElement('div');
         btnGroup.className = 'layer-btn-group';
 
+        const btnBoneVis = document.createElement('button');
+        btnBoneVis.className = 'btn-layer-toggle' + (!bone.visibleBone ? ' hidden-item' : '');
+        btnBoneVis.innerText = '👁️';
+        btnBoneVis.title = bone.visibleBone ? 'Ocultar Osso' : 'Exibir Osso';
+        btnBoneVis.onclick = (e) => { e.stopPropagation(); toggleBoneVisibility(bone); };
+
+        const btnImgVis = document.createElement('button');
+        btnImgVis.className = 'btn-layer-toggle' + (!bone.visibleImage ? ' hidden-item' : '');
+        btnImgVis.innerText = '🖼️';
+        btnImgVis.title = bone.visibleImage ? 'Ocultar Imagem' : 'Exibir Imagem';
+        btnImgVis.onclick = (e) => { e.stopPropagation(); toggleImageVisibility(bone); };
+
         const btnUp = document.createElement('button');
         btnUp.className = 'btn-layer-order';
         btnUp.innerText = '⬆';
@@ -1323,6 +1384,8 @@
         btnDown.title = 'Mover Para Frente (Camada Superior)';
         btnDown.onclick = (e) => { e.stopPropagation(); reorderBone(bone, 1); };
 
+        btnGroup.appendChild(btnBoneVis);
+        btnGroup.appendChild(btnImgVis);
         btnGroup.appendChild(btnUp);
         btnGroup.appendChild(btnDown);
 
@@ -1650,6 +1713,8 @@
           posX: bone.posX,
           posY: bone.posY,
           meshStrokes: bone.meshStrokes,
+          visibleBone: bone.visibleBone,
+          visibleImage: bone.visibleImage,
           attachedSprite: bone.attachedSprite ? {
             name: bone.attachedSprite.name,
             offX: bone.attachedSprite.offX,
@@ -1689,6 +1754,8 @@
         data.bones.forEach(bData => {
           const bone = new Bone(bData.id, null, bData.length, bData.localAngle, { x: bData.posX || 0, y: bData.posY || 0 });
           bone.meshStrokes = bData.meshStrokes || [];
+          bone.visibleBone = bData.visibleBone !== undefined ? bData.visibleBone : true;
+          bone.visibleImage = bData.visibleImage !== undefined ? bData.visibleImage : true;
           boneMap[bData.id] = { instance: bone, parentId: bData.parentId, rawSprite: bData.attachedSprite };
           bones.push(bone);
         });
@@ -2036,7 +2103,7 @@
 
         unattachedImages.forEach((imgObj, idx) => {
           ctx.save();
-          ctx.globalAlpha = (idx === activeUnattachedIdx) ? 1.0 : 0.4;
+          ctx.globalAlpha = (idx === activeUnattachedIdx) ? 1.0 : unselectedOpacity;
           const centerX = canvas.width / (2 * stageZoom);
           const centerY = canvas.height / (2 * stageZoom);
           ctx.drawImage(imgObj.imageCanvas, centerX - imgObj.imageCanvas.width / 2, centerY - imgObj.imageCanvas.height / 2);
@@ -2053,13 +2120,13 @@
       }
 
       bones.forEach(bone => {
-        if (!bone.attachedSprite) return;
+        if (!bone.attachedSprite || !bone.visibleImage) return;
 
         const s = bone.attachedSprite;
         const isSelectedBone = (bone === selectedBone);
 
         ctx.save();
-        ctx.globalAlpha = isSelectedBone ? 1.0 : 0.75;
+        ctx.globalAlpha = isSelectedBone ? 1.0 : unselectedOpacity;
 
         ctx.translate(bone.startX, bone.startY);
         ctx.rotate(bone.worldAngle);
@@ -2105,6 +2172,13 @@
       });
 
       bones.forEach(bone => {
+        if (!bone.visibleBone) return;
+
+        const isSelected = bone === selectedBone;
+
+        ctx.save();
+        ctx.globalAlpha = isSelected ? 1.0 : unselectedOpacity;
+
         ctx.strokeStyle = '#ff0055';
         ctx.lineWidth = 4 / stageZoom;
         ctx.lineCap = 'round';
@@ -2120,10 +2194,6 @@
           }
           ctx.stroke();
         });
-      });
-
-      bones.forEach(bone => {
-        const isSelected = bone === selectedBone;
 
         ctx.beginPath();
         ctx.moveTo(bone.startX, bone.startY);
@@ -2152,7 +2222,6 @@
         ctx.lineWidth = 1 / stageZoom;
         ctx.stroke();
 
-        ctx.save();
         ctx.beginPath();
         ctx.arc(bone.startX, bone.startY, (isSelected ? 12 : 9) / stageZoom, 0, Math.PI * 2);
         ctx.setLineDash([4 / stageZoom, 3 / stageZoom]);
@@ -2168,6 +2237,7 @@
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 1 / stageZoom;
         ctx.stroke();
+
         ctx.restore();
       });
 
