@@ -3,13 +3,37 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>2D Rigging Studio - Âncoras, Escala & Floating Menu</title>
+  <title>2D Rigging Studio - Associação/Desassociação de Imagens</title>
   <style>
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
       user-select: none;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #18181f;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #3f3f52;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #575773;
+    }
+
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: #3f3f52 #18181f;
     }
 
     body {
@@ -103,6 +127,16 @@
 
     .accent-btn:hover {
       background-color: #00aaff;
+    }
+
+    .warning-btn {
+      background-color: #d97706;
+      border-color: #f59e0b;
+      color: #fff;
+    }
+
+    .warning-btn:hover {
+      background-color: #f59e0b;
     }
 
     .danger-btn {
@@ -334,8 +368,14 @@
       </div>
 
       <div class="section">
-        <label>2. Texturas / Imagens</label>
-        <button class="accent-btn" onclick="openImageModal()">Recortar e Anexar Imagem</button>
+        <label>2. Gerenciador de Imagens</label>
+        <button class="accent-btn" onclick="openImageModal()">📥 Importar / Recortar Nova Imagem</button>
+        
+        <div id="unattached-images-box" class="section" style="margin-top: 6px; background: #18181f; padding: 8px; border-radius: 4px;">
+          <label style="color:#00d2ff; font-weight: bold;">Imagens Soltas (Sem Osso):</label>
+          <select id="unattached-select" onchange="render()"></select>
+          <button class="accent-btn" onclick="attachUnattachedImageToSelectedBone()" style="margin-top: 4px;">🔗 Associar ao Osso Selecionado</button>
+        </div>
       </div>
 
       <div class="section" id="pose-controls" style="display: none;">
@@ -362,11 +402,13 @@
         </div>
 
         <div id="image-transform-box" class="section" style="display: none;">
-          <label>Selecione a Imagem Anexada:</label>
+          <label>Imagens Anexadas a este Osso:</label>
           <select id="sprite-select" onchange="onSpriteSelected()"></select>
 
           <div id="sprite-editor-controls" class="section" style="margin-top: 5px;">
-            <label>Ordem da Camada:</label>
+            <button class="warning-btn" onclick="detachSelectedSprite()">🔓 Desassociar e Mover para Soltas</button>
+
+            <label style="margin-top: 6px;">Ordem da Camada:</label>
             <div class="btn-group">
               <button onclick="moveSpriteOrder(1)">▲ Ir para Frente</button>
               <button onclick="moveSpriteOrder(-1)">▼ Ir para Trás</button>
@@ -384,7 +426,7 @@
             <label>Escala Imagem (Arraste o quadrado verde no Canvas):</label>
             <input type="range" id="sprite-scale" min="0.05" max="5" step="0.05" value="1">
             
-            <button class="danger-btn" onclick="removeSelectedSprite()">Remover Imagem Selecionada</button>
+            <button class="danger-btn" onclick="removeSelectedSprite()">Excluir Imagem Definitivamente</button>
           </div>
         </div>
       </div>
@@ -451,7 +493,7 @@
   <div class="modal-overlay" id="image-modal">
     <div class="modal">
       <div class="modal-header">
-        <h3>Recorte Poligonal por Retas (com Transparência)</h3>
+        <h3>Importar & Recortar Imagem Solta</h3>
         <button onclick="closeImageModal()">X</button>
       </div>
       <div class="modal-body">
@@ -477,7 +519,7 @@
       </div>
       <div class="btn-group">
         <button onclick="closeImageModal()">Cancelar</button>
-        <button class="accent-btn" onclick="confirmCrop()">Confirmar e Adicionar ao Osso</button>
+        <button class="accent-btn" onclick="confirmCrop()">Confirmar e Importar como Solta</button>
       </div>
     </div>
   </div>
@@ -497,6 +539,7 @@
     let mode = 'ADD_BONE_ROOT'; 
     let transformTarget = 'BONE';
     let bones = [];
+    let unattachedImages = []; 
     let selectedBone = null;
     let selectedSpriteIndex = -1;
     let isMouseDown = false;
@@ -1075,7 +1118,7 @@
       select.innerHTML = '';
 
       if (!selectedBone || selectedBone.attachedSprites.length === 0) {
-        select.innerHTML = '<option value="-1">Nenhuma imagem anexada</option>';
+        select.innerHTML = '<option value="-1">Nenhuma imagem neste osso</option>';
         document.getElementById('sprite-editor-controls').style.display = 'none';
         return;
       }
@@ -1090,6 +1133,56 @@
       });
 
       onSpriteSelected();
+    }
+
+    function updateUnattachedImagesList() {
+      const box = document.getElementById('unattached-images-box');
+      const select = document.getElementById('unattached-select');
+      select.innerHTML = '';
+
+      if (unattachedImages.length === 0) {
+        select.innerHTML = '<option value="-1">Nenhuma imagem solta</option>';
+        return;
+      }
+
+      unattachedImages.forEach((imgObj, idx) => {
+        const option = document.createElement('option');
+        option.value = idx;
+        option.text = imgObj.name || `Imagem Solta #${idx + 1}`;
+        select.appendChild(option);
+      });
+    }
+
+    function attachUnattachedImageToSelectedBone() {
+      if (!selectedBone) {
+        alert("Selecione um osso na tela antes para associar a imagem.");
+        return;
+      }
+
+      const select = document.getElementById('unattached-select');
+      const idx = parseInt(select.value);
+
+      if (idx >= 0 && unattachedImages[idx]) {
+        saveState();
+        const imgObj = unattachedImages.splice(idx, 1)[0];
+        selectedBone.attachedSprites.push(imgObj);
+        selectedSpriteIndex = selectedBone.attachedSprites.length - 1;
+        setTransformTarget('IMAGE');
+        updateUI();
+        render();
+      }
+    }
+
+    function detachSelectedSprite() {
+      if (!selectedBone || selectedSpriteIndex < 0 || !selectedBone.attachedSprites[selectedSpriteIndex]) return;
+
+      saveState();
+      const sprite = selectedBone.attachedSprites.splice(selectedSpriteIndex, 1)[0];
+      unattachedImages.push(sprite);
+
+      selectedSpriteIndex = selectedBone.attachedSprites.length - 1;
+      updateUI();
+      render();
     }
 
     function onSpriteSelected() {
@@ -1130,6 +1223,8 @@
         infoBox.innerHTML = 'Nenhum osso selecionado.';
       }
 
+      updateUnattachedImagesList();
+
       document.getElementById('frame-counter').innerText = `Frame: ${currentFrame} / ${maxFrames}`;
       const hasKeyframe = selectedBone && boneKeyframes[selectedBone.id] && !!boneKeyframes[selectedBone.id][currentFrame];
       document.getElementById('keyframe-info').innerText = hasKeyframe ? '★ KEYFRAME (KF) GRAVADO' : '';
@@ -1139,17 +1234,20 @@
 
     function removeSelectedSprite() {
       if (selectedBone && selectedSpriteIndex >= 0) {
-        saveState();
-        selectedBone.attachedSprites.splice(selectedSpriteIndex, 1);
-        selectedSpriteIndex = selectedBone.attachedSprites.length - 1;
-        updateUI();
-        render();
+        if (confirm("Tem certeza de que deseja excluir esta imagem permanentemente?")) {
+          saveState();
+          selectedBone.attachedSprites.splice(selectedSpriteIndex, 1);
+          selectedSpriteIndex = selectedBone.attachedSprites.length - 1;
+          updateUI();
+          render();
+        }
       }
     }
 
     function clearAll() {
       saveState();
       bones = [];
+      unattachedImages = [];
       selectedBone = null;
       selectedSpriteIndex = -1;
       currentDrawingStroke = [];
@@ -1525,6 +1623,14 @@
             dataUrl: s.imageCanvas.toDataURL()
           }))
         })),
+        unattachedImages: unattachedImages.map(s => ({
+          name: s.name,
+          offX: s.offX,
+          offY: s.offY,
+          scale: s.scale,
+          rot: s.rot,
+          dataUrl: s.imageCanvas.toDataURL()
+        })),
         boneKeyframes: boneKeyframes
       };
       return JSON.stringify(projectData);
@@ -1534,6 +1640,7 @@
       try {
         const data = JSON.parse(jsonString);
         bones = [];
+        unattachedImages = [];
         selectedBone = null;
         maxFrames = data.maxFrames || 60;
         fps = data.fps || 24;
@@ -1549,6 +1656,31 @@
           boneMap[bData.id] = { instance: bone, parentId: bData.parentId, rawSprites: bData.attachedSprites };
           bones.push(bone);
         });
+
+        if (data.unattachedImages) {
+          data.unattachedImages.forEach(sData => {
+            const img = new Image();
+            img.onload = () => {
+              const offCanvas = document.createElement('canvas');
+              offCanvas.width = img.width;
+              offCanvas.height = img.height;
+              const oCtx = offCanvas.getContext('2d');
+              oCtx.drawImage(img, 0, 0);
+
+              unattachedImages.push({
+                name: sData.name,
+                imageCanvas: offCanvas,
+                offX: sData.offX,
+                offY: sData.offY,
+                scale: sData.scale,
+                rot: sData.rot
+              });
+              updateUI();
+              render();
+            };
+            img.src = sData.dataUrl;
+          });
+        }
 
         bones.forEach(bone => {
           const raw = boneMap[bone.id];
@@ -1623,10 +1755,6 @@
     }
 
     function openImageModal() {
-      if (!selectedBone) {
-        alert("Selecione um osso primeiro para poder anexar uma imagem recortada.");
-        return;
-      }
       document.getElementById('image-modal').style.display = 'flex';
       const container = document.getElementById('crop-canvas-container');
       cropCanvas.width = container.clientWidth;
@@ -1842,8 +1970,9 @@
         offCtx.putImageData(imgData, 0, 0);
       }
 
+      const imgCount = unattachedImages.length + 1;
       const newSprite = {
-        name: `Recorte_${selectedBone.attachedSprites.length + 1}`,
+        name: `Imagem_Solta_${imgCount}`,
         imageCanvas: offCanvas,
         offX: 0,
         offY: 0,
@@ -1851,11 +1980,9 @@
         rot: 0
       };
 
-      selectedBone.attachedSprites.push(newSprite);
-      selectedSpriteIndex = selectedBone.attachedSprites.length - 1;
+      unattachedImages.push(newSprite);
 
       closeImageModal();
-      setTransformTarget('IMAGE');
       updateUI();
       render();
     }
@@ -1867,6 +1994,28 @@
       ctx.save();
       ctx.translate(stagePan.x, stagePan.y);
       ctx.scale(stageZoom, stageZoom);
+
+      if (unattachedImages.length > 0) {
+        const select = document.getElementById('unattached-select');
+        const activeUnattachedIdx = select ? parseInt(select.value) : -1;
+
+        unattachedImages.forEach((imgObj, idx) => {
+          ctx.save();
+          ctx.globalAlpha = (idx === activeUnattachedIdx) ? 1.0 : 0.4;
+          const centerX = canvas.width / (2 * stageZoom);
+          const centerY = canvas.height / (2 * stageZoom);
+          ctx.drawImage(imgObj.imageCanvas, centerX - imgObj.imageCanvas.width / 2, centerY - imgObj.imageCanvas.height / 2);
+          
+          if (idx === activeUnattachedIdx) {
+            ctx.lineWidth = 2 / stageZoom;
+            ctx.setLineDash([4, 4]);
+            ctx.strokeStyle = '#ffcc00';
+            ctx.strokeRect(centerX - imgObj.imageCanvas.width / 2, centerY - imgObj.imageCanvas.height / 2, imgObj.imageCanvas.width, imgObj.imageCanvas.height);
+            ctx.setLineDash([]);
+          }
+          ctx.restore();
+        });
+      }
 
       bones.forEach(bone => {
         const isSelectedBone = (bone === selectedBone);
