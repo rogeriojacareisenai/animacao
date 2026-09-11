@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>2D Rigging Studio - 1 Imagem por Osso</title>
+  <title>2D Rigging Studio - Contexto Dinâmico & Interpolação Visual</title>
   <style>
     * {
       box-sizing: border-box;
@@ -895,38 +895,6 @@
           }
         }
 
-        if (transformTarget === 'IMAGE') {
-          const bbox = getSelectedSpriteBoundingBox();
-          if (bbox) {
-            const rotHandleDist = Math.hypot(worldPos.x - (bbox.centerWorld.x + Math.sin(bbox.spriteWorldAngle) * (bbox.h/2 + 25)), worldPos.y - (bbox.centerWorld.y - Math.cos(bbox.spriteWorldAngle) * (bbox.h/2 + 25)));
-            if (rotHandleDist < 18 / stageZoom) {
-              dragMode = 'SPRITE_ROTATE';
-              dragStartPos = worldPos;
-              dragInitialState = { rot: bbox.sprite.rot };
-              saveState();
-              return;
-            }
-
-            const scaleHandleDist = Math.hypot(worldPos.x - (bbox.centerWorld.x + Math.cos(bbox.spriteWorldAngle) * bbox.w/2 + Math.sin(bbox.spriteWorldAngle) * bbox.h/2), worldPos.y - (bbox.centerWorld.y + Math.sin(bbox.spriteWorldAngle) * bbox.w/2 - Math.cos(bbox.spriteWorldAngle) * bbox.h/2));
-            if (scaleHandleDist < 18 / stageZoom) {
-              dragMode = 'SPRITE_SCALE';
-              dragStartPos = worldPos;
-              dragInitialState = { scale: bbox.sprite.scale, dist: Math.hypot(worldPos.x - bbox.centerWorld.x, worldPos.y - bbox.centerWorld.y) };
-              saveState();
-              return;
-            }
-
-            const spriteCenterDist = Math.hypot(worldPos.x - bbox.centerWorld.x, worldPos.y - bbox.centerWorld.y);
-            if (spriteCenterDist < Math.max(bbox.w, bbox.h) / 2) {
-              dragMode = 'SPRITE_TRANSLATE';
-              dragStartPos = worldPos;
-              dragInitialState = { offX: bbox.sprite.offX, offY: bbox.sprite.offY };
-              saveState();
-              return;
-            }
-          }
-        }
-
         let closestBone = null;
         let minDist = 25 / stageZoom;
         let activeAnchorType = null;
@@ -953,6 +921,7 @@
 
         if (closestBone) {
           selectBone(closestBone);
+          setTransformTarget('BONE');
           dragStartPos = worldPos;
           saveState();
 
@@ -967,6 +936,24 @@
           setTransformTarget('IMAGE');
           const bbox = getSelectedSpriteBoundingBox();
           if (bbox) {
+            const rotHandleDist = Math.hypot(worldPos.x - (bbox.centerWorld.x + Math.sin(bbox.spriteWorldAngle) * (bbox.h/2 + 25)), worldPos.y - (bbox.centerWorld.y - Math.cos(bbox.spriteWorldAngle) * (bbox.h/2 + 25)));
+            if (rotHandleDist < 18 / stageZoom) {
+              dragMode = 'SPRITE_ROTATE';
+              dragStartPos = worldPos;
+              dragInitialState = { rot: bbox.sprite.rot };
+              saveState();
+              return;
+            }
+
+            const scaleHandleDist = Math.hypot(worldPos.x - (bbox.centerWorld.x + Math.cos(bbox.spriteWorldAngle) * bbox.w/2 + Math.sin(bbox.spriteWorldAngle) * bbox.h/2), worldPos.y - (bbox.centerWorld.y + Math.sin(bbox.spriteWorldAngle) * bbox.w/2 - Math.cos(bbox.spriteWorldAngle) * bbox.h/2));
+            if (scaleHandleDist < 18 / stageZoom) {
+              dragMode = 'SPRITE_SCALE';
+              dragStartPos = worldPos;
+              dragInitialState = { scale: bbox.sprite.scale, dist: Math.hypot(worldPos.x - bbox.centerWorld.x, worldPos.y - bbox.centerWorld.y) };
+              saveState();
+              return;
+            }
+
             dragMode = 'SPRITE_TRANSLATE';
             dragStartPos = worldPos;
             dragInitialState = { offX: bbox.sprite.offX, offY: bbox.sprite.offY };
@@ -1112,6 +1099,7 @@
           bones.push(newBone);
           boneKeyframes[newBone.id] = {};
           selectBone(newBone);
+          setTransformTarget('BONE');
           resizeCanvas();
         }
       } 
@@ -1200,6 +1188,9 @@
 
     function selectBone(bone) {
       selectedBone = bone;
+      if (mode !== 'POSE') {
+        setMode('POSE');
+      }
       updateUI();
       render();
     }
@@ -1352,7 +1343,10 @@
         label.className = 'bone-layer-label';
         label.innerText = bone.id;
         label.title = bone.id;
-        label.onclick = () => selectBone(bone);
+        label.onclick = () => {
+          selectBone(bone);
+          setTransformTarget('BONE');
+        };
         label.ondblclick = () => {
           const newName = prompt("Digite o novo nome para o osso:", bone.id);
           if (newName && newName.trim() !== "") {
@@ -1483,6 +1477,7 @@
 
       bones.forEach((bone, index) => {
         const y = headerHeight + index * trackHeight;
+        const trackCenterY = y + trackHeight / 2;
 
         tCtx.fillStyle = (bone === selectedBone) ? '#2a2a3a' : (index % 2 === 0 ? '#14141a' : '#18181f');
         tCtx.fillRect(0, y, w, trackHeight);
@@ -1494,17 +1489,42 @@
         tCtx.stroke();
 
         const kfs = boneKeyframes[bone.id] || {};
-        Object.keys(kfs).forEach(fStr => {
-          const f = parseInt(fStr);
-          if (f <= maxFrames) {
-            const kx = f * step;
-            const ky = y + trackHeight / 2;
+        const activeFrames = Object.keys(kfs).map(Number).sort((a, b) => a - b);
+
+        for (let i = 0; i < activeFrames.length - 1; i++) {
+          const f1 = activeFrames[i];
+          const f2 = activeFrames[i + 1];
+
+          if (f1 <= maxFrames) {
+            const x1 = f1 * step;
+            const x2 = Math.min(f2, maxFrames) * step;
+            const isInterp = kfs[f1].interpolated !== false;
 
             tCtx.beginPath();
-            tCtx.arc(kx, ky, 5, 0, Math.PI * 2);
+            tCtx.moveTo(x1, trackCenterY);
+            tCtx.lineTo(x2, trackCenterY);
+            tCtx.lineWidth = 2;
+            tCtx.strokeStyle = isInterp ? '#00d2ff' : '#d97706';
+            if (!isInterp) {
+              tCtx.setLineDash([3, 3]);
+            } else {
+              tCtx.setLineDash([]);
+            }
+            tCtx.stroke();
+            tCtx.setLineDash([]);
+          }
+        }
+
+        activeFrames.forEach(f => {
+          if (f <= maxFrames) {
+            const kx = f * step;
+
+            tCtx.beginPath();
+            tCtx.arc(kx, trackCenterY, 5, 0, Math.PI * 2);
             tCtx.fillStyle = (kfs[f].interpolated === false) ? '#d97706' : '#ffcc00';
             tCtx.fill();
             tCtx.strokeStyle = '#000';
+            tCtx.lineWidth = 1;
             tCtx.stroke();
           }
         });
@@ -1549,6 +1569,7 @@
         const boneIndex = Math.floor((clickY - headerHeight) / trackHeight);
         if (boneIndex >= 0 && boneIndex < bones.length) {
           selectBone(bones[boneIndex]);
+          setTransformTarget('BONE');
         }
       }
 
