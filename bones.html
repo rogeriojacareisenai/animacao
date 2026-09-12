@@ -182,6 +182,12 @@
       overflow: hidden;
     }
 
+    /* Suavização de renderização visual via CSS */
+    canvas {
+      image-rendering: auto;
+      image-rendering: smooth;
+    }
+
     canvas#stage {
       display: block;
       width: 100%;
@@ -586,11 +592,19 @@
   </div>
 
   <script>
+    // Função auxiliar universal para ativar suavização em qualquer contexto 2D
+    function applySmoothing(context) {
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = 'high';
+    }
+
     const canvas = document.getElementById('stage');
     const ctx = canvas.getContext('2d');
+    applySmoothing(ctx);
 
     const timelineCanvas = document.getElementById('timeline-canvas');
     const tCtx = timelineCanvas.getContext('2d');
+    applySmoothing(tCtx);
 
     let stageZoom = 1;
     let stagePan = { x: 0, y: 0 };
@@ -632,6 +646,7 @@
 
     const cropCanvas = document.getElementById('crop-canvas');
     const cropCtx = cropCanvas.getContext('2d');
+    applySmoothing(cropCtx);
 
     makeDraggable(document.getElementById("floating-menu"), document.getElementById("floating-menu-header"));
 
@@ -698,6 +713,9 @@
       const container = timelineCanvas.parentElement;
       timelineCanvas.width = container.clientWidth;
       timelineCanvas.height = Math.max(120, (bones.length + 1) * 24 + 30);
+
+      applySmoothing(ctx);
+      applySmoothing(tCtx);
 
       render();
       drawTimelineCanvas();
@@ -1442,6 +1460,7 @@
     function drawTimelineCanvas() {
       const w = timelineCanvas.width;
       const h = timelineCanvas.height;
+      applySmoothing(tCtx);
       tCtx.clearRect(0, 0, w, h);
 
       const headerHeight = 30;
@@ -1821,6 +1840,7 @@
               offCanvas.width = img.width;
               offCanvas.height = img.height;
               const oCtx = offCanvas.getContext('2d');
+              applySmoothing(oCtx);
               oCtx.drawImage(img, 0, 0);
 
               unattachedImages.push({
@@ -1852,6 +1872,7 @@
               offCanvas.width = img.width;
               offCanvas.height = img.height;
               const oCtx = offCanvas.getContext('2d');
+              applySmoothing(oCtx);
               oCtx.drawImage(img, 0, 0);
 
               bone.attachedSprite = {
@@ -1914,6 +1935,7 @@
       const container = document.getElementById('crop-canvas-container');
       cropCanvas.width = container.clientWidth;
       cropCanvas.height = container.clientHeight;
+      applySmoothing(cropCtx);
       drawCropCanvas();
     }
 
@@ -2040,6 +2062,8 @@
       cropCtx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
       if (!loadedImage) return;
 
+      applySmoothing(cropCtx);
+
       cropCtx.save();
       cropCtx.translate(cropPan.x, cropPan.y);
       cropCtx.scale(cropZoom, cropZoom);
@@ -2103,6 +2127,9 @@
       offCanvas.height = height;
       const offCtx = offCanvas.getContext('2d');
 
+      // Aplica suavização na geração da imagem cortada no canvas temporário
+      applySmoothing(offCtx);
+
       offCtx.beginPath();
       offCtx.moveTo(polyPoints[0].x - minX, polyPoints[0].y - minY);
       for (let i = 1; i < polyPoints.length; i++) {
@@ -2145,6 +2172,8 @@
     function render() {
       bones.forEach(b => b.updateTransform());
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      applySmoothing(ctx);
 
       ctx.save();
       ctx.translate(stagePan.x, stagePan.y);
