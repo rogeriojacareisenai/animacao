@@ -182,7 +182,6 @@
       overflow: hidden;
     }
 
-    /* Suavização de renderização visual via CSS */
     canvas {
       image-rendering: auto;
       image-rendering: smooth;
@@ -544,7 +543,7 @@
       <button onclick="jumpToKeyframe(1)">KF &gt;</button>
       <button id="btn-toggle-interp" onclick="toggleKeyframeInterpolation()" title="Ativar/Desativar interpolação entre esta keyframe e a próxima">⚡ Interpolação</button>
       <button class="accent-btn" onclick="addKeyframe()">+ Gravar KF (Osso Ativo)</button>
-      <button class="danger-btn" onclick="removeKeyframe()">- Remover KF</button>
+      <button class="danger-btn" onclick="removeKeyframe()" title="Remover Keyframe do Frame e Osso Atuais">- Remover KF</button>
 
       <div style="display:flex; align-items:center; gap:5px; margin-left:10px;">
         <label style="color:#00d2ff; font-weight:bold;">Frames:</label>
@@ -603,7 +602,6 @@
   </div>
 
   <script>
-    // Função auxiliar universal para ativar suavização em qualquer contexto 2D
     function applySmoothing(context) {
       context.imageSmoothingEnabled = true;
       context.imageSmoothingQuality = 'high';
@@ -1590,6 +1588,8 @@
       tCtx.fill();
     }
 
+    timelineCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
     timelineCanvas.addEventListener('mousedown', (e) => {
       const rect = timelineCanvas.getBoundingClientRect();
       const clickX = e.clientX - rect.left;
@@ -1602,6 +1602,23 @@
       const trackWidth = timelineCanvas.width - paddingRight;
       const step = trackWidth / maxFrames;
       const resizeHandleX = maxFrames * step;
+
+      if (e.button === 2) {
+        if (clickY > headerHeight) {
+          const boneIndex = Math.floor((clickY - headerHeight) / trackHeight);
+          if (boneIndex >= 0 && boneIndex < bones.length) {
+            const bone = bones[boneIndex];
+            const targetFrame = Math.round(clickX / step);
+
+            if (boneKeyframes[bone.id] && boneKeyframes[bone.id][targetFrame] !== undefined) {
+              if (confirm(`Remover keyframe do osso "${bone.id}" no frame ${targetFrame}?`)) {
+                deleteKeyframeByFrame(bone.id, targetFrame);
+              }
+            }
+          }
+        }
+        return;
+      }
 
       if (Math.abs(clickX - resizeHandleX) <= 8 && clickY <= headerHeight) {
         isResizingTimeline = true;
@@ -1696,11 +1713,26 @@
       updateUI();
     }
 
-    function removeKeyframe() {
-      if (selectedBone && boneKeyframes[selectedBone.id]) {
+    function deleteKeyframeByFrame(boneId, frameIndex) {
+      if (boneKeyframes[boneId] && boneKeyframes[boneId][frameIndex] !== undefined) {
         saveState();
-        delete boneKeyframes[selectedBone.id][currentFrame];
+        delete boneKeyframes[boneId][frameIndex];
+        applyKeyframeState(currentFrame);
         updateUI();
+        render();
+      }
+    }
+
+    function removeKeyframe() {
+      if (!selectedBone) {
+        alert("Selecione um osso para remover seu keyframe.");
+        return;
+      }
+
+      if (boneKeyframes[selectedBone.id] && boneKeyframes[selectedBone.id][currentFrame] !== undefined) {
+        deleteKeyframeByFrame(selectedBone.id, currentFrame);
+      } else {
+        alert(`Não há keyframe gravado no frame ${currentFrame} para o osso "${selectedBone.id}".`);
       }
     }
 
