@@ -580,6 +580,7 @@
             <button onclick="resetCropZoom()">Resetar Zoom</button>
             <button onclick="undoCropPoint()">Desfazer Ponto</button>
             <button class="accent-btn" onclick="finishPolygon()">Fechar Polígono</button>
+            <button class="warning-btn" onclick="autoCropSeparateShapes()">✂️ Recorte Automático (Separar Figuras)</button>
           </div>
         </div>
 
@@ -596,7 +597,7 @@
       </div>
       <div class="btn-group">
         <button onclick="closeImageModal()">Cancelar</button>
-        <button class="accent-btn" onclick="confirmCrop()">Confirmar e Importar como Solta</button>
+        <button class="accent-btn" onclick="confirmCrop()">Confirmar e Importar Manual</button>
       </div>
     </div>
   </div>
@@ -2253,6 +2254,153 @@
       render();
     }
 
+    function autoCropSeparateShapes() {
+      if (!loadedImage) {
+        alert("Carregue uma imagem antes de executar o recorte automático.");
+        return;
+      }
+
+      saveState();
+
+      const tempCanvas = document.createElement('canvas');
+      const w = loadedImage.width;
+      const h = loadedImage.height;
+      tempCanvas.width = w;
+      tempCanvas.height = h;
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCtx.drawImage(loadedImage, 0, 0);
+
+      const imgData = tempCtx.getImageData(0, 0, w, h);
+      const data = imgData.data;
+      const removeWhite = document.getElementById('chk-remove-white').checked;
+
+      const isSolid = new Uint8Array(w * h);
+
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const a = data[i + 3];
+
+        let solid = a > 20;
+        if (removeWhite && r > 225 && g > 225 && b > 225) {
+          solid = false;
+        }
+        isSolid[i / 4] = solid ? 1 : 0;
+      }
+
+      const visited = new Uint8Array(w * h);
+      const components = [];
+
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const idx = y * w + x;
+          if (isSolid[idx] && !visited[idx]) {
+            const queue = [x, y];
+            visited[idx] = 1;
+
+            let minX = x, maxX = x, minY = y, maxY = y;
+            const pixels = [];
+
+            let head = 0;
+            while (head < queue.length) {
+              const cx = queue[head++];
+              const cy = queue[head++];
+              pixels.push(cx, cy);
+
+              if (cx < minX) minX = cx;
+              if (cx > maxX) maxX = cx;
+              if (cy < minY) minY = cy;
+              if (cy > maxY) maxY = cy;
+
+              const neighbors = [
+                [cx + 1, cy], [cx - 1, cy],
+                [cx, cy + 1], [cx, cy - 1]
+              ];
+
+              for (let i = 0; i < neighbors.length; i++) {
+                const nx = neighbors[i][0];
+                const ny = neighbors[i][1];
+
+                if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+                  const nIdx = ny * w + nx;
+                  if (isSolid[nIdx] && !visited[nIdx]) {
+                    visited[nIdx] = 1;
+                    queue.push(nx, ny);
+                  }
+                }
+              }
+            }
+
+            if (pixels.length >= 25) {
+              components.push({ minX, maxX, minY, maxY, pixels });
+            }
+          }
+        }
+      }
+
+      if (components.length === 0) {
+        alert("Nenhuma figura/objeto foi detectado na imagem.");
+        return;
+      }
+
+      let createdCount = 0;
+      const spacing = 40; 
+      let currentOffsetX = 0; 
+
+      components.forEach((comp) => {
+        const compW = comp.maxX - comp.minX + 1;
+        const compH = comp.maxY - comp.minY + 1;
+
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = compW;
+        offCanvas.height = compH;
+        const offCtx = offCanvas.getContext('2d');
+        applySmoothing(offCtx);
+
+        const newImgData = offCtx.createImageData(compW, compH);
+        const newData = newImgData.data;
+
+        for (let i = 0; i < comp.pixels.length; i += 2) {
+          const px = comp.pixels[i];
+          const py = comp.pixels[i + 1];
+          const srcIdx = (py * w + px) * 4;
+          const dstIdx = ((py - comp.minY) * compW + (px - comp.minX)) * 4;
+
+          newData[dstIdx] = data[srcIdx];
+          newData[dstIdx + 1] = data[srcIdx + 1];
+          newData[dstIdx + 2] = data[srcIdx + 2];
+          newData[dstIdx + 3] = data[srcIdx + 3];
+
+          if (removeWhite && data[srcIdx] > 225 && data[srcIdx + 1] > 225 && data[srcIdx + 2] > 225) {
+            newData[dstIdx + 3] = 0;
+          }
+        }
+
+        offCtx.putImageData(newImgData, 0, 0);
+
+        createdCount++;
+        const imgCount = unattachedImages.length + 1;
+        const calculatedOffX = currentOffsetX + (compW / 2);
+
+        unattachedImages.push({
+          name: `Figura_Auto_${imgCount}`,
+          imageCanvas: offCanvas,
+          offX: calculatedOffX,
+          offY: 0,
+          scale: 1.0,
+          rot: 0
+        });
+
+        currentOffsetX += compW + spacing;
+      });
+
+      closeImageModal();
+      updateUI();
+      render();
+      alert(`Foram identificadas e recortadas ${createdCount} figura(s) com sucesso!`);
+    }
+
     function renderGhostFrames() {
       if (!onionSkinEnabled || currentFrame <= 0) return;
 
@@ -2378,8 +2526,10 @@
         unattachedImages.forEach((imgObj, idx) => {
           ctx.save();
           ctx.globalAlpha = (idx === activeUnattachedIdx) ? 1.0 : unselectedOpacity;
-          const centerX = canvas.width / (2 * stageZoom);
-          const centerY = canvas.height / (2 * stageZoom);
+          
+          const centerX = (canvas.width / (2 * stageZoom)) + (imgObj.offX || 0);
+          const centerY = (canvas.height / (2 * stageZoom)) + (imgObj.offY || 0);
+          
           ctx.drawImage(imgObj.imageCanvas, centerX - imgObj.imageCanvas.width / 2, centerY - imgObj.imageCanvas.height / 2);
 
           if (idx === activeUnattachedIdx) {
