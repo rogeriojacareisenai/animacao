@@ -142,6 +142,7 @@
     .danger-btn {
       background-color: #8b0000;
       border-color: #a00000;
+      color: #fff;
     }
 
     .danger-btn:hover {
@@ -451,6 +452,7 @@
       <div class="section">
         <label>Ações Rápidas</label>
         <button onclick="undo()">↶ Desfazer (Ctrl+Z)</button>
+        <button class="danger-btn" onclick="deleteSelectedElement()">🗑️ Remover Selecionado (Del)</button>
         <button onclick="resetStageZoom()">🔍 Resetar Zoom / Pan</button>
       </div>
 
@@ -667,7 +669,7 @@
     let bones = [];
     let unattachedImages = []; 
     let selectedBone = null;
-    let contextMenuImageIndex = -1; // Variável para armazenar a imagem solta sob o menu de contexto
+    let contextMenuImageIndex = -1;
     let isMouseDown = false;
 
     let dragMode = null;
@@ -760,12 +762,61 @@
       }
     }
 
+    // Atalhos do teclado (Ctrl+Z para Undo, Del/Backspace para Remover)
     window.addEventListener('keydown', (e) => {
+      const activeEl = document.activeElement;
+      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT')) {
+        return;
+      }
+
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         undo();
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        deleteSelectedElement();
       }
     });
+
+    function deleteSelectedElement() {
+      if (transformTarget === 'BONE' && selectedBone) {
+        saveState();
+        deleteBone(selectedBone);
+        updateUI();
+        render();
+      } else if (transformTarget === 'IMAGE' && selectedBone && selectedBone.attachedSprite) {
+        removeSelectedSprite();
+      } else {
+        const select = document.getElementById('unattached-select');
+        const idx = parseInt(select ? select.value : -1);
+        if (idx >= 0 && unattachedImages[idx]) {
+          saveState();
+          unattachedImages.splice(idx, 1);
+          updateUI();
+          render();
+        }
+      }
+    }
+
+    function deleteBone(boneToDelete) {
+      if (!boneToDelete) return;
+
+      const children = bones.filter(b => b.parent === boneToDelete);
+      children.forEach(child => {
+        child.parent = boneToDelete.parent;
+      });
+
+      if (boneToDelete.attachedSprite) {
+        unattachedImages.push(boneToDelete.attachedSprite);
+      }
+
+      delete boneKeyframes[boneToDelete.id];
+      bones = bones.filter(b => b !== boneToDelete);
+
+      if (selectedBone === boneToDelete) {
+        selectedBone = bones.length > 0 ? bones[0] : null;
+      }
+    }
 
     function resizeCanvas() {
       canvas.width = canvas.parentElement.clientWidth;
@@ -929,7 +980,6 @@
       return Math.abs(worldPos.x - centerX) <= w / 2 && Math.abs(worldPos.y - centerY) <= h / 2;
     }
 
-    // Ocultar menu de contexto quando clicar fora
     window.addEventListener('click', () => {
       document.getElementById('image-context-menu').style.display = 'none';
     });
@@ -940,7 +990,6 @@
       const screenPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
       const worldPos = screenToWorld(screenPos);
 
-      // Verificar se clicou com o botão direito em uma imagem solta
       let hitUnattachedIndex = -1;
       for (let i = unattachedImages.length - 1; i >= 0; i--) {
         if (isPointInUnattachedImage(worldPos, unattachedImages[i])) {
@@ -970,7 +1019,7 @@
       const centerY = (canvas.height / (2 * stageZoom)) + (imgObj.offY || 0);
 
       const boneLength = Math.max(60, Math.min(imgObj.imageCanvas.width, imgObj.imageCanvas.height));
-      const targetAngle = Math.PI / 2; // 90 graus em radianos
+      const targetAngle = Math.PI / 2;
 
       let parentBone = (type === 'CHILD') ? selectedBone : null;
       let basePos = { x: centerX, y: centerY };
@@ -1040,6 +1089,37 @@
         }
       } 
       else if (mode === 'POSE') {
+        // Verificar clique no manipulador da Bolinha Amarela do Osso ou da Imagem
+        if (selectedBone) {
+          if (transformTarget === 'IMAGE' && selectedBone.attachedSprite && selectedBone.visibleImage) {
+            const bbox = getSelectedSpriteBoundingBox();
+            if (bbox) {
+              const rotHandleX = bbox.centerWorld.x + Math.sin(bbox.spriteWorldAngle) * (bbox.h / 2 + 25 / stageZoom);
+              const rotHandleY = bbox.centerWorld.y - Math.cos(bbox.spriteWorldAngle) * (bbox.h / 2 + 25 / stageZoom);
+              const distRot = Math.hypot(rotHandleX - worldPos.x, rotHandleY - worldPos.y);
+
+              if (distRot < 15 / stageZoom) {
+                dragMode = 'SPRITE_ROTATE';
+                dragStartPos = worldPos;
+                dragInitialState = { rot: bbox.sprite.rot };
+                saveState();
+                return;
+              }
+            }
+          } else if (transformTarget === 'BONE' && selectedBone.visibleBone) {
+            const rotHandleX = selectedBone.endX + Math.cos(selectedBone.worldAngle) * (20 / stageZoom);
+            const rotHandleY = selectedBone.endY + Math.sin(selectedBone.worldAngle) * (20 / stageZoom);
+            const distRot = Math.hypot(rotHandleX - worldPos.x, rotHandleY - worldPos.y);
+
+            if (distRot < 15 / stageZoom) {
+              dragMode = 'BONE_ROTATE';
+              dragStartPos = worldPos;
+              saveState();
+              return;
+            }
+          }
+        }
+
         let hitSpriteBone = null;
         for (let i = bones.length - 1; i >= 0; i--) {
           if (bones[i].visibleImage && isPointInSprite(worldPos, bones[i])) {
@@ -1089,7 +1169,10 @@
           setTransformTarget('IMAGE');
           const bbox = getSelectedSpriteBoundingBox();
           if (bbox) {
-            const rotHandleDist = Math.hypot(worldPos.x - (bbox.centerWorld.x + Math.sin(bbox.spriteWorldAngle) * (bbox.h/2 + 25)), worldPos.y - (bbox.centerWorld.y - Math.cos(bbox.spriteWorldAngle) * (bbox.h/2 + 25)));
+            const rotHandleX = bbox.centerWorld.x + Math.sin(bbox.spriteWorldAngle) * (bbox.h / 2 + 25 / stageZoom);
+            const rotHandleY = bbox.centerWorld.y - Math.cos(bbox.spriteWorldAngle) * (bbox.h / 2 + 25 / stageZoom);
+            const rotHandleDist = Math.hypot(worldPos.x - rotHandleX, worldPos.y - rotHandleY);
+
             if (rotHandleDist < 18 / stageZoom) {
               dragMode = 'SPRITE_ROTATE';
               dragStartPos = worldPos;
@@ -2683,16 +2766,20 @@
           ctx.setLineDash([]);
 
           if (mode === 'POSE' && transformTarget === 'IMAGE') {
+            const rotHandleDist = 25 / (s.scale * stageZoom);
             ctx.beginPath();
             ctx.moveTo(0, -h/2);
-            ctx.lineTo(0, -h/2 - 25 / (s.scale * stageZoom));
+            ctx.lineTo(0, -h/2 - rotHandleDist);
             ctx.strokeStyle = '#00d2ff';
+            ctx.lineWidth = 2 / (s.scale * stageZoom);
             ctx.stroke();
 
             ctx.beginPath();
-            ctx.arc(0, -h/2 - 25 / (s.scale * stageZoom), 6 / (s.scale * stageZoom), 0, Math.PI * 2);
+            ctx.arc(0, -h/2 - rotHandleDist, 6 / (s.scale * stageZoom), 0, Math.PI * 2);
             ctx.fillStyle = '#ffcc00';
             ctx.fill();
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1 / (s.scale * stageZoom);
             ctx.stroke();
 
             const sBox = 10 / (s.scale * stageZoom);
@@ -2745,6 +2832,28 @@
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 1 / stageZoom;
         ctx.stroke();
+
+        // Desenhar a Bolinha Amarela de Rotação no topo do osso selecionado
+        if (isSelected && mode === 'POSE' && transformTarget === 'BONE') {
+          const handleOffset = 20 / stageZoom;
+          const rotHandleX = bone.endX + Math.cos(bone.worldAngle) * handleOffset;
+          const rotHandleY = bone.endY + Math.sin(bone.worldAngle) * handleOffset;
+
+          ctx.beginPath();
+          ctx.moveTo(bone.endX, bone.endY);
+          ctx.lineTo(rotHandleX, rotHandleY);
+          ctx.strokeStyle = '#ffcc00';
+          ctx.lineWidth = 2 / stageZoom;
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.arc(rotHandleX, rotHandleY, 6 / stageZoom, 0, Math.PI * 2);
+          ctx.fillStyle = '#ffcc00';
+          ctx.fill();
+          ctx.strokeStyle = '#000';
+          ctx.lineWidth = 1 / stageZoom;
+          ctx.stroke();
+        }
 
         const midX = (bone.startX + bone.endX) / 2;
         const midY = (bone.startY + bone.endY) / 2;
