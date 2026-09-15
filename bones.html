@@ -229,6 +229,37 @@
       gap: 8px;
     }
 
+    /* ESTILO DO MENU SUSPENSO DO BOTÃO DIREITO */
+    #image-context-menu {
+      display: none;
+      position: fixed;
+      z-index: 200;
+      background-color: #2b2b36;
+      border: 1px solid #00d2ff;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+      padding: 5px 0;
+      min-width: 180px;
+    }
+
+    #image-context-menu button {
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      border: none;
+      padding: 8px 12px;
+      color: #fff;
+      font-size: 0.8rem;
+      cursor: pointer;
+      border-radius: 0;
+    }
+
+    #image-context-menu button:hover {
+      background-color: #00d2ff;
+      color: #121216;
+      font-weight: bold;
+    }
+
     #timeline-bar {
       height: 220px;
       background-color: #18181f;
@@ -406,6 +437,12 @@
   </style>
 </head>
 <body>
+
+  <!-- Menu Suspenso de Contexto das Imagens -->
+  <div id="image-context-menu">
+    <button onclick="addBoneFromContextMenu('ROOT')">➕ Adicionar Osso Raiz (90°)</button>
+    <button onclick="addBoneFromContextMenu('CHILD')">➕ Adicionar Osso Filho (90°)</button>
+  </div>
 
   <div id="app-container">
     <div id="sidebar">
@@ -630,6 +667,7 @@
     let bones = [];
     let unattachedImages = []; 
     let selectedBone = null;
+    let contextMenuImageIndex = -1; // Variável para armazenar a imagem solta sob o menu de contexto
     let isMouseDown = false;
 
     let dragMode = null;
@@ -882,7 +920,81 @@
       return Math.abs(localX) <= bbox.w / 2 && Math.abs(localY) <= bbox.h / 2;
     }
 
-    canvas.addEventListener('contextmenu', e => e.preventDefault());
+    function isPointInUnattachedImage(worldPos, imgObj) {
+      const centerX = (canvas.width / (2 * stageZoom)) + (imgObj.offX || 0);
+      const centerY = (canvas.height / (2 * stageZoom)) + (imgObj.offY || 0);
+      const w = imgObj.imageCanvas.width;
+      const h = imgObj.imageCanvas.height;
+
+      return Math.abs(worldPos.x - centerX) <= w / 2 && Math.abs(worldPos.y - centerY) <= h / 2;
+    }
+
+    // Ocultar menu de contexto quando clicar fora
+    window.addEventListener('click', () => {
+      document.getElementById('image-context-menu').style.display = 'none';
+    });
+
+    canvas.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const screenPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      const worldPos = screenToWorld(screenPos);
+
+      // Verificar se clicou com o botão direito em uma imagem solta
+      let hitUnattachedIndex = -1;
+      for (let i = unattachedImages.length - 1; i >= 0; i--) {
+        if (isPointInUnattachedImage(worldPos, unattachedImages[i])) {
+          hitUnattachedIndex = i;
+          break;
+        }
+      }
+
+      if (hitUnattachedIndex !== -1) {
+        contextMenuImageIndex = hitUnattachedIndex;
+        const menu = document.getElementById('image-context-menu');
+        menu.style.display = 'block';
+        menu.style.left = `${e.clientX}px`;
+        menu.style.top = `${e.clientY}px`;
+      } else {
+        document.getElementById('image-context-menu').style.display = 'none';
+      }
+    });
+
+    function addBoneFromContextMenu(type) {
+      if (contextMenuImageIndex < 0 || !unattachedImages[contextMenuImageIndex]) return;
+
+      saveState();
+      const imgObj = unattachedImages.splice(contextMenuImageIndex, 1)[0];
+      
+      const centerX = (canvas.width / (2 * stageZoom)) + (imgObj.offX || 0);
+      const centerY = (canvas.height / (2 * stageZoom)) + (imgObj.offY || 0);
+
+      const boneLength = Math.max(60, Math.min(imgObj.imageCanvas.width, imgObj.imageCanvas.height));
+      const targetAngle = Math.PI / 2; // 90 graus em radianos
+
+      let parentBone = (type === 'CHILD') ? selectedBone : null;
+      let basePos = { x: centerX, y: centerY };
+      let localAngle = targetAngle;
+
+      if (parentBone) {
+        basePos = { x: centerX - parentBone.endX, y: centerY - parentBone.endY };
+        localAngle = targetAngle - parentBone.worldAngle;
+      }
+
+      const newBone = new Bone(`Osso_${bones.length + 1}`, parentBone, boneLength, localAngle, basePos);
+      newBone.attachedSprite = imgObj;
+      imgObj.offX = 0;
+      imgObj.offY = 0;
+
+      bones.push(newBone);
+      boneKeyframes[newBone.id] = {};
+      selectBone(newBone);
+      setTransformTarget('BONE');
+      
+      document.getElementById('image-context-menu').style.display = 'none';
+      contextMenuImageIndex = -1;
+      resizeCanvas();
+    }
 
     canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
