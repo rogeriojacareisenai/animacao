@@ -176,11 +176,76 @@
       color: #00d2ff;
     }
 
+    #stage-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
     #canvas-container {
       flex: 1;
       position: relative;
       cursor: crosshair;
       overflow: hidden;
+    }
+
+    /* BARRA HORIZONTAL DE THUMBNAILS */
+    #asset-tray-container {
+      height: 110px;
+      background-color: #18181f;
+      border-bottom: 2px solid #3f3f52;
+      display: flex;
+      flex-direction: column;
+      padding: 6px 12px;
+      gap: 4px;
+      z-index: 8;
+    }
+
+    #asset-tray-title {
+      font-size: 0.75rem;
+      font-weight: bold;
+      color: #00d2ff;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    #asset-tray {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      align-items: center;
+      height: 80px;
+      padding: 4px 0;
+    }
+
+    .thumb-item {
+      flex: 0 0 auto;
+      width: 70px;
+      height: 70px;
+      background-color: #2b2b36;
+      border: 1px dashed #00d2ff;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: grab;
+      position: relative;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+
+    .thumb-item:hover {
+      transform: scale(1.05);
+      border-style: solid;
+      background-color: #353545;
+    }
+
+    .thumb-item img {
+      max-width: 90%;
+      max-height: 90%;
+      object-fit: contain;
+      pointer-events: none;
     }
 
     canvas {
@@ -476,7 +541,7 @@
       <div class="section">
         <label>1. Modo de Interação</label>
         <div class="btn-group">
-          <button id="btn-mode-bone-root" class="active" onclick="setMode('ADD_BONE_ROOT')">+ Osso Raiz</button>
+          <!--button id="btn-mode-bone-root" class="active" onclick="setMode('ADD_BONE_ROOT')">+ Osso Raiz</button-->
           <button id="btn-mode-bone-child" onclick="setMode('ADD_BONE_CHILD')">+ Osso Filho</button>
         </div>
         <div class="btn-group" style="margin-top: 4px;">
@@ -490,7 +555,7 @@
         <button class="accent-btn" onclick="openImageModal()">📥 Importar / Recortar Nova Imagem</button>
 
         <div id="unattached-images-box" class="section" style="margin-top: 6px; background: #18181f; padding: 8px; border-radius: 4px;">
-          <label style="color:#00d2ff; font-weight: bold;">Imagens Soltas (Não Associadas):</label>
+          <label style="color:#00d2ff; font-weight: bold;">Imagens Soltas (No Palco):</label>
           <select id="unattached-select" onchange="render()"></select>
           <button class="accent-btn" onclick="attachUnattachedImageToSelectedBone()" style="margin-top: 4px;">🔗 Associar ao Osso Selecionado</button>
         </div>
@@ -556,20 +621,31 @@
       </div>
     </div>
 
-    <div id="canvas-container">
-      <canvas id="stage"></canvas>
-
-      <div class="floating-window" id="floating-menu">
-        <div class="floating-header" id="floating-menu-header">
-          <span>📁 Opções de Importação & Arquivo</span>
-          <span style="font-size: 0.7rem; color: #888;">⠿ Drag</span>
+    <div id="stage-wrapper">
+      <!-- Menu Horizontal de Thumbnails das Imagens Recortadas -->
+      <div id="asset-tray-container">
+        <div id="asset-tray-title">
+          <span>📦 Bandeja de Figuras Recortadas (Arraste para o Palco)</span>
+          <span id="asset-tray-count" style="color: #aaa; font-weight: normal;">0 itens</span>
         </div>
-        <div class="floating-body">
-          <button class="accent-btn" onclick="loadFromLocalStorage()">📂 Carregar Salvo (Local)</button>
-          <button onclick="exportJSON()">💾 Exportar JSON</button>
-          <button onclick="document.getElementById('file-input-json').click()">📥 Importar JSON</button>
-          <input type="file" id="file-input-json" accept=".json" style="display: none;" onchange="importJSON(event)">
-          <button class="accent-btn" onclick="saveToLocalStorage()" title="Salvar Projeto (Local)">💾 Salvar Projeto (Local)</button>
+        <div id="asset-tray"></div>
+      </div>
+
+      <div id="canvas-container">
+        <canvas id="stage"></canvas>
+
+        <div class="floating-window" id="floating-menu">
+          <div class="floating-header" id="floating-menu-header">
+            <span>📁 Opções de Importação & Arquivo</span>
+            <span style="font-size: 0.7rem; color: #888;">⠿ Drag</span>
+          </div>
+          <div class="floating-body">
+            <button class="accent-btn" onclick="loadFromLocalStorage()">📂 Carregar Salvo (Local)</button>
+            <button onclick="exportJSON()">💾 Exportar JSON</button>
+            <button onclick="document.getElementById('file-input-json').click()">📥 Importar JSON</button>
+            <input type="file" id="file-input-json" accept=".json" style="display: none;" onchange="importJSON(event)">
+            <button class="accent-btn" onclick="saveToLocalStorage()" title="Salvar Projeto (Local)">💾 Salvar Projeto (Local)</button>
+          </div>
         </div>
       </div>
     </div>
@@ -668,6 +744,7 @@
     let transformTarget = 'BONE';
     let bones = [];
     let unattachedImages = []; 
+    let trayImages = []; // Armazena figurinhas recortadas no menu horizontal
     let selectedBone = null;
     let contextMenuImageIndex = -1;
     let isMouseDown = false;
@@ -700,6 +777,72 @@
     const cropCanvas = document.getElementById('crop-canvas');
     const cropCtx = cropCanvas.getContext('2d');
     applySmoothing(cropCtx);
+
+    // Lógica para Drag and Drop do Menu Horizontal para o Canvas (Palco)
+    const canvasContainer = document.getElementById('canvas-container');
+
+    canvasContainer.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    });
+
+    canvasContainer.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const trayIndexStr = e.dataTransfer.getData('text/plain');
+      if (trayIndexStr !== "") {
+        const trayIdx = parseInt(trayIndexStr);
+        if (!isNaN(trayIdx) && trayImages[trayIdx]) {
+          saveState();
+
+          // Remover item da bandeja horizontal
+          const item = trayImages.splice(trayIdx, 1)[0];
+
+          // Descobrir a posição no mundo a partir da posição da soltura
+          const rect = canvas.getBoundingClientRect();
+          const screenPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+          const worldPos = screenToWorld(screenPos);
+
+          const canvasCenterX = canvas.width / (2 * stageZoom);
+          const canvasCenterY = canvas.height / (2 * stageZoom);
+
+          // Ajusta Offsets relativos ao centro
+          item.offX = worldPos.x - canvasCenterX;
+          item.offY = worldPos.y - canvasCenterY;
+
+          // Adiciona às imagens soltas no palco
+          unattachedImages.push(item);
+
+          renderAssetTray();
+          updateUI();
+          render();
+        }
+      }
+    });
+
+    function renderAssetTray() {
+      const tray = document.getElementById('asset-tray');
+      const countLabel = document.getElementById('asset-tray-count');
+      tray.innerHTML = '';
+      countLabel.innerText = `${trayImages.length} itens`;
+
+      trayImages.forEach((imgObj, idx) => {
+        const thumb = document.createElement('div');
+        thumb.className = 'thumb-item';
+        thumb.draggable = true;
+        thumb.title = `${imgObj.name} (Arraste para o palco)`;
+
+        const imgEl = document.createElement('img');
+        imgEl.src = imgObj.imageCanvas.toDataURL();
+
+        thumb.appendChild(imgEl);
+
+        thumb.addEventListener('dragstart', (e) => {
+          e.dataTransfer.setData('text/plain', idx.toString());
+        });
+
+        tray.appendChild(thumb);
+      });
+    }
 
     makeDraggable(document.getElementById("floating-menu"), document.getElementById("floating-menu-header"));
 
@@ -1089,7 +1232,6 @@
         }
       } 
       else if (mode === 'POSE') {
-        // Verificar clique no manipulador da Bolinha Amarela do Osso ou da Imagem
         if (selectedBone) {
           if (transformTarget === 'IMAGE' && selectedBone.attachedSprite && selectedBone.visibleImage) {
             const bbox = getSelectedSpriteBoundingBox();
@@ -1654,9 +1796,11 @@
       saveState();
       bones = [];
       unattachedImages = [];
+      trayImages = [];
       selectedBone = null;
       currentDrawingStroke = [];
       boneKeyframes = {};
+      renderAssetTray();
       updateUI();
       resizeCanvas();
     }
@@ -2085,6 +2229,14 @@
           rot: s.rot,
           dataUrl: s.imageCanvas.toDataURL()
         })),
+        trayImages: trayImages.map(s => ({
+          name: s.name,
+          offX: s.offX,
+          offY: s.offY,
+          scale: s.scale,
+          rot: s.rot,
+          dataUrl: s.imageCanvas.toDataURL()
+        })),
         boneKeyframes: boneKeyframes
       };
       return JSON.stringify(projectData);
@@ -2095,6 +2247,7 @@
         const data = JSON.parse(jsonString);
         bones = [];
         unattachedImages = [];
+        trayImages = [];
         selectedBone = null;
         maxFrames = data.maxFrames || 60;
         fps = data.fps || 24;
@@ -2134,6 +2287,31 @@
               });
               updateUI();
               render();
+            };
+            img.src = sData.dataUrl;
+          });
+        }
+
+        if (data.trayImages) {
+          data.trayImages.forEach(sData => {
+            const img = new Image();
+            img.onload = () => {
+              const offCanvas = document.createElement('canvas');
+              offCanvas.width = img.width;
+              offCanvas.height = img.height;
+              const oCtx = offCanvas.getContext('2d');
+              applySmoothing(oCtx);
+              oCtx.drawImage(img, 0, 0);
+
+              trayImages.push({
+                name: sData.name,
+                imageCanvas: offCanvas,
+                offX: sData.offX,
+                offY: sData.offY,
+                scale: sData.scale,
+                rot: sData.rot
+              });
+              renderAssetTray();
             };
             img.src = sData.dataUrl;
           });
@@ -2432,7 +2610,7 @@
         offCtx.putImageData(imgData, 0, 0);
       }
 
-      const imgCount = unattachedImages.length + 1;
+      const imgCount = unattachedImages.length + trayImages.length + 1;
       const newSprite = {
         name: `Img_Solta_${imgCount}`,
         imageCanvas: offCanvas,
@@ -2442,9 +2620,11 @@
         rot: 0
       };
 
-      unattachedImages.push(newSprite);
+      // Adiciona o recorte manual diretamente à bandeja
+      trayImages.push(newSprite);
 
       closeImageModal();
+      renderAssetTray();
       updateUI();
       render();
     }
@@ -2540,8 +2720,6 @@
       }
 
       let createdCount = 0;
-      const spacing = 40; 
-      let currentOffsetX = 0; 
 
       components.forEach((comp) => {
         const compW = comp.maxX - comp.minX + 1;
@@ -2575,25 +2753,24 @@
         offCtx.putImageData(newImgData, 0, 0);
 
         createdCount++;
-        const imgCount = unattachedImages.length + 1;
-        const calculatedOffX = currentOffsetX + (compW / 2);
+        const imgCount = unattachedImages.length + trayImages.length + 1;
 
-        unattachedImages.push({
+        // Adiciona à lista do Menu Horizontal de Thumbnails
+        trayImages.push({
           name: `Figura_Auto_${imgCount}`,
           imageCanvas: offCanvas,
-          offX: calculatedOffX,
+          offX: 0,
           offY: 0,
           scale: 1.0,
           rot: 0
         });
-
-        currentOffsetX += compW + spacing;
       });
 
       closeImageModal();
+      renderAssetTray();
       updateUI();
       render();
-      alert(`Foram identificadas e recortadas ${createdCount} figura(s) com sucesso!`);
+      alert(`Foram identificadas ${createdCount} figura(s). Elas foram adicionadas ao menu horizontal!`);
     }
 
     function renderGhostFrames() {
@@ -2890,6 +3067,7 @@
     }
 
     resizeCanvas();
+    renderAssetTray();
     setMode('ADD_BONE_ROOT');
   </script>
 </body>
