@@ -645,7 +645,7 @@
   <!-- LOGO FIXO SUPERIOR ESQUERDO -->
   <div id="persistent-logo">NickeMan</div>
 
-  <!-- TELA DE ABERTURA ANIMADA (SEM PARTÍCULAS/BOLHAS) -->
+  <!-- TELA DE ABERTURA ANIMADA -->
   <div id="intro-overlay">
     <div class="intro-title">NickeMan</div>
     <div class="sub-title">2D RIGGING STUDIO</div>
@@ -693,6 +693,7 @@
         </div>
 
         <div class="section">
+          <button class="accent-btn" onclick="exportImageSequence()">🎞️ Exportar Sequência de Imagens</button>
           <button class="danger-btn" onclick="clearAll()">Limpar Tudo</button>
         </div>
       </div>
@@ -877,7 +878,12 @@
   </div>
 
   <script>
-    // Controle do Tempo de Exibição da Abertura (Fechamento limpo sem bolhas)
+    // Inclusão externa da biblioteca JSZip para exportação de sequências em arquivo compactado (ZIP)
+    const jszipScript = document.createElement('script');
+    jszipScript.src = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+    document.head.appendChild(jszipScript);
+
+    // Controle do Tempo de Exibição da Abertura
     window.addEventListener('DOMContentLoaded', () => {
       const overlay = document.getElementById('intro-overlay');
       setTimeout(() => {
@@ -980,13 +986,11 @@
           const screenPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
           const worldPos = screenToWorld(screenPos);
 
-          // Verificar se o ponto de soltura intercepta algum osso visível sem imagem associada
           let interceptedBone = null;
           for (let i = bones.length - 1; i >= 0; i--) {
             const b = bones[i];
             if (!b.visibleBone || b.attachedSprite) continue;
 
-            // Distância do ponto ao segmento de reta do osso (startX, startY) -> (endX, endY)
             const A = worldPos.x - b.startX;
             const B = worldPos.y - b.startY;
             const C = b.endX - b.startX;
@@ -2414,6 +2418,148 @@
         btn.innerText = '▶ Play';
         clearInterval(animationInterval);
       }
+      render(); // Atualiza a tela imediatamente aplicando o modo Play (opacidade total e skins desligados)
+    }
+
+    // Função de Exportação para Sequência de Imagens (com intervalo customizado de keyframes/frames)
+    async function exportImageSequence() {
+      if (typeof JSZip === 'undefined') {
+        alert("Aguarde o carregamento da biblioteca de compactação (JSZip) e tente novamente em instantes.");
+        return;
+      }
+
+      const intervalStr = prompt("Informe o intervalo (step) entre os frames a exportar (ex: 1 para todos, 2 para pular de 2 em 2):", "1");
+      if (!intervalStr) return;
+      const step = Math.max(1, parseInt(intervalStr) || 1);
+
+      const zip = new JSZip();
+      const folder = zip.folder("sequencia_animacao");
+
+      const originalFrame = currentFrame;
+      const wasPlaying = isPlaying;
+      if (wasPlaying) togglePlay(); // Pausa se estiver rodando
+
+      const oldZoom = stageZoom;
+      const oldPan = { ...stagePan };
+
+      // Opcional: Centraliza e reseta zoom para exportação limpa na resolução nativa do canvas
+      stageZoom = 1;
+      stagePan = { x: 0, y: 0 };
+
+      const exportCanvas = document.createElement('canvas');
+      exportCanvas.width = canvas.width;
+      exportCanvas.height = canvas.height;
+      const eCtx = exportCanvas.getContext('2d');
+      applySmoothing(eCtx);
+
+      let exportedCount = 0;
+
+      for (let f = 0; f <= maxFrames; f += step) {
+        currentFrame = f;
+        applyKeyframeState(currentFrame);
+        
+        // Renderiza no canvas temporário forçando modo de Play (opacidade 100% e sem ossos/skins visíveis)
+        renderToContext(eCtx, true);
+
+        const dataUrl = exportCanvas.toDataURL('image/png');
+        const base64Data = dataUrl.replace(/^data:image\/png;base64,/, "");
+        const frameName = String(f).padStart(4, '0');
+        folder.file(`frame_${frameName}.png`, base64Data, { base64: true });
+        exportedCount++;
+      }
+
+      currentFrame = originalFrame;
+      applyKeyframeState(currentFrame);
+      stageZoom = oldZoom;
+      stagePan = oldPan;
+      render();
+      updateUI();
+
+      alert(`Gerando arquivo ZIP com ${exportedCount} imagens. O download iniciará em instantes...`);
+
+      zip.generateAsync({ type: "blob" }).then((content) => {
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(content);
+        link.download = "sequencia_frames_nickeman.zip";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      });
+    }
+
+    // Renderizador genérico customizado para exportação ou exibição em Play
+    function renderToContext(targetCtx, forcePlayView = false) {
+      bones.forEach(b => b.updateTransform());
+      targetCtx.clearRect(0, 0, targetCtx.canvas.width, targetCtx.canvas.height);
+      applySmoothing(targetCtx);
+
+      targetCtx.save();
+      targetCtx.translate(stagePan.x, stagePan.y);
+      targetCtx.scale(stageZoom, stageZoom);
+
+      if (!forcePlayView) {
+        // Renderiza fantasmas se habilitado
+      }
+
+      // Imagens soltas
+      if (unattachedImages.length > 0) {
+        unattachedImages.forEach((imgObj) => {
+          targetCtx.save();
+          targetCtx.globalAlpha = forcePlayView ? 1.0 : unselectedOpacity;
+          const centerX = (targetCtx.canvas.width / (2 * stageZoom)) + (imgObj.offX || 0);
+          const centerY = (targetCtx.canvas.height / (2 * stageZoom)) + (imgObj.offY || 0);
+          targetCtx.drawImage(imgObj.imageCanvas, centerX - imgObj.imageCanvas.width / 2, centerY - imgObj.imageCanvas.height / 2);
+          targetCtx.restore();
+        });
+      }
+
+      // Sprites associados aos ossos
+      bones.forEach(bone => {
+        if (!bone.attachedSprite || !bone.visibleImage) return;
+        const s = bone.attachedSprite;
+
+        targetCtx.save();
+        targetCtx.globalAlpha = 1.0; // Opacidade 100% no modo Play ou exportação
+
+        targetCtx.translate(bone.startX, bone.startY);
+        targetCtx.rotate(bone.worldAngle);
+        targetCtx.translate(s.offX, s.offY);
+        targetCtx.rotate(s.rot);
+        targetCtx.scale(s.scale, s.scale);
+
+        targetCtx.drawImage(s.imageCanvas, -s.imageCanvas.width / 2, -s.imageCanvas.height / 2);
+        targetCtx.restore();
+      });
+
+      // Se não estiver em modo Play/Exportação, desenha o esqueleto e malhas
+      if (!forcePlayView && !isPlaying) {
+        bones.forEach(bone => {
+          if (!bone.visibleBone) return;
+          targetCtx.save();
+          targetCtx.strokeStyle = '#ff0055';
+          targetCtx.lineWidth = 4 / stageZoom;
+          bone.meshStrokes.forEach(stroke => {
+            targetCtx.beginPath();
+            for (let i = 0; i < stroke.length - 1; i++) {
+              const p1 = bone.localToWorld(stroke[i]);
+              const p2 = bone.localToWorld(stroke[i + 1]);
+              targetCtx.moveTo(p1.x, p1.y);
+              targetCtx.lineTo(p2.x, p2.y);
+            }
+            targetCtx.stroke();
+          });
+
+          targetCtx.beginPath();
+          targetCtx.moveTo(bone.startX, bone.startY);
+          targetCtx.lineTo(bone.endX, bone.endY);
+          targetCtx.strokeStyle = '#00d2ff';
+          targetCtx.lineWidth = 2 / stageZoom;
+          targetCtx.stroke();
+          targetCtx.restore();
+        });
+      }
+
+      targetCtx.restore();
     }
 
     function serializeProject() {
@@ -2990,7 +3136,7 @@
     }
 
     function renderGhostFrames() {
-      if (!onionSkinEnabled || currentFrame <= 0) return;
+      if (!onionSkinEnabled || currentFrame <= 0 || isPlaying) return;
 
       const startGhostFrame = Math.max(0, currentFrame - onionSkinCount);
 
@@ -3041,45 +3187,6 @@
         });
 
         bones.forEach(bone => {
-          if (!bone.visibleBone) return;
-
-          ctx.save();
-          ctx.globalAlpha = opacity;
-
-          ctx.strokeStyle = '#5588aa';
-          ctx.lineWidth = 2 / stageZoom;
-          ctx.lineCap = 'round';
-          ctx.lineJoin = 'round';
-
-          bone.meshStrokes.forEach(stroke => {
-            ctx.beginPath();
-            for (let i = 0; i < stroke.length - 1; i++) {
-              const p1 = bone.localToWorld(stroke[i]);
-              const p2 = bone.localToWorld(stroke[i + 1]);
-              ctx.moveTo(p1.x, p1.y);
-              ctx.lineTo(p2.x, p2.y);
-            }
-            ctx.stroke();
-          });
-
-          ctx.beginPath();
-          ctx.moveTo(bone.startX, bone.startY);
-          ctx.lineTo(bone.endX, bone.endY);
-          ctx.strokeStyle = '#00aaff';
-          ctx.setLineDash([4 / stageZoom, 4 / stageZoom]);
-          ctx.lineWidth = 1.5 / stageZoom;
-          ctx.stroke();
-          ctx.setLineDash([]);
-
-          ctx.beginPath();
-          ctx.arc(bone.endX, bone.endY, 4 / stageZoom, 0, Math.PI * 2);
-          ctx.fillStyle = '#00aaff';
-          ctx.fill();
-
-          ctx.restore();
-        });
-
-        bones.forEach(bone => {
           const t = tempTransforms[bone.id];
           if (t) {
             bone.localAngle = t.localAngle;
@@ -3113,14 +3220,14 @@
 
         unattachedImages.forEach((imgObj, idx) => {
           ctx.save();
-          ctx.globalAlpha = (idx === activeUnattachedIdx) ? 1.0 : unselectedOpacity;
+          ctx.globalAlpha = isPlaying ? 1.0 : ((idx === activeUnattachedIdx) ? 1.0 : unselectedOpacity);
           
           const centerX = (canvas.width / (2 * stageZoom)) + (imgObj.offX || 0);
           const centerY = (canvas.height / (2 * stageZoom)) + (imgObj.offY || 0);
           
           ctx.drawImage(imgObj.imageCanvas, centerX - imgObj.imageCanvas.width / 2, centerY - imgObj.imageCanvas.height / 2);
 
-          if (idx === activeUnattachedIdx) {
+          if (!isPlaying && idx === activeUnattachedIdx) {
             ctx.lineWidth = 2 / stageZoom;
             ctx.setLineDash([4, 4]);
             ctx.strokeStyle = '#ffcc00';
@@ -3138,7 +3245,7 @@
         const isSelectedBone = (bone === selectedBone);
 
         ctx.save();
-        ctx.globalAlpha = isSelectedBone ? 1.0 : unselectedOpacity;
+        ctx.globalAlpha = isPlaying ? 1.0 : (isSelectedBone ? 1.0 : unselectedOpacity);
 
         ctx.translate(bone.startX, bone.startY);
         ctx.rotate(bone.worldAngle);
@@ -3148,7 +3255,7 @@
 
         ctx.drawImage(s.imageCanvas, -s.imageCanvas.width / 2, -s.imageCanvas.height / 2);
 
-        if (isSelectedBone) {
+        if (!isPlaying && isSelectedBone) {
           const w = s.imageCanvas.width;
           const h = s.imageCanvas.height;
 
@@ -3187,75 +3294,75 @@
         ctx.restore();
       });
 
-      bones.forEach(bone => {
-        if (!bone.visibleBone) return;
+      // Se estiver em modo Play, os ossos e skins/malhas ficam totalmente ocultos
+      if (!isPlaying) {
+        bones.forEach(bone => {
+          if (!bone.visibleBone) return;
 
-        const isSelected = bone === selectedBone;
+          const isSelected = bone === selectedBone;
 
-        ctx.save();
-        ctx.globalAlpha = isSelected ? 1.0 : unselectedOpacity;
+          ctx.save();
+          ctx.globalAlpha = isSelected ? 1.0 : unselectedOpacity;
 
-        ctx.strokeStyle = '#ff0055';
-        ctx.lineWidth = 4 / stageZoom;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
+          ctx.strokeStyle = '#ff0055';
+          ctx.lineWidth = 4 / stageZoom;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
 
-        bone.meshStrokes.forEach(stroke => {
-          ctx.beginPath();
-          for (let i = 0; i < stroke.length - 1; i++) {
-            const p1 = bone.localToWorld(stroke[i]);
-            const p2 = bone.localToWorld(stroke[i + 1]);
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-          }
-          ctx.stroke();
-        });
-
-        ctx.beginPath();
-        ctx.moveTo(bone.startX, bone.startY);
-        ctx.lineTo(bone.endX, bone.endY);
-        ctx.strokeStyle = isSelected ? '#00d2ff' : 'rgba(255,255,255,0.7)';
-        ctx.lineWidth = (isSelected ? 3 : 1.5) / stageZoom;
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.arc(bone.startX, bone.startY, 5 / stageZoom, 0, Math.PI * 2);
-        ctx.fillStyle = isSelected ? '#ffcc00' : '#ffffff';
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.arc(bone.endX, bone.endY, 4 / stageZoom, 0, Math.PI * 2);
-        ctx.fillStyle = isSelected ? '#00d2ff' : '#aaaaaa';
-        ctx.fill();
-
-        if (isSelected && mode === 'POSE' && transformTarget === 'BONE') {
-          const rotHandleX = bone.endX + Math.cos(bone.worldAngle) * (20 / stageZoom);
-          const rotHandleY = bone.endY + Math.sin(bone.worldAngle) * (20 / stageZoom);
+          bone.meshStrokes.forEach(stroke => {
+            ctx.beginPath();
+            for (let i = 0; i < stroke.length - 1; i++) {
+              const p1 = bone.localToWorld(stroke[i]);
+              const p2 = bone.localToWorld(stroke[i + 1]);
+              ctx.moveTo(p1.x, p1.y);
+              ctx.lineTo(p2.x, p2.y);
+            }
+            ctx.stroke();
+          });
 
           ctx.beginPath();
-          ctx.moveTo(bone.endX, bone.endY);
-          ctx.lineTo(rotHandleX, rotHandleY);
-          ctx.strokeStyle = '#ffcc00';
-          ctx.lineWidth = 2 / stageZoom;
+          ctx.moveTo(bone.startX, bone.startY);
+          ctx.lineTo(bone.endX, bone.endY);
+          ctx.strokeStyle = isSelected ? '#00d2ff' : 'rgba(255,255,255,0.7)';
+          ctx.lineWidth = (isSelected ? 3 : 1.5) / stageZoom;
           ctx.stroke();
 
           ctx.beginPath();
-          ctx.arc(rotHandleX, rotHandleY, 5 / stageZoom, 0, Math.PI * 2);
-          ctx.fillStyle = '#ffcc00';
+          ctx.arc(bone.endX, bone.endY, (isSelected ? 5 : 3.5) / stageZoom, 0, Math.PI * 2);
+          ctx.fillStyle = isSelected ? '#00d2ff' : '#ffffff';
           ctx.fill();
-        }
+          ctx.strokeStyle = '#000';
+          ctx.lineWidth = 1 / stageZoom;
+          ctx.stroke();
 
-        ctx.restore();
-      });
+          if (isSelected && mode === 'POSE' && transformTarget === 'BONE') {
+            const rotHandleDist = 20 / stageZoom;
+            const rotX = bone.endX + Math.cos(bone.worldAngle) * rotHandleDist;
+            const rotY = bone.endY + Math.sin(bone.worldAngle) * rotHandleDist;
+
+            ctx.beginPath();
+            ctx.moveTo(bone.endX, bone.endY);
+            ctx.lineTo(rotX, rotY);
+            ctx.strokeStyle = '#00ff88';
+            ctx.lineWidth = 2 / stageZoom;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(rotX, rotY, 5 / stageZoom, 0, Math.PI * 2);
+            ctx.fillStyle = '#00ff88';
+            ctx.fill();
+            ctx.stroke();
+          }
+
+          ctx.restore();
+        });
+      }
 
       ctx.restore();
     }
 
-    window.onload = () => {
-      resizeCanvas();
-      setMode('ADD_BONE_CHILD');
-      updateUI();
-    };
+    resizeCanvas();
+    updateUI();
   </script>
 </body>
 </html>
