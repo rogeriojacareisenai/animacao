@@ -16,7 +16,6 @@
        LOGO FIXO E ABERTURA (INTRO NICKEMAN)
        ==================================== */
     
-    /* Logo Fixo no Canto Superior Esquerdo (Sempre Visível) */
     #persistent-logo {
       position: fixed;
       top: 12px;
@@ -35,7 +34,6 @@
       pointer-events: none;
     }
 
-    /* Overlay da Abertura com Fundo Transparente (Ferramentas visíveis atrás) */
     #intro-overlay {
       position: absolute;
       top: 50%;
@@ -55,20 +53,17 @@
       transition: opacity 0.6s ease-out;
     }
 
-    /* Texto com Estilo Cômico e Animação Zoom + Stretch & Squash (Sem Rotação) */
     .intro-title {
       position: relative;
       font-size: 5.5rem;
       color: #ffeb3b;
       text-transform: uppercase;
       letter-spacing: 4px;
-
       -webkit-text-stroke: 3px #000;
       text-shadow: 
         5px 5px 0px #000,
         10px 10px 0px #ff0055,
         15px 15px 0px #000;
-
       animation: nickemanIntro 3.8s ease-in-out forwards;
       transform-origin: center center;
       z-index: 2;
@@ -79,49 +74,27 @@
         transform: scale(0.01, 0.01);
         opacity: 0;
       }
-      /* Entrada com Zoom rápido e Efeito Stretch (Esticado na vertical) */
       30% {
         transform: scale(0.8, 1.4);
         opacity: 1;
       }
-      /* Efeito Squash (Achatado na vertical, esticado na horizontal) */
       45% {
         transform: scale(1.25, 0.75);
       }
-      /* Efeito Stretch de retorno suave */
       60% {
         transform: scale(0.92, 1.08);
       }
-      /* Efeito Squash final leve */
       72% {
         transform: scale(1.03, 0.97);
       }
-      /* Acomodado em escala normal */
       80% {
         transform: scale(1, 1);
         opacity: 1;
       }
-      /* Saída Suave */
       100% {
         transform: scale(1.15, 1.15);
         opacity: 0;
       }
-    }
-
-    /* Efeito de Flash / Partículas */
-    .sparkle {
-      position: absolute;
-      background: #fff;
-      border: 2px solid #000;
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 3;
-      animation: popSparkle 0.8s ease-out forwards;
-    }
-
-    @keyframes popSparkle {
-      0% { transform: scale(0); opacity: 1; }
-      100% { transform: scale(2.5); opacity: 0; }
     }
 
     .sub-title {
@@ -139,7 +112,6 @@
     @keyframes fadeInSub {
       to { opacity: 1; }
     }
-
 
     /* ====================================
        ESTILOS DA APLICAÇÃO PRINCIPAL
@@ -185,12 +157,13 @@
       position: relative;
     }
 
+    /* Sidebar Reorganizada com Tabs */
     #sidebar {
       width: 320px;
       background-color: #2b2b36;
       border-right: 1px solid #3f3f52;
-      padding: 15px;
-      padding-top: 50px; /* Espaço para o letreiro fixo */
+      padding: 10px;
+      padding-top: 50px;
       display: flex;
       flex-direction: column;
       gap: 10px;
@@ -198,11 +171,45 @@
       overflow-y: auto;
     }
 
+    .tab-buttons {
+      display: flex;
+      gap: 2px;
+      background: #18181f;
+      padding: 3px;
+      border-radius: 6px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      font-size: 0.72rem;
+      padding: 6px 2px;
+      border: none;
+      background: transparent;
+      color: #aaa;
+      border-radius: 4px;
+    }
+
+    .tab-btn.active {
+      background: #00d2ff;
+      color: #121216;
+      font-weight: bold;
+    }
+
+    .tab-content {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .tab-content.active {
+      display: flex;
+    }
+
     h2 {
-      font-size: 1.1rem;
+      font-size: 1rem;
       color: #00d2ff;
       border-bottom: 1px solid #3f3f52;
-      padding-bottom: 6px;
+      padding-bottom: 4px;
     }
 
     .section {
@@ -638,7 +645,7 @@
   <!-- LOGO FIXO SUPERIOR ESQUERDO -->
   <div id="persistent-logo">NickeMan</div>
 
-  <!-- TELA DE ABERTURA ANIMADA COM TRANSPARÊNCIA (ESTÚDIO VISÍVEL AO FUNDO) -->
+  <!-- TELA DE ABERTURA ANIMADA (SEM PARTÍCULAS/BOLHAS) -->
   <div id="intro-overlay">
     <div class="intro-title">NickeMan</div>
     <div class="sub-title">2D RIGGING STUDIO</div>
@@ -652,111 +659,125 @@
 
   <div id="app-container">
     <div id="sidebar">
-      <h2>2D Rigging Studio</h2>
-
-      <div class="section">
-        <label>Ações Rápidas</label>
-        <button onclick="undo()">↶ Desfazer (Ctrl+Z)</button>
-        <button class="danger-btn" onclick="deleteSelectedElement()">🗑️ Remover Selecionado (Del)</button>
-        <button onclick="resetStageZoom()">🔍 Resetar Zoom / Pan</button>
+      <!-- Sistema de Abas para Organização do Menu -->
+      <div class="tab-buttons">
+        <button class="tab-btn active" onclick="switchTab('tab-file')">📁 Arquivo</button>
+        <button class="tab-btn" onclick="switchTab('tab-rig')">🦴 Esqueleto</button>
+        <button class="tab-btn" onclick="switchTab('tab-image')">🎨 Imagens</button>
       </div>
 
-      <div class="section">
-        <label>Visualização do Palco</label>
-        <label id="lbl-unselected-opacity">Opacidade dos Não Selecionados: 75%</label>
-        <input type="range" id="unselected-opacity-slider" min="0" max="1" step="0.05" value="0.75" oninput="updateUnselectedOpacity(this.value)">
+      <!-- ABA 1: ARQUIVO E PALCO -->
+      <div id="tab-file" class="tab-content active">
+        <h2>Ações & Palco</h2>
+        <div class="section">
+          <button onclick="undo()">↶ Desfazer (Ctrl+Z)</button>
+          <button class="danger-btn" onclick="deleteSelectedElement()">🗑️ Remover Selecionado (Del)</button>
+          <button onclick="resetStageZoom()">🔍 Resetar Zoom / Pan</button>
+        </div>
 
-        <div style="margin-top: 6px; background: #18181f; padding: 8px; border-radius: 4px;" class="section">
-          <label class="checkbox-container">
-            <input type="checkbox" id="chk-onion-skin" onchange="toggleOnionSkin(this.checked)">
-            👻 Exibir Fantasmas (Onion Skin)
-          </label>
-          <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">
-            <label style="font-size: 0.75rem;">Frames Anteriores:</label>
-            <input type="number" id="onion-count-input" value="3" min="1" max="10" style="width: 50px;" onchange="updateOnionCount(this.value)">
+        <h2>Visualização do Palco</h2>
+        <div class="section">
+          <label id="lbl-unselected-opacity">Opacidade Não Selecionados: 75%</label>
+          <input type="range" id="unselected-opacity-slider" min="0" max="1" step="0.05" value="0.75" oninput="updateUnselectedOpacity(this.value)">
+
+          <div style="background: #18181f; padding: 8px; border-radius: 4px;" class="section">
+            <label class="checkbox-container">
+              <input type="checkbox" id="chk-onion-skin" onchange="toggleOnionSkin(this.checked)">
+              👻 Exibir Fantasmas (Onion Skin)
+            </label>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">
+              <label style="font-size: 0.75rem;">Frames Anteriores:</label>
+              <input type="number" id="onion-count-input" value="3" min="1" max="10" style="width: 50px;" onchange="updateOnionCount(this.value)">
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <button class="danger-btn" onclick="clearAll()">Limpar Tudo</button>
+        </div>
+      </div>
+
+      <!-- ABA 2: RIGGING E ESTRUTURA -->
+      <div id="tab-rig" class="tab-content">
+        <h2>Modo de Interação</h2>
+        <div class="section">
+          <div class="btn-group">
+            <button id="btn-mode-bone-child" onclick="setMode('ADD_BONE_CHILD')">+ Osso Filho</button>
+          </div>
+          <div class="btn-group" style="margin-top: 4px;">
+            <button id="btn-mode-draw" onclick="setMode('DRAW_MESH')">Desenhar</button>
+            <button id="btn-mode-pose" onclick="setMode('POSE')">Posicionar</button>
+          </div>
+        </div>
+
+        <h2>Identificação & Estrutura</h2>
+        <div class="section">
+          <div class="info-box" id="hierarchy-info">
+            Nenhum osso selecionado.
           </div>
         </div>
       </div>
 
-      <div class="section">
-        <label>1. Modo de Interação</label>
-        <div class="btn-group">
-          <button id="btn-mode-bone-child" onclick="setMode('ADD_BONE_CHILD')">+ Osso Filho</button>
-        </div>
-        <div class="btn-group" style="margin-top: 4px;">
-          <button id="btn-mode-draw" onclick="setMode('DRAW_MESH')">Desenhar</button>
-          <button id="btn-mode-pose" onclick="setMode('POSE')">Posicionar</button>
-        </div>
-      </div>
+      <!-- ABA 3: IMAGENS E TRANSFORMAÇÃO -->
+      <div id="tab-image" class="tab-content">
+        <h2>Gerenciador de Imagens</h2>
+        <div class="section">
+          <button class="accent-btn" onclick="openImageModal()">📥 Importar / Recortar Nova Imagem</button>
 
-      <div class="section">
-        <label>2. Importar Imagens</label>
-        <button class="accent-btn" onclick="openImageModal()">📥 Importar / Recortar Nova Imagem</button>
-
-        <div id="unattached-images-box" class="section" style="margin-top: 6px; background: #18181f; padding: 8px; border-radius: 4px;">
-          <label style="color:#00d2ff; font-weight: bold;">Imagens Soltas (No Palco):</label>
-          <select id="unattached-select" onchange="render()"></select>
-          <button class="accent-btn" onclick="attachUnattachedImageToSelectedBone()" style="margin-top: 4px;">🔗 Associar ao Osso Selecionado</button>
-        </div>
-      </div>
-
-      <div class="section" id="pose-controls" style="display: none;">
-        <label style="color:#00d2ff; font-weight: bold;">Transformação / Ajustes</label>
-
-        <label>Alvo da Operação:</label>
-        <div class="btn-group">
-          <button id="btn-target-bone" class="active" onclick="setTransformTarget('BONE')">Osso</button>
-          <button id="btn-target-image" onclick="setTransformTarget('IMAGE')">Imagem</button>
-        </div>
-
-        <div id="bone-transform-box" class="section">
-          <label id="lbl-bone-name">Rotacionar Osso (°)</label>
-          <input type="range" id="angle-slider" min="-180" max="180" value="0">
-
-          <label>Comprimento (Escala Osso):</label>
-          <input type="range" id="bone-len-slider" min="10" max="500" value="100">
-
-          <label>Translação X:</label>
-          <input type="range" id="bone-posx-slider" min="-1000" max="1000" value="0">
-
-          <label>Translação Y:</label>
-          <input type="range" id="bone-posy-slider" min="-1000" max="1000" value="0">
-        </div>
-
-        <div id="image-transform-box" class="section" style="display: none;">
-          <div id="attached-image-info" style="font-size:0.8rem; color:#ffcc00; font-weight:bold; margin-bottom: 4px;">
-            Nenhuma imagem associada
-          </div>
-
-          <div id="sprite-editor-controls" class="section">
-            <button class="warning-btn" onclick="detachSelectedSprite()">🔓 Desassociar e Mover para Soltas</button>
-
-            <label>Rotação Própria (°):</label>
-            <input type="range" id="sprite-rot" min="-180" max="180" value="0">
-
-            <label>Offset X:</label>
-            <input type="range" id="sprite-offx" min="-1000" max="1000" value="0">
-
-            <label>Offset Y:</label>
-            <input type="range" id="sprite-offy" min="-1000" max="1000" value="0">
-
-            <label>Escala Imagem:</label>
-            <input type="range" id="sprite-scale" min="0.05" max="5" step="0.05" value="1">
-
-            <button class="danger-btn" onclick="removeSelectedSprite()">Excluir Imagem Definitivamente</button>
+          <div id="unattached-images-box" class="section" style="margin-top: 6px; background: #18181f; padding: 8px; border-radius: 4px;">
+            <label style="color:#00d2ff; font-weight: bold;">Imagens Soltas (No Palco):</label>
+            <select id="unattached-select" onchange="render()"></select>
+            <button class="accent-btn" onclick="attachUnattachedImageToSelectedBone()" style="margin-top: 4px;">🔗 Associar ao Osso Selecionado</button>
           </div>
         </div>
-      </div>
 
-      <div class="section">
-        <label>Identificação & Estrutura</label>
-        <div class="info-box" id="hierarchy-info">
-          Nenhum osso selecionado.
+        <div id="pose-controls" class="section" style="display: none;">
+          <h2>Transformação / Ajustes</h2>
+
+          <label>Alvo da Operação:</label>
+          <div class="btn-group">
+            <button id="btn-target-bone" class="active" onclick="setTransformTarget('BONE')">Osso</button>
+            <button id="btn-target-image" onclick="setTransformTarget('IMAGE')">Imagem</button>
+          </div>
+
+          <div id="bone-transform-box" class="section">
+            <label id="lbl-bone-name">Rotacionar Osso (°)</label>
+            <input type="range" id="angle-slider" min="-180" max="180" value="0">
+
+            <label>Comprimento (Escala Osso):</label>
+            <input type="range" id="bone-len-slider" min="10" max="500" value="100">
+
+            <label>Translação X:</label>
+            <input type="range" id="bone-posx-slider" min="-1000" max="1000" value="0">
+
+            <label>Translação Y:</label>
+            <input type="range" id="bone-posy-slider" min="-1000" max="1000" value="0">
+          </div>
+
+          <div id="image-transform-box" class="section" style="display: none;">
+            <div id="attached-image-info" style="font-size:0.8rem; color:#ffcc00; font-weight:bold; margin-bottom: 4px;">
+              Nenhuma imagem associada
+            </div>
+
+            <div id="sprite-editor-controls" class="section">
+              <button class="warning-btn" onclick="detachSelectedSprite()">🔓 Desassociar e Mover para Soltas</button>
+
+              <label>Rotação Própria (°):</label>
+              <input type="range" id="sprite-rot" min="-180" max="180" value="0">
+
+              <label>Offset X:</label>
+              <input type="range" id="sprite-offx" min="-1000" max="1000" value="0">
+
+              <label>Offset Y:</label>
+              <input type="range" id="sprite-offy" min="-1000" max="1000" value="0">
+
+              <label>Escala Imagem:</label>
+              <input type="range" id="sprite-scale" min="0.05" max="5" step="0.05" value="1">
+
+              <button class="danger-btn" onclick="removeSelectedSprite()">Excluir Imagem Definitivamente</button>
+            </div>
+          </div>
         </div>
-      </div>
-
-      <div class="section">
-        <button class="danger-btn" onclick="clearAll()">Limpar Tudo</button>
       </div>
     </div>
 
@@ -856,42 +877,26 @@
   </div>
 
   <script>
-    // Gerenciador do Timer de Abertura (4 segundos exatos)
+    // Controle do Tempo de Exibição da Abertura (Fechamento limpo sem bolhas)
     window.addEventListener('DOMContentLoaded', () => {
       const overlay = document.getElementById('intro-overlay');
-      
-      // Efeito de Partículas / Brilho durante a animação
-      setTimeout(() => {
-        for(let i = 0; i < 20; i++) {
-          createSparkle();
-        }
-      }, 1000);
-
-      // Fecha a abertura após 4 segundos
       setTimeout(() => {
         overlay.style.opacity = '0';
         setTimeout(() => {
           overlay.style.display = 'none';
         }, 600);
-      }, 4000);
+      }, 3800);
     });
 
-    function createSparkle() {
-      const overlay = document.getElementById('intro-overlay');
-      const sparkle = document.createElement('div');
-      sparkle.className = 'sparkle';
-      
-      const size = Math.random() * 30 + 15;
-      sparkle.style.width = `${size}px`;
-      sparkle.style.height = `${size}px`;
-      
-      const posX = (Math.random() * 60 + 20);
-      const posY = (Math.random() * 60 + 20);
-      sparkle.style.left = `${posX}%`;
-      sparkle.style.top = `${posY}%`;
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
-      overlay.appendChild(sparkle);
-      setTimeout(() => sparkle.remove(), 800);
+      const targetTab = document.getElementById(tabId);
+      if(targetTab) targetTab.classList.add('active');
+
+      const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(btn => btn.getAttribute('onclick').includes(tabId));
+      if(activeBtn) activeBtn.classList.add('active');
     }
 
     function applySmoothing(context) {
@@ -1050,7 +1055,7 @@
 
     function updateUnselectedOpacity(val) {
       unselectedOpacity = parseFloat(val);
-      document.getElementById('lbl-unselected-opacity').innerText = `Opacidade dos Não Selecionados: ${Math.round(unselectedOpacity * 100)}%`;
+      document.getElementById('lbl-unselected-opacity').innerText = `Opacidade Não Selecionados: ${Math.round(unselectedOpacity * 100)}%`;
       render();
     }
 
@@ -3170,17 +3175,18 @@
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.arc(bone.endX, bone.endY, (isSelected ? 8 : 5) / stageZoom, 0, Math.PI * 2);
-        ctx.fillStyle = isSelected ? '#00d2ff' : '#00aaff';
+        ctx.arc(bone.startX, bone.startY, 5 / stageZoom, 0, Math.PI * 2);
+        ctx.fillStyle = isSelected ? '#ffcc00' : '#ffffff';
         ctx.fill();
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 1 / stageZoom;
-        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(bone.endX, bone.endY, 4 / stageZoom, 0, Math.PI * 2);
+        ctx.fillStyle = isSelected ? '#00d2ff' : '#aaaaaa';
+        ctx.fill();
 
         if (isSelected && mode === 'POSE' && transformTarget === 'BONE') {
-          const handleOffset = 20 / stageZoom;
-          const rotHandleX = bone.endX + Math.cos(bone.worldAngle) * handleOffset;
-          const rotHandleY = bone.endY + Math.sin(bone.worldAngle) * handleOffset;
+          const rotHandleX = bone.endX + Math.cos(bone.worldAngle) * (20 / stageZoom);
+          const rotHandleY = bone.endY + Math.sin(bone.worldAngle) * (20 / stageZoom);
 
           ctx.beginPath();
           ctx.moveTo(bone.endX, bone.endY);
@@ -3190,33 +3196,10 @@
           ctx.stroke();
 
           ctx.beginPath();
-          ctx.arc(rotHandleX, rotHandleY, 6 / stageZoom, 0, Math.PI * 2);
+          ctx.arc(rotHandleX, rotHandleY, 5 / stageZoom, 0, Math.PI * 2);
           ctx.fillStyle = '#ffcc00';
           ctx.fill();
-          ctx.strokeStyle = '#000';
-          ctx.lineWidth = 1 / stageZoom;
-          ctx.stroke();
         }
-
-        const midX = (bone.startX + bone.endX) / 2;
-        const midY = (bone.startY + bone.endY) / 2;
-        const sqSize = (isSelected ? 10 : 8) / stageZoom;
-
-        ctx.beginPath();
-        ctx.rect(midX - sqSize/2, midY - sqSize/2, sqSize, sqSize);
-        ctx.fillStyle = isSelected ? '#00ff88' : '#00aa55';
-        ctx.fill();
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 1 / stageZoom;
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.arc(bone.startX, bone.startY, (isSelected ? 12 : 9) / stageZoom, 0, Math.PI * 2);
-        ctx.fillStyle = isSelected ? '#ffcc00' : '#ffaa00';
-        ctx.fill();
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 1 / stageZoom;
-        ctx.stroke();
 
         ctx.restore();
       });
@@ -3224,7 +3207,11 @@
       ctx.restore();
     }
 
-    resizeCanvas();
+    window.onload = () => {
+      resizeCanvas();
+      setMode('ADD_BONE_CHILD');
+      updateUI();
+    };
   </script>
 </body>
 </html>
