@@ -35,20 +35,16 @@
       pointer-events: none;
     }
 
-    /* Overlay da Abertura (Não é mais tela cheia: ocupa apenas a área central do estúdio) */
+    /* Overlay da Abertura com Fundo Transparente (Ferramentas visíveis atrás) */
     #intro-overlay {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 75%;
-      height: 75%;
-      max-width: 900px;
-      max-height: 550px;
-      background: radial-gradient(circle, #ffea00 0%, #ff6600 50%, #d50000 100%);
-      border: 4px solid #000;
-      border-radius: 16px;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 0 1000px rgba(0, 0, 0, 0.4);
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      pointer-events: none;
       z-index: 9999;
       display: flex;
       justify-content: center;
@@ -59,25 +55,7 @@
       transition: opacity 0.6s ease-out;
     }
 
-    /* Linhas de explosão cômica ao fundo da abertura */
-    .comic-rays {
-      position: absolute;
-      width: 200vmax;
-      height: 200vmax;
-      background: repeating-conic-gradient(
-        from 0deg,
-        rgba(255, 255, 255, 0.2) 0deg 15deg,
-        transparent 15deg 30deg
-      );
-      animation: spinRays 12s linear infinite;
-    }
-
-    @keyframes spinRays {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    /* Texto com Estilo Cômico na Abertura */
+    /* Texto com Estilo Cômico e Animação Zoom + Stretch & Squash (Sem Rotação) */
     .intro-title {
       position: relative;
       font-size: 5.5rem;
@@ -91,35 +69,41 @@
         10px 10px 0px #ff0055,
         15px 15px 0px #000;
 
-      animation: nickemanIntro 3.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      animation: nickemanIntro 3.8s ease-in-out forwards;
       transform-origin: center center;
       z-index: 2;
     }
 
     @keyframes nickemanIntro {
       0% {
-        transform: scale(0.01) rotate(-720deg);
+        transform: scale(0.01, 0.01);
         opacity: 0;
       }
-      35% {
-        transform: scale(1.2) rotate(10deg);
+      /* Entrada com Zoom rápido e Efeito Stretch (Esticado na vertical) */
+      30% {
+        transform: scale(0.8, 1.4);
         opacity: 1;
       }
+      /* Efeito Squash (Achatado na vertical, esticado na horizontal) */
       45% {
-        transform: scale(0.95) rotate(-3deg);
+        transform: scale(1.25, 0.75);
       }
-      55% {
-        transform: scale(1.05) rotate(0deg);
+      /* Efeito Stretch de retorno suave */
+      60% {
+        transform: scale(0.92, 1.08);
       }
-      65% {
-        transform: scale(1) rotate(0deg);
+      /* Efeito Squash final leve */
+      72% {
+        transform: scale(1.03, 0.97);
       }
-      85% {
-        transform: scale(1.02) rotate(0deg);
+      /* Acomodado em escala normal */
+      80% {
+        transform: scale(1, 1);
         opacity: 1;
       }
+      /* Saída Suave */
       100% {
-        transform: scale(1.3) rotate(0deg);
+        transform: scale(1.15, 1.15);
         opacity: 0;
       }
     }
@@ -654,9 +638,8 @@
   <!-- LOGO FIXO SUPERIOR ESQUERDO -->
   <div id="persistent-logo">NickeMan</div>
 
-  <!-- TELA DE ABERTURA ANIMADA (CENTRALIZADA, APENAS PARTE DA TELA) -->
+  <!-- TELA DE ABERTURA ANIMADA COM TRANSPARÊNCIA (ESTÚDIO VISÍVEL AO FUNDO) -->
   <div id="intro-overlay">
-    <div class="comic-rays"></div>
     <div class="intro-title">NickeMan</div>
     <div class="sub-title">2D RIGGING STUDIO</div>
   </div>
@@ -877,12 +860,12 @@
     window.addEventListener('DOMContentLoaded', () => {
       const overlay = document.getElementById('intro-overlay');
       
-      // Efeito de Partículas / Brilho durante a animação cômica
+      // Efeito de Partículas / Brilho durante a animação
       setTimeout(() => {
         for(let i = 0; i < 20; i++) {
           createSparkle();
         }
-      }, 1400);
+      }, 1000);
 
       // Fecha a abertura após 4 segundos
       setTimeout(() => {
@@ -3229,15 +3212,7 @@
 
         ctx.beginPath();
         ctx.arc(bone.startX, bone.startY, (isSelected ? 12 : 9) / stageZoom, 0, Math.PI * 2);
-        ctx.setLineDash([4 / stageZoom, 3 / stageZoom]);
-        ctx.strokeStyle = isSelected ? '#00d2ff' : '#ffcc00';
-        ctx.lineWidth = 2 / stageZoom;
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        ctx.beginPath();
-        ctx.arc(bone.startX, bone.startY, (isSelected ? 6 : 4) / stageZoom, 0, Math.PI * 2);
-        ctx.fillStyle = isSelected ? '#00d2ff' : '#ffcc00';
+        ctx.fillStyle = isSelected ? '#ffcc00' : '#ffaa00';
         ctx.fill();
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 1 / stageZoom;
@@ -3250,8 +3225,6 @@
     }
 
     resizeCanvas();
-    renderAssetTray();
-    setMode('ADD_BONE_CHILD');
   </script>
 </body>
 </html>
