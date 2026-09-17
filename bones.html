@@ -12,110 +12,6 @@
       user-select: none;
     }
 
-    /* ====================================
-       LOGO FIXO E ABERTURA (INTRO NICKEMAN)
-       ==================================== */
-    
-    #persistent-logo {
-      position: fixed;
-      top: 12px;
-      left: 15px;
-      z-index: 10000;
-      font-family: 'Impact', 'Arial Black', sans-serif;
-      font-size: 1.8rem;
-      color: #ffeb3b;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      -webkit-text-stroke: 1.5px #000;
-      text-shadow: 
-        2px 2px 0px #000,
-        4px 4px 0px #ff0055,
-        6px 6px 0px #000;
-      pointer-events: none;
-    }
-
-    #intro-overlay {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 100%;
-      height: 100%;
-      background: transparent;
-      pointer-events: none;
-      z-index: 9999;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-      overflow: hidden;
-      font-family: 'Impact', 'Arial Black', sans-serif;
-      transition: opacity 0.6s ease-out;
-    }
-
-    .intro-title {
-      position: relative;
-      font-size: 5.5rem;
-      color: #ffeb3b;
-      text-transform: uppercase;
-      letter-spacing: 4px;
-      -webkit-text-stroke: 3px #000;
-      text-shadow: 
-        5px 5px 0px #000,
-        10px 10px 0px #ff0055,
-        15px 15px 0px #000;
-      animation: nickemanIntro 3.8s ease-in-out forwards;
-      transform-origin: center center;
-      z-index: 2;
-    }
-
-    @keyframes nickemanIntro {
-      0% {
-        transform: scale(0.01, 0.01);
-        opacity: 0;
-      }
-      30% {
-        transform: scale(0.8, 1.4);
-        opacity: 1;
-      }
-      45% {
-        transform: scale(1.25, 0.75);
-      }
-      60% {
-        transform: scale(0.92, 1.08);
-      }
-      72% {
-        transform: scale(1.03, 0.97);
-      }
-      80% {
-        transform: scale(1, 1);
-        opacity: 1;
-      }
-      100% {
-        transform: scale(1.15, 1.15);
-        opacity: 0;
-      }
-    }
-
-    .sub-title {
-      font-family: 'Segoe UI', sans-serif;
-      font-weight: 900;
-      font-size: 1.5rem;
-      color: #fff;
-      text-shadow: 3px 3px 0 #000;
-      margin-top: 15px;
-      z-index: 2;
-      opacity: 0;
-      animation: fadeInSub 1s ease 1.2s forwards;
-    }
-
-    @keyframes fadeInSub {
-      to { opacity: 1; }
-    }
-
-    /* ====================================
-       ESTILOS DA APLICAÇÃO PRINCIPAL
-       ==================================== */
     ::-webkit-scrollbar {
       width: 6px;
       height: 6px;
@@ -141,255 +37,94 @@
     }
 
     body {
-      display: flex;
-      flex-direction: column;
+      width: 100vw;
       height: 100vh;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #1e1e24;
+      background-color: #121216;
       color: #fff;
       overflow: hidden;
-    }
-
-    #app-container {
-      display: flex;
-      flex: 1;
-      height: calc(100vh - 220px);
       position: relative;
     }
 
-    /* Sidebar Reorganizada com Tabs */
-    #sidebar {
-      width: 320px;
-      background-color: #2b2b36;
-      border-right: 1px solid #3f3f52;
-      padding: 10px;
-      padding-top: 50px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      z-index: 10;
-      overflow-y: auto;
-    }
-
-    .tab-buttons {
-      display: flex;
-      gap: 2px;
-      background: #18181f;
-      padding: 3px;
-      border-radius: 6px;
-    }
-
-    .tab-btn {
-      flex: 1;
-      font-size: 0.72rem;
-      padding: 6px 2px;
-      border: none;
-      background: transparent;
-      color: #aaa;
-      border-radius: 4px;
-    }
-
-    .tab-btn.active {
-      background: #00d2ff;
-      color: #121216;
-      font-weight: bold;
-    }
-
-    .tab-content {
-      display: none;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .tab-content.active {
-      display: flex;
-    }
-
-    h2 {
-      font-size: 1rem;
-      color: #00d2ff;
-      border-bottom: 1px solid #3f3f52;
-      padding-bottom: 4px;
-    }
-
-    .section {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    label {
-      font-size: 0.8rem;
-      color: #aaa;
-    }
-
-    select, input[type="number"] {
-      background-color: #18181f;
-      color: #fff;
-      border: 1px solid #575773;
-      padding: 6px;
-      border-radius: 4px;
-      outline: none;
-    }
-
-    .btn-group {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-    }
-
-    button {
-      background-color: #3f3f52;
-      color: #fff;
-      border: 1px solid #575773;
-      padding: 8px 10px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.8rem;
-      transition: all 0.2s;
-    }
-
-    button:hover {
-      background-color: #575773;
-    }
-
-    button.active {
-      background-color: #00d2ff;
-      color: #121216;
-      font-weight: bold;
-      border-color: #00d2ff;
-    }
-
-    .accent-btn {
-      background-color: #0088cc;
-      border-color: #00aaff;
-    }
-
-    .accent-btn:hover {
-      background-color: #00aaff;
-    }
-
-    .warning-btn {
-      background-color: #d97706;
-      border-color: #f59e0b;
-      color: #fff;
-    }
-
-    .warning-btn:hover {
-      background-color: #f59e0b;
-    }
-
-    .danger-btn {
-      background-color: #8b0000;
-      border-color: #a00000;
-      color: #fff;
-    }
-
-    .danger-btn:hover {
-      background-color: #a00000;
-    }
-
-    input[type="range"] {
-      width: 100%;
-      accent-color: #00d2ff;
-    }
-
-    .checkbox-container {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.8rem;
-      color: #ddd;
-      cursor: pointer;
-    }
-
-    .info-box {
-      background-color: #18181f;
-      padding: 8px;
-      border-radius: 4px;
-      font-size: 0.75rem;
-      color: #aaa;
-      line-height: 1.4;
-    }
-
-    .info-box b {
-      color: #00d2ff;
-    }
-
-    #stage-wrapper {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      position: relative;
-      overflow: hidden;
-    }
-
-    #canvas-container {
-      flex: 1;
-      position: relative;
-      cursor: crosshair;
-      overflow: hidden;
-    }
-
-    #asset-tray-container {
-      height: 110px;
-      background-color: #18181f;
-      border-bottom: 2px solid #3f3f52;
-      display: flex;
-      flex-direction: column;
-      padding: 6px 12px;
-      gap: 4px;
-      z-index: 8;
-    }
-
-    #asset-tray-title {
-      font-size: 0.75rem;
-      font-weight: bold;
-      color: #00d2ff;
-      display: flex;
-      justify-content: space-between;
-    }
-
-    #asset-tray {
-      display: flex;
-      gap: 10px;
-      overflow-x: auto;
-      align-items: center;
-      height: 80px;
-      padding: 4px 0;
-    }
-
-    .thumb-item {
-      flex: 0 0 auto;
-      width: 70px;
-      height: 70px;
-      background-color: #2b2b36;
-      border: 1px dashed #00d2ff;
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: grab;
-      position: relative;
-      transition: transform 0.15s, border-color 0.15s;
-    }
-
-    .thumb-item:hover {
-      transform: scale(1.05);
-      border-style: solid;
-      background-color: #353545;
-    }
-
-    .thumb-item img {
-      max-width: 90%;
-      max-height: 90%;
-      object-fit: contain;
+    /* LOGO E VINHETA */
+    #persistent-logo {
+      position: fixed;
+      top: 12px;
+      left: 15px;
+      z-index: 10000;
+      font-family: 'Impact', 'Arial Black', sans-serif;
+      font-size: 1.8rem;
+      color: #ffeb3b;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      -webkit-text-stroke: 1.5px #000;
+      text-shadow: 
+        2px 2px 0px #000,
+        4px 4px 0px #ff0055,
+        6px 6px 0px #000;
       pointer-events: none;
     }
 
-    canvas {
-      image-rendering: auto;
-      image-rendering: smooth;
+    #intro-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(18, 18, 22, 0.95);
+      pointer-events: none;
+      z-index: 20000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      transition: opacity 0.6s ease-out;
+    }
+
+    .intro-title {
+      font-size: 5.5rem;
+      color: #ffeb3b;
+      text-transform: uppercase;
+      letter-spacing: 4px;
+      -webkit-text-stroke: 3px #000;
+      text-shadow: 
+        5px 5px 0px #000,
+        10px 10px 0px #ff0055,
+        15px 15px 0px #000;
+      animation: nickemanIntro 3.8s ease-in-out forwards;
+    }
+
+    @keyframes nickemanIntro {
+      0% { transform: scale(0.01); opacity: 0; }
+      30% { transform: scale(0.8, 1.4); opacity: 1; }
+      45% { transform: scale(1.25, 0.75); }
+      60% { transform: scale(0.92, 1.08); }
+      72% { transform: scale(1.03, 0.97); }
+      80% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(1.15); opacity: 0; }
+    }
+
+    .sub-title {
+      font-weight: 900;
+      font-size: 1.5rem;
+      color: #fff;
+      text-shadow: 3px 3px 0 #000;
+      margin-top: 15px;
+      opacity: 0;
+      animation: fadeInSub 1s ease 1.2s forwards;
+    }
+
+    @keyframes fadeInSub { to { opacity: 1; } }
+
+    /* PALCO PRINCIPAL DE FUNDO */
+    #canvas-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+      cursor: crosshair;
     }
 
     canvas#stage {
@@ -399,19 +134,18 @@
       background-color: #121216;
     }
 
+    /* SISTEMA DE JANELAS FLUTUANTES */
     .floating-window {
       position: absolute;
-      top: 20px;
-      right: 20px;
-      width: 240px;
       background-color: #2b2b36;
       border: 1px solid #00d2ff;
       border-radius: 8px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-      z-index: 40;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+      z-index: 10;
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      min-width: 220px;
     }
 
     .floating-header {
@@ -427,17 +161,258 @@
       border-bottom: 1px solid #3f3f52;
     }
 
+    .floating-header .window-controls {
+      display: flex;
+      gap: 6px;
+    }
+
+    .floating-header button {
+      background: transparent;
+      border: none;
+      color: #aaa;
+      cursor: pointer;
+      font-size: 0.8rem;
+      padding: 0 4px;
+    }
+
+    .floating-header button:hover {
+      color: #fff;
+    }
+
     .floating-body {
       padding: 10px;
       display: flex;
       flex-direction: column;
       gap: 8px;
+      max-height: 75vh;
+      overflow-y: auto;
     }
 
+    .floating-body.collapsed {
+      display: none;
+    }
+
+    /* COMPONENTES DE UI DA LATERAL E CONTROLES */
+    .section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    h2 {
+      font-size: 0.85rem;
+      color: #00d2ff;
+      border-bottom: 1px solid #3f3f52;
+      padding-bottom: 4px;
+      margin-top: 4px;
+    }
+
+    label {
+      font-size: 0.75rem;
+      color: #aaa;
+    }
+
+    select, input[type="number"] {
+      background-color: #18181f;
+      color: #fff;
+      border: 1px solid #575773;
+      padding: 5px;
+      border-radius: 4px;
+      outline: none;
+      font-size: 0.8rem;
+    }
+
+    .btn-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    button {
+      background-color: #3f3f52;
+      color: #fff;
+      border: 1px solid #575773;
+      padding: 6px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.78rem;
+      transition: all 0.2s;
+    }
+
+    button:hover { background-color: #575773; }
+    button.active {
+      background-color: #00d2ff;
+      color: #121216;
+      font-weight: bold;
+      border-color: #00d2ff;
+    }
+
+    .accent-btn { background-color: #0088cc; border-color: #00aaff; }
+    .accent-btn:hover { background-color: #00aaff; }
+    .warning-btn { background-color: #d97706; border-color: #f59e0b; color: #fff; }
+    .warning-btn:hover { background-color: #f59e0b; }
+    .danger-btn { background-color: #8b0000; border-color: #a00000; color: #fff; }
+    .danger-btn:hover { background-color: #a00000; }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #00d2ff;
+    }
+
+    .checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.78rem;
+      color: #ddd;
+      cursor: pointer;
+    }
+
+    .info-box {
+      background-color: #18181f;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      color: #aaa;
+      line-height: 1.4;
+    }
+
+    .info-box b { color: #00d2ff; }
+
+    /* BANDEJA DE IMAGENS */
+    #asset-tray {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      align-items: center;
+      min-height: 75px;
+      padding: 4px 0;
+    }
+
+    .thumb-item {
+      flex: 0 0 auto;
+      width: 65px;
+      height: 65px;
+      background-color: #18181f;
+      border: 1px dashed #00d2ff;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: grab;
+      position: relative;
+    }
+
+    .thumb-item:hover {
+      border-style: solid;
+      background-color: #22222d;
+    }
+
+    .thumb-item img {
+      max-width: 90%;
+      max-height: 90%;
+      object-fit: contain;
+      pointer-events: none;
+    }
+
+    /* TIMELINE */
+    .timeline-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .timeline-track-wrapper {
+      display: flex;
+      width: 100%;
+      height: 150px;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid #3f3f52;
+      border-radius: 4px;
+      background-color: #121216;
+      margin-top: 6px;
+    }
+
+    #bone-layers-panel {
+      width: 160px;
+      background: #18181f;
+      border-right: 1px solid #3f3f52;
+      margin-top: 30px;
+      display: flex;
+      flex-direction: column;
+      z-index: 5;
+      overflow-y: auto;
+    }
+
+    .bone-layer-row {
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 4px;
+      border-bottom: 1px solid #2b2b36;
+      font-size: 0.72rem;
+    }
+
+    .bone-layer-row.active { background-color: #2a2a3a; }
+
+    .bone-layer-label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: pointer;
+      flex: 1;
+      padding: 0 4px;
+    }
+
+    .layer-btn-group {
+      display: flex;
+      gap: 2px;
+      align-items: center;
+    }
+
+    .btn-layer-toggle {
+      padding: 0 2px;
+      font-size: 0.68rem;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      opacity: 0.8;
+    }
+
+    .btn-layer-toggle.hidden-item { opacity: 0.3; filter: grayscale(100%); }
+
+    .btn-layer-order {
+      padding: 1px 2px;
+      font-size: 0.6rem;
+      background: #3f3f52;
+      border: 1px solid #575773;
+      border-radius: 2px;
+      cursor: pointer;
+    }
+
+    .btn-layer-order:hover { background: #00d2ff; color: #121216; }
+
+    .timeline-canvas-container {
+      flex: 1;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    canvas#timeline-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+
+    /* MENUS DE CONTEXTO E MODAL */
     #image-context-menu {
       display: none;
       position: fixed;
-      z-index: 200;
+      z-index: 25000;
       background-color: #2b2b36;
       border: 1px solid #00d2ff;
       border-radius: 6px;
@@ -464,120 +439,6 @@
       font-weight: bold;
     }
 
-    #timeline-bar {
-      height: 220px;
-      background-color: #18181f;
-      border-top: 2px solid #3f3f52;
-      display: flex;
-      flex-direction: column;
-      padding: 10px 20px;
-      gap: 8px;
-    }
-
-    .timeline-controls {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .timeline-track-wrapper {
-      display: flex;
-      width: 100%;
-      flex: 1;
-      position: relative;
-      overflow: hidden;
-      border: 1px solid #3f3f52;
-      border-radius: 4px;
-      background-color: #121216;
-    }
-
-    #bone-layers-panel {
-      width: 180px;
-      background: #18181f;
-      border-right: 1px solid #3f3f52;
-      margin-top: 30px;
-      display: flex;
-      flex-direction: column;
-      z-index: 5;
-    }
-
-    .bone-layer-row {
-      height: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 4px;
-      border-bottom: 1px solid #2b2b36;
-      font-size: 0.75rem;
-    }
-
-    .bone-layer-row.active {
-      background-color: #2a2a3a;
-    }
-
-    .bone-layer-label {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      cursor: pointer;
-      flex: 1;
-      padding: 0 4px;
-    }
-
-    .layer-btn-group {
-      display: flex;
-      gap: 2px;
-      align-items: center;
-    }
-
-    .btn-layer-toggle {
-      padding: 0 3px;
-      font-size: 0.7rem;
-      background: transparent;
-      border: none;
-      cursor: pointer;
-      opacity: 0.8;
-    }
-
-    .btn-layer-toggle:hover {
-      opacity: 1;
-      background: transparent;
-    }
-
-    .btn-layer-toggle.hidden-item {
-      opacity: 0.3;
-      filter: grayscale(100%);
-    }
-
-    .btn-layer-order {
-      padding: 1px 3px;
-      font-size: 0.65rem;
-      line-height: 1;
-      background: #3f3f52;
-      border: 1px solid #575773;
-      border-radius: 2px;
-      cursor: pointer;
-    }
-
-    .btn-layer-order:hover {
-      background: #00d2ff;
-      color: #121216;
-    }
-
-    .timeline-canvas-container {
-      flex: 1;
-      overflow-y: auto;
-      position: relative;
-    }
-
-    canvas#timeline-canvas {
-      display: block;
-      width: 100%;
-      height: 100%;
-      cursor: pointer;
-    }
-
     .modal-overlay {
       position: fixed;
       top: 0; left: 0;
@@ -586,7 +447,7 @@
       display: none;
       justify-content: center;
       align-items: center;
-      z-index: 100;
+      z-index: 30000;
     }
 
     .modal {
@@ -642,210 +503,224 @@
 </head>
 <body>
 
-  <!-- LOGO FIXO SUPERIOR ESQUERDO -->
   <div id="persistent-logo">NickeMan</div>
 
-  <!-- TELA DE ABERTURA ANIMADA -->
   <div id="intro-overlay">
     <div class="intro-title">NickeMan</div>
     <div class="sub-title">2D RIGGING STUDIO</div>
   </div>
 
-  <!-- Menu Suspenso de Contexto das Imagens -->
+  <div id="canvas-container">
+    <canvas id="stage"></canvas>
+  </div>
+
+  <!-- JANELA 1: PROJETO E PALCO -->
+  <div class="floating-window" id="win-project" style="top: 60px; left: 15px; width: 280px;">
+    <div class="floating-header">
+      <span>📁 Projeto & Palco</span>
+      <div class="window-controls">
+        <button onclick="toggleWindowBody('win-project')">─</button>
+      </div>
+    </div>
+    <div class="floating-body">
+      <h2>Ações & Histórico</h2>
+      <div class="section">
+        <button onclick="undo()">↶ Desfazer (Ctrl+Z)</button>
+        <button class="danger-btn" onclick="deleteSelectedElement()">🗑️ Remover Selecionado (Del)</button>
+        <button onclick="resetStageZoom()">🔍 Resetar Zoom / Pan</button>
+      </div>
+
+      <h2>Arquivo & Armazenamento</h2>
+      <div class="section">
+        <button class="accent-btn" onclick="saveToLocalStorage()">💾 Salvar Projeto (Local)</button>
+        <button class="accent-btn" onclick="loadFromLocalStorage()">📂 Carregar Salvo (Local)</button>
+        <div class="btn-group">
+          <button onclick="exportJSON()">💾 Exportar JSON</button>
+          <button onclick="document.getElementById('file-input-json').click()">📥 Importar JSON</button>
+        </div>
+        <input type="file" id="file-input-json" accept=".json" style="display: none;" onchange="importJSON(event)">
+        <button class="danger-btn" onclick="clearAll()">Limpar Tudo</button>
+      </div>
+
+      <h2>Visualização</h2>
+      <div class="section">
+        <label id="lbl-unselected-opacity">Opacidade Não Selecionados: 75%</label>
+        <input type="range" id="unselected-opacity-slider" min="0" max="1" step="0.05" value="0.75" oninput="updateUnselectedOpacity(this.value)">
+
+        <div style="background: #18181f; padding: 8px; border-radius: 4px;" class="section">
+          <label class="checkbox-container">
+            <input type="checkbox" id="chk-onion-skin" onchange="toggleOnionSkin(this.checked)">
+            👻 Exibir Fantasmas (Onion Skin)
+          </label>
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">
+            <label style="font-size: 0.75rem;">Frames Anteriores:</label>
+            <input type="number" id="onion-count-input" value="3" min="1" max="10" style="width: 50px;" onchange="updateOnionCount(this.value)">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JANELA 2: RIGGING & FERRAMENTAS -->
+  <div class="floating-window" id="win-rigging" style="top: 60px; left: 310px; width: 260px;">
+    <div class="floating-header">
+      <span>🦴 Ferramentas & Rigging</span>
+      <div class="window-controls">
+        <button onclick="toggleWindowBody('win-rigging')">─</button>
+      </div>
+    </div>
+    <div class="floating-body">
+      <h2>Modo de Interação</h2>
+      <div class="section">
+        <button id="btn-mode-bone-child" onclick="setMode('ADD_BONE_CHILD')">+ Osso Filho</button>
+        <div class="btn-group">
+          <button id="btn-mode-draw" onclick="setMode('DRAW_MESH')">Desenhar</button>
+          <button id="btn-mode-pose" onclick="setMode('POSE')">Posicionar</button>
+        </div>
+      </div>
+
+      <h2>Estrutura & Hierarquia</h2>
+      <div class="section">
+        <div class="info-box" id="hierarchy-info">
+          Nenhum osso selecionado.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JANELA 3: IMAGENS & TRANSFORMADAS -->
+  <div class="floating-window" id="win-images" style="top: 60px; right: 15px; width: 300px;">
+    <div class="floating-header">
+      <span>🎨 Imagens & Ajustes</span>
+      <div class="window-controls">
+        <button onclick="toggleWindowBody('win-images')">─</button>
+      </div>
+    </div>
+    <div class="floating-body">
+      <h2>Gerenciador de Imagens</h2>
+      <div class="section">
+        <button class="accent-btn" onclick="openImageModal()">📥 Importar / Recortar Nova Imagem</button>
+
+        <div id="unattached-images-box" class="section" style="background: #18181f; padding: 8px; border-radius: 4px;">
+          <label style="color:#00d2ff; font-weight: bold;">Imagens Soltas (No Palco):</label>
+          <select id="unattached-select" onchange="render()"></select>
+          <button class="accent-btn" onclick="attachUnattachedImageToSelectedBone()" style="margin-top: 4px;">🔗 Associar ao Osso Selecionado</button>
+        </div>
+      </div>
+
+      <div id="pose-controls" class="section" style="display: none;">
+        <h2>Transformação / Ajustes</h2>
+
+        <label>Alvo da Operação:</label>
+        <div class="btn-group">
+          <button id="btn-target-bone" class="active" onclick="setTransformTarget('BONE')">Osso</button>
+          <button id="btn-target-image" onclick="setTransformTarget('IMAGE')">Imagem</button>
+        </div>
+
+        <div id="bone-transform-box" class="section">
+          <label id="lbl-bone-name">Rotacionar Osso (°)</label>
+          <input type="range" id="angle-slider" min="-180" max="180" value="0">
+
+          <label>Comprimento (Osso):</label>
+          <input type="range" id="bone-len-slider" min="10" max="500" value="100">
+
+          <label>Translação X:</label>
+          <input type="range" id="bone-posx-slider" min="-1000" max="1000" value="0">
+
+          <label>Translação Y:</label>
+          <input type="range" id="bone-posy-slider" min="-1000" max="1000" value="0">
+        </div>
+
+        <div id="image-transform-box" class="section" style="display: none;">
+          <div id="attached-image-info" style="font-size:0.8rem; color:#ffcc00; font-weight:bold;">
+            Nenhuma imagem associada
+          </div>
+
+          <div id="sprite-history-selector-box" class="section">
+            <label>Alternar Imagem Histórica:</label>
+            <select id="sprite-history-select" onchange="switchActiveSpriteFromHistory(this.value)"></select>
+          </div>
+
+          <div id="sprite-editor-controls" class="section">
+            <button class="warning-btn" onclick="detachSelectedSprite()">🔓 Desassociar e Mover para Soltas</button>
+
+            <label>Rotação Própria (°):</label>
+            <input type="range" id="sprite-rot" min="-180" max="180" value="0">
+
+            <label>Offset X:</label>
+            <input type="range" id="sprite-offx" min="-1000" max="1000" value="0">
+
+            <label>Offset Y:</label>
+            <input type="range" id="sprite-offy" min="-1000" max="1000" value="0">
+
+            <label>Escala Imagem:</label>
+            <input type="range" id="sprite-scale" min="0.05" max="5" step="0.05" value="1">
+
+            <button class="danger-btn" onclick="removeSelectedSprite()">Excluir Imagem Definitivamente</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JANELA 4: BANDEJA DE FIGURAS RECORTADAS -->
+  <div class="floating-window" id="win-tray" style="bottom: 270px; left: 15px; width: 555px;">
+    <div class="floating-header">
+      <span>📦 Bandeja de Figuras Recortadas</span>
+      <div class="window-controls">
+        <span id="asset-tray-count" style="color: #aaa; font-weight: normal; margin-right: 8px; font-size: 0.75rem;">0 itens</span>
+        <button onclick="toggleWindowBody('win-tray')">─</button>
+      </div>
+    </div>
+    <div class="floating-body">
+      <div id="asset-tray"></div>
+    </div>
+  </div>
+
+  <!-- JANELA 5: TIMELINE & ANIMATOR -->
+  <div class="floating-window" id="win-timeline" style="bottom: 15px; left: 15px; width: 95vw; max-width: 1200px;">
+    <div class="floating-header">
+      <span>🎞️ Linha do Tempo & Animação</span>
+      <div class="window-controls">
+        <span id="frame-counter" style="font-weight: bold; color: #00d2ff; font-size:0.75rem; margin-right: 12px;">Frame: 0 / 60</span>
+        <button onclick="toggleWindowBody('win-timeline')">─</button>
+      </div>
+    </div>
+    <div class="floating-body">
+      <div class="timeline-controls">
+        <button id="btn-play" class="accent-btn" onclick="togglePlay()">▶ Play</button>
+        <button onclick="jumpToKeyframe(-1)">&lt; KF</button>
+        <button onclick="jumpToKeyframe(1)">KF &gt;</button>
+        <button id="btn-toggle-interp" onclick="toggleKeyframeInterpolation()">⚡ Interpolação</button>
+        <button class="accent-btn" onclick="addKeyframe()">+ Gravar KF</button>
+        <button class="danger-btn" onclick="removeKeyframe()">- Remover KF</button>
+
+        <div style="display:flex; align-items:center; gap:4px; margin-left:10px;">
+          <label>Frames:</label>
+          <input type="number" id="max-frames-input" value="60" min="5" max="1000" style="width: 55px;" onchange="updateMaxFrames(this.value)">
+        </div>
+
+        <div style="display:flex; align-items:center; gap:4px;">
+          <label>FPS:</label>
+          <input type="number" id="fps-input" value="24" min="1" max="120" style="width: 50px;" onchange="updateFPS(this.value)">
+        </div>
+
+        <button class="accent-btn" style="margin-left:auto;" onclick="exportImageSequence()">🎞️ Exportar Sequência</button>
+        <span id="keyframe-info" style="font-size:0.75rem; color:#ffcc00; font-weight:bold;"></span>
+      </div>
+
+      <div class="timeline-track-wrapper">
+        <div id="bone-layers-panel"></div>
+        <div class="timeline-canvas-container" id="timeline-drop-container">
+          <canvas id="timeline-canvas"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="image-context-menu">
     <button onclick="addBoneFromContextMenu('ROOT')">➕ Adicionar Osso Raiz (90°)</button>
     <button onclick="addBoneFromContextMenu('CHILD')">➕ Adicionar Osso Filho (90°)</button>
-  </div>
-
-  <div id="app-container">
-    <div id="sidebar">
-      <!-- Sistema de Abas para Organização do Menu -->
-      <div class="tab-buttons">
-        <button class="tab-btn active" onclick="switchTab('tab-file')">📁 Arquivo</button>
-        <button class="tab-btn" onclick="switchTab('tab-rig')">🦴 Esqueleto</button>
-        <button class="tab-btn" onclick="switchTab('tab-image')">🎨 Imagens</button>
-      </div>
-
-      <!-- ABA 1: ARQUIVO E PALCO -->
-      <div id="tab-file" class="tab-content active">
-        <h2>Ações & Palco</h2>
-        <div class="section">
-          <button onclick="undo()">↶ Desfazer (Ctrl+Z)</button>
-          <button class="danger-btn" onclick="deleteSelectedElement()">🗑️ Remover Selecionado (Del)</button>
-          <button onclick="resetStageZoom()">🔍 Resetar Zoom / Pan</button>
-        </div>
-
-        <h2>Visualização do Palco</h2>
-        <div class="section">
-          <label id="lbl-unselected-opacity">Opacidade Não Selecionados: 75%</label>
-          <input type="range" id="unselected-opacity-slider" min="0" max="1" step="0.05" value="0.75" oninput="updateUnselectedOpacity(this.value)">
-
-          <div style="background: #18181f; padding: 8px; border-radius: 4px;" class="section">
-            <label class="checkbox-container">
-              <input type="checkbox" id="chk-onion-skin" onchange="toggleOnionSkin(this.checked)">
-              👻 Exibir Fantasmas (Onion Skin)
-            </label>
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">
-              <label style="font-size: 0.75rem;">Frames Anteriores:</label>
-              <input type="number" id="onion-count-input" value="3" min="1" max="10" style="width: 50px;" onchange="updateOnionCount(this.value)">
-            </div>
-          </div>
-        </div>
-
-        <div class="section">
-          <button class="accent-btn" onclick="exportImageSequence()">🎞️ Exportar Sequência de Imagens</button>
-          <button class="danger-btn" onclick="clearAll()">Limpar Tudo</button>
-        </div>
-      </div>
-
-      <!-- ABA 2: RIGGING E ESTRUTURA -->
-      <div id="tab-rig" class="tab-content">
-        <h2>Modo de Interação</h2>
-        <div class="section">
-          <div class="btn-group">
-            <button id="btn-mode-bone-child" onclick="setMode('ADD_BONE_CHILD')">+ Osso Filho</button>
-          </div>
-          <div class="btn-group" style="margin-top: 4px;">
-            <button id="btn-mode-draw" onclick="setMode('DRAW_MESH')">Desenhar</button>
-            <button id="btn-mode-pose" onclick="setMode('POSE')">Posicionar</button>
-          </div>
-        </div>
-
-        <h2>Identificação & Estrutura</h2>
-        <div class="section">
-          <div class="info-box" id="hierarchy-info">
-            Nenhum osso selecionado.
-          </div>
-        </div>
-      </div>
-
-      <!-- ABA 3: IMAGENS E TRANSFORMAÇÃO -->
-      <div id="tab-image" class="tab-content">
-        <h2>Gerenciador de Imagens</h2>
-        <div class="section">
-          <button class="accent-btn" onclick="openImageModal()">📥 Importar / Recortar Nova Imagem</button>
-
-          <div id="unattached-images-box" class="section" style="margin-top: 6px; background: #18181f; padding: 8px; border-radius: 4px;">
-            <label style="color:#00d2ff; font-weight: bold;">Imagens Soltas (No Palco):</label>
-            <select id="unattached-select" onchange="render()"></select>
-            <button class="accent-btn" onclick="attachUnattachedImageToSelectedBone()" style="margin-top: 4px;">🔗 Associar ao Osso Selecionado</button>
-          </div>
-        </div>
-
-        <div id="pose-controls" class="section" style="display: none;">
-          <h2>Transformação / Ajustes</h2>
-
-          <label>Alvo da Operação:</label>
-          <div class="btn-group">
-            <button id="btn-target-bone" class="active" onclick="setTransformTarget('BONE')">Osso</button>
-            <button id="btn-target-image" onclick="setTransformTarget('IMAGE')">Imagem</button>
-          </div>
-
-          <div id="bone-transform-box" class="section">
-            <label id="lbl-bone-name">Rotacionar Osso (°)</label>
-            <input type="range" id="angle-slider" min="-180" max="180" value="0">
-
-            <label>Comprimento (Osso):</label>
-            <input type="range" id="bone-len-slider" min="10" max="500" value="100">
-
-            <label>Translação X:</label>
-            <input type="range" id="bone-posx-slider" min="-1000" max="1000" value="0">
-
-            <label>Translação Y:</label>
-            <input type="range" id="bone-posy-slider" min="-1000" max="1000" value="0">
-          </div>
-
-          <div id="image-transform-box" class="section" style="display: none;">
-            <div id="attached-image-info" style="font-size:0.8rem; color:#ffcc00; font-weight:bold; margin-bottom: 4px;">
-              Nenhuma imagem associada
-            </div>
-
-            <!-- Seletor de Histórico de Imagens na Keyframe Atual -->
-            <div id="sprite-history-selector-box" class="section" style="margin-bottom: 6px;">
-              <label>Alternar Imagem Histórica (Keyframe Atual):</label>
-              <select id="sprite-history-select" onchange="switchActiveSpriteFromHistory(this.value)"></select>
-            </div>
-
-            <div id="sprite-editor-controls" class="section">
-              <button class="warning-btn" onclick="detachSelectedSprite()">🔓 Desassociar e Mover para Soltas</button>
-
-              <label>Rotação Própria (°):</label>
-              <input type="range" id="sprite-rot" min="-180" max="180" value="0">
-
-              <label>Offset X:</label>
-              <input type="range" id="sprite-offx" min="-1000" max="1000" value="0">
-
-              <label>Offset Y:</label>
-              <input type="range" id="sprite-offy" min="-1000" max="1000" value="0">
-
-              <label>Escala Imagem:</label>
-              <input type="range" id="sprite-scale" min="0.05" max="5" step="0.05" value="1">
-
-              <button class="danger-btn" onclick="removeSelectedSprite()">Excluir Imagem Definitivamente</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div id="stage-wrapper">
-      <div id="asset-tray-container">
-        <div id="asset-tray-title">
-          <span>📦 Bandeja de Figuras Recortadas (Arraste para o Palco ou Timeline)</span>
-          <span id="asset-tray-count" style="color: #aaa; font-weight: normal;">0 itens</span>
-        </div>
-        <div id="asset-tray"></div>
-      </div>
-
-      <div id="canvas-container">
-        <canvas id="stage"></canvas>
-
-        <div class="floating-window" id="floating-menu">
-          <div class="floating-header" id="floating-menu-header">
-            <span>📁 Opções de Importação & Arquivo</span>
-            <span style="font-size: 0.7rem; color: #888;">⠿ Drag</span>
-          </div>
-          <div class="floating-body">
-            <button class="accent-btn" onclick="loadFromLocalStorage()">📂 Carregar Salvo (Local)</button>
-            <button onclick="exportJSON()">💾 Exportar JSON</button>
-            <button onclick="document.getElementById('file-input-json').click()">📥 Importar JSON</button>
-            <input type="file" id="file-input-json" accept=".json" style="display: none;" onchange="importJSON(event)">
-            <button class="accent-btn" onclick="saveToLocalStorage()" title="Salvar Projeto (Local)">💾 Salvar Projeto (Local)</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div id="timeline-bar">
-    <div class="timeline-controls">
-      <button id="btn-play" class="accent-btn" onclick="togglePlay()">▶ Play</button>
-      <button onclick="jumpToKeyframe(-1)">&lt; KF</button>
-      <button onclick="jumpToKeyframe(1)">KF &gt;</button>
-      <button id="btn-toggle-interp" onclick="toggleKeyframeInterpolation()" title="Ativar/Desativar interpolação entre esta keyframe e a próxima">⚡ Interpolação</button>
-      <button class="accent-btn" onclick="addKeyframe()">+ Gravar KF (Osso Ativo)</button>
-      <button class="danger-btn" onclick="removeKeyframe()" title="Remover Keyframe do Frame e Osso Atuais">- Remover KF</button>
-
-      <div style="display:flex; align-items:center; gap:5px; margin-left:10px;">
-        <label style="color:#00d2ff; font-weight:bold;">Frames:</label>
-        <input type="number" id="max-frames-input" value="60" min="5" max="1000" style="width: 55px;" onchange="updateMaxFrames(this.value)">
-      </div>
-
-      <div style="display:flex; align-items:center; gap:5px; margin-left:5px;">
-        <label style="color:#00d2ff; font-weight:bold;">FPS:</label>
-        <input type="number" id="fps-input" value="24" min="1" max="120" style="width: 50px;" onchange="updateFPS(this.value)">
-      </div>
-
-      <span id="frame-counter" style="font-weight: bold; color: #00d2ff; margin-left:10px;">Frame: 0 / 60</span>
-      <span id="keyframe-info" style="font-size:0.8rem; color:#ffcc00; font-weight:bold; margin-left:auto;"></span>
-    </div>
-
-    <div class="timeline-track-wrapper">
-      <div id="bone-layers-panel"></div>
-      <div class="timeline-canvas-container" id="timeline-drop-container">
-        <canvas id="timeline-canvas"></canvas>
-      </div>
-    </div>
   </div>
 
   <div class="modal-overlay" id="image-modal">
@@ -861,7 +736,7 @@
             <button onclick="resetCropZoom()">Resetar Zoom</button>
             <button onclick="undoCropPoint()">Desfazer Ponto</button>
             <button class="accent-btn" onclick="finishPolygon()">Fechar Polígono</button>
-            <button class="warning-btn" onclick="autoCropSeparateShapes()">✂️ Recorte Automático (Separar Figuras)</button>
+            <button class="warning-btn" onclick="autoCropSeparateShapes()">✂️ Recorte Automático</button>
           </div>
         </div>
 
@@ -872,24 +747,81 @@
         <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
           <label class="checkbox-container">
             <input type="checkbox" id="chk-remove-white" checked>
-            Remover Fundo Branco (Tornar Fundo Transparente)
+            Remover Fundo Branco (Tornar Transparente)
           </label>
         </div>
       </div>
       <div class="btn-group">
         <button onclick="closeImageModal()">Cancelar</button>
-        <button class="accent-btn" onclick="confirmCrop()">Confirmar e Importar Manual</button>
+        <button class="accent-btn" onclick="confirmCrop()">Confirmar e Importar</button>
       </div>
     </div>
   </div>
 
   <script>
-    // Inclusão externa da biblioteca JSZip para exportação de sequências em arquivo compactado (ZIP)
+    let topZIndex = 100;
+
+    function makeWindowDraggableAndFocusable(win) {
+      const header = win.querySelector('.floating-header');
+      let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+
+      win.addEventListener('mousedown', () => {
+        topZIndex++;
+        win.style.zIndex = topZIndex;
+      });
+
+      if (header) {
+        header.onmousedown = dragMouseDown;
+      }
+
+      function dragMouseDown(e) {
+        e = e || window.event;
+        if (e.target.tagName === 'BUTTON') return;
+        e.preventDefault();
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        document.onmouseup = closeDragElement;
+        document.onmousemove = elementDrag;
+      }
+
+      function elementDrag(e) {
+        e = e || window.event;
+        e.preventDefault();
+        pos1 = pos3 - e.clientX;
+        pos2 = pos4 - e.clientY;
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+
+        win.style.top = (win.offsetTop - pos2) + "px";
+        win.style.left = (win.offsetLeft - pos1) + "px";
+        win.style.right = "auto";
+        win.style.bottom = "auto";
+      }
+
+      function closeDragElement() {
+        document.onmouseup = null;
+        document.onmousemove = null;
+      }
+    }
+
+    function toggleWindowBody(winId) {
+      const win = document.getElementById(winId);
+      if (win) {
+        const body = win.querySelector('.floating-body');
+        if (body) {
+          body.classList.toggle('collapsed');
+        }
+      }
+    }
+
+    document.querySelectorAll('.floating-window').forEach(win => {
+      makeWindowDraggableAndFocusable(win);
+    });
+
     const jszipScript = document.createElement('script');
     jszipScript.src = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
     document.head.appendChild(jszipScript);
 
-    // Controle do Tempo de Exibição da Abertura
     window.addEventListener('DOMContentLoaded', () => {
       const overlay = document.getElementById('intro-overlay');
       setTimeout(() => {
@@ -899,17 +831,6 @@
         }, 600);
       }, 3800);
     });
-
-    function switchTab(tabId) {
-      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-
-      const targetTab = document.getElementById(tabId);
-      if(targetTab) targetTab.classList.add('active');
-
-      const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(btn => btn.getAttribute('onclick').includes(tabId));
-      if(activeBtn) activeBtn.classList.add('active');
-    }
 
     function applySmoothing(context) {
       context.imageSmoothingEnabled = true;
@@ -1086,7 +1007,7 @@
       const hasKeyframe = boneKeyframes[targetBone.id] && boneKeyframes[targetBone.id][clampedFrame] !== undefined;
 
       if (hasKeyframe) {
-        if (confirm(`Deseja adicionar/substituir a imagem no osso "${targetBone.id}" no frame ${clampedFrame} (armazenando histórico)?`)) {
+        if (confirm(`Deseja adicionar/substituir a imagem no osso "${targetBone.id}" no frame ${clampedFrame}?`)) {
           saveState();
 
           const newItem = trayImages.splice(trayIdx, 1)[0];
@@ -1130,10 +1051,12 @@
         const thumb = document.createElement('div');
         thumb.className = 'thumb-item';
         thumb.draggable = true;
-        thumb.title = `${imgObj.name} (Arraste para o palco ou timeline)`;
+        thumb.title = `${imgObj.name}`;
 
         const imgEl = document.createElement('img');
-        imgEl.src = imgObj.imageCanvas.toDataURL();
+        if (imgObj.imageCanvas) {
+          imgEl.src = imgObj.imageCanvas.toDataURL();
+        }
 
         thumb.appendChild(imgEl);
 
@@ -1143,39 +1066,6 @@
 
         tray.appendChild(thumb);
       });
-    }
-
-    makeDraggable(document.getElementById("floating-menu"), document.getElementById("floating-menu-header"));
-
-    function makeDraggable(elmnt, header) {
-      let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-      header.onmousedown = dragMouseDown;
-
-      function dragMouseDown(e) {
-        e = e || window.event;
-        e.preventDefault();
-        pos3 = e.clientX;
-        pos4 = e.clientY;
-        document.onmouseup = closeDragElement;
-        document.onmousemove = elementDrag;
-      }
-
-      function elementDrag(e) {
-        e = e || window.event;
-        e.preventDefault();
-        pos1 = pos3 - e.clientX;
-        pos2 = pos4 - e.clientY;
-        pos3 = e.clientX;
-        pos4 = e.clientY;
-        elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
-        elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
-        elmnt.style.right = "auto";
-      }
-
-      function closeDragElement() {
-        document.onmouseup = null;
-        document.onmousemove = null;
-      }
     }
 
     function updateUnselectedOpacity(val) {
@@ -1263,12 +1153,14 @@
     }
 
     function resizeCanvas() {
-      canvas.width = canvas.parentElement.clientWidth;
-      canvas.height = canvas.parentElement.clientHeight;
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
 
       const container = timelineCanvas.parentElement;
-      timelineCanvas.width = container.clientWidth;
-      timelineCanvas.height = Math.max(120, (bones.length + 1) * 24 + 30);
+      if (container) {
+        timelineCanvas.width = container.clientWidth;
+        timelineCanvas.height = Math.max(100, (bones.length + 1) * 24 + 30);
+      }
 
       applySmoothing(ctx);
       applySmoothing(tCtx);
@@ -1354,7 +1246,7 @@
 
     function setMode(newMode) {
       mode = newMode;
-      document.querySelectorAll('#sidebar button').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('#win-rigging button').forEach(b => b.classList.remove('active'));
 
       if (mode === 'ADD_BONE_CHILD') document.getElementById('btn-mode-bone-child').classList.add('active');
       if (mode === 'DRAW_MESH') document.getElementById('btn-mode-draw').classList.add('active');
@@ -1379,6 +1271,7 @@
     function getSpriteBoundingBox(bone) {
       if (!bone || !bone.attachedSprite || !bone.visibleImage) return null;
       const sprite = bone.attachedSprite;
+      if (!sprite.imageCanvas) return null;
       const w = sprite.imageCanvas.width * sprite.scale;
       const h = sprite.imageCanvas.height * sprite.scale;
 
@@ -1415,6 +1308,7 @@
     }
 
     function isPointInUnattachedImage(worldPos, imgObj) {
+      if (!imgObj.imageCanvas) return false;
       const centerX = (canvas.width / (2 * stageZoom)) + (imgObj.offX || 0);
       const centerY = (canvas.height / (2 * stageZoom)) + (imgObj.offY || 0);
       const w = imgObj.imageCanvas.width;
@@ -1534,7 +1428,6 @@
       } 
       else if (mode === 'POSE') {
         if (selectedBone) {
-          // VERIFICAÇÃO DE ALÇAS VISUAIS DA IMAGEM ATIVA
           if (transformTarget === 'IMAGE' && selectedBone.attachedSprite && selectedBone.visibleImage) {
             const bbox = getSelectedSpriteBoundingBox();
             if (bbox) {
@@ -1560,7 +1453,6 @@
               }
             }
           } 
-          // VERIFICAÇÃO DE ALÇAS VISUAIS DO OSSO ATIVO
           else if (transformTarget === 'BONE' && selectedBone.visibleBone) {
             const rotHandleX = selectedBone.endX + Math.cos(selectedBone.worldAngle) * (20 / stageZoom);
             const rotHandleY = selectedBone.endY + Math.sin(selectedBone.worldAngle) * (20 / stageZoom);
@@ -2065,13 +1957,13 @@
       document.getElementById('frame-counter').innerText = `Frame: ${currentFrame} / ${maxFrames}`;
       const kf = selectedBone && boneKeyframes[selectedBone.id] && boneKeyframes[selectedBone.id][currentFrame];
       const hasKeyframe = !!kf;
-      document.getElementById('keyframe-info').innerText = hasKeyframe ? '★ KEYFRAME (KF) GRAVADO' : '';
+      document.getElementById('keyframe-info').innerText = hasKeyframe ? '★ KF' : '';
 
       const btnInterp = document.getElementById('btn-toggle-interp');
       if (hasKeyframe) {
         btnInterp.disabled = false;
         const isInterp = kf.interpolated !== false;
-        btnInterp.innerText = isInterp ? '⚡ Interpolando' : '⏹️ Estática (Hold)';
+        btnInterp.innerText = isInterp ? '⚡ Interpolando' : '⏹️ Hold';
         btnInterp.className = isInterp ? 'accent-btn' : 'warning-btn';
       } else {
         btnInterp.disabled = true;
@@ -2151,13 +2043,13 @@
         const btnUp = document.createElement('button');
         btnUp.className = 'btn-layer-order';
         btnUp.innerText = '⬆';
-        btnUp.title = 'Mover Para Trás (Camada Inferior)';
+        btnUp.title = 'Mover Para Trás';
         btnUp.onclick = (e) => { e.stopPropagation(); reorderBone(bone, -1); };
 
         const btnDown = document.createElement('button');
         btnDown.className = 'btn-layer-order';
         btnDown.innerText = '⬇';
-        btnDown.title = 'Mover Para Frente (Camada Superior)';
+        btnDown.title = 'Mover Para Frente';
         btnDown.onclick = (e) => { e.stopPropagation(); reorderBone(bone, 1); };
 
         btnGroup.appendChild(btnBoneVis);
@@ -2659,278 +2551,64 @@
       render();
     }
 
-    async function exportImageSequence() {
-      if (typeof JSZip === 'undefined') {
-        alert("Aguarde o carregamento da biblioteca de compactação (JSZip) e tente novamente em instantes.");
-        return;
-      }
-
-      const intervalStr = prompt("Informe o intervalo (step) entre os frames a exportar (ex: 1 para todos, 2 para pular de 2 em 2):", "1");
-      if (!intervalStr) return;
-      const step = Math.max(1, parseInt(intervalStr) || 1);
-
-      const zip = new JSZip();
-      const folder = zip.folder("sequencia_animacao");
-
-      const originalFrame = currentFrame;
-      const wasPlaying = isPlaying;
-      if (wasPlaying) togglePlay();
-
-      const oldZoom = stageZoom;
-      const oldPan = { ...stagePan };
-
-      stageZoom = 1;
-      stagePan = { x: 0, y: 0 };
-
-      const exportCanvas = document.createElement('canvas');
-      exportCanvas.width = canvas.width;
-      exportCanvas.height = canvas.height;
-      const eCtx = exportCanvas.getContext('2d');
-      applySmoothing(eCtx);
-
-      let exportedCount = 0;
-
-      for (let f = 0; f <= maxFrames; f += step) {
-        currentFrame = f;
-        applyKeyframeState(currentFrame);
-        
-        renderToContext(eCtx, true);
-
-        const dataUrl = exportCanvas.toDataURL('image/png');
-        const base64Data = dataUrl.replace(/^data:image\/png;base64,/, "");
-        const frameName = String(f).padStart(4, '0');
-        folder.file(`frame_${frameName}.png`, base64Data, { base64: true });
-        exportedCount++;
-      }
-
-      currentFrame = originalFrame;
-      applyKeyframeState(currentFrame);
-      stageZoom = oldZoom;
-      stagePan = oldPan;
-      render();
-      updateUI();
-
-      alert(`Gerando arquivo ZIP com ${exportedCount} imagens. O download iniciará em instantes...`);
-
-      zip.generateAsync({ type: "blob" }).then((content) => {
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(content);
-        link.download = "sequencia_frames_nickeman.zip";
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-      });
-    }
-
-  function renderToContext(targetCtx, forcePlayView = false) {
-      bones.forEach(b => b.updateTransform());
-      targetCtx.clearRect(0, 0, targetCtx.canvas.width, targetCtx.canvas.height);
-      applySmoothing(targetCtx);
-
-      targetCtx.save();
-      targetCtx.translate(stagePan.x, stagePan.y);
-      targetCtx.scale(stageZoom, stageZoom);
-
-
-
-      // 1. DESENHO DAS IMAGENS SOLTAS (Aplica unselectedOpacity quando fora de exportação/play)
-      if (unattachedImages.length > 0) {
-        unattachedImages.forEach((imgObj) => {
-          targetCtx.save();
-          targetCtx.globalAlpha = (forcePlayView || isPlaying) ? 1.0 : unselectedOpacity;
-          const centerX = (targetCtx.canvas.width / (2 * stageZoom)) + (imgObj.offX || 0);
-          const centerY = (targetCtx.canvas.height / (2 * stageZoom)) + (imgObj.offY || 0);
-          targetCtx.drawImage(imgObj.imageCanvas, centerX - imgObj.imageCanvas.width / 2, centerY - imgObj.imageCanvas.height / 2);
-          targetCtx.restore();
-        });
-      }
-
-      // 2. DESENHO DAS IMAGENS DOS OSSOS (Aplica unselectedOpacity para ossos não selecionados)
-      bones.forEach(bone => {
-        if (!bone.attachedSprite || !bone.visibleImage) return;
-        const s = bone.attachedSprite;
-
-        targetCtx.save();
-
-        // Se o osso atual for o selecionado (ou se estiver em Play/Exportação), usa opacidade total (1.0).
-        // Caso contrário, aplica a opacidade configurada no slider (unselectedOpacity).
-        const isSelected = (bone === selectedBone);
-        if (forcePlayView || isPlaying || isSelected) {
-          targetCtx.globalAlpha = 1.0;
-        } else {
-          targetCtx.globalAlpha = unselectedOpacity;
-        }
-
-        targetCtx.translate(bone.startX, bone.startY);
-        targetCtx.rotate(bone.worldAngle);
-        targetCtx.translate(s.offX, s.offY);
-        targetCtx.rotate(s.rot);
-        targetCtx.scale(s.scale, s.scale);
-
-        targetCtx.drawImage(s.imageCanvas, -s.imageCanvas.width / 2, -s.imageCanvas.height / 2);
-        targetCtx.restore();
-      });
-
-      // 3. DESENHO DE ALÇAS VISUAIS DE MANUSEIO DA IMAGEM SELECIONADA
-      if (!forcePlayView && !isPlaying && transformTarget === 'IMAGE' && selectedBone && selectedBone.attachedSprite && selectedBone.visibleImage) {
-        const bbox = getSelectedSpriteBoundingBox();
-        if (bbox) {
-          targetCtx.save();
-          targetCtx.globalAlpha = 1.0; // Força visualização 100% para os controles
-          targetCtx.translate(bbox.centerWorld.x, bbox.centerWorld.y);
-          targetCtx.rotate(bbox.spriteWorldAngle);
-
-          // Contorno retangular de seleção da imagem
-          targetCtx.strokeStyle = '#00d2ff';
-          targetCtx.lineWidth = 1.5 / stageZoom;
-          targetCtx.setLineDash([4, 4]);
-          targetCtx.strokeRect(-bbox.w / 2, -bbox.h / 2, bbox.w, bbox.h);
-          targetCtx.setLineDash([]);
-
-          // 1. Alça de Translação (Centro da imagem - Quadrado Ciano)
-          targetCtx.fillStyle = '#00d2ff';
-          targetCtx.fillRect(-5 / stageZoom, -5 / stageZoom, 10 / stageZoom, 10 / stageZoom);
-          targetCtx.strokeStyle = '#121216';
-          targetCtx.lineWidth = 1 / stageZoom;
-          targetCtx.strokeRect(-5 / stageZoom, -5 / stageZoom, 10 / stageZoom, 10 / stageZoom);
-
-          // 2. Alça de Rotação (Haste superior + Círculo Amarelo)
-          const rotHandleOffsetY = bbox.h / 2 + 25 / stageZoom;
-          targetCtx.beginPath();
-          targetCtx.moveTo(0, -bbox.h / 2);
-          targetCtx.lineTo(0, -rotHandleOffsetY);
-          targetCtx.strokeStyle = '#ffcc00';
-          targetCtx.lineWidth = 1.5 / stageZoom;
-          targetCtx.stroke();
-
-          targetCtx.beginPath();
-          targetCtx.arc(0, -rotHandleOffsetY, 6 / stageZoom, 0, Math.PI * 2);
-          targetCtx.fillStyle = '#ffcc00';
-          targetCtx.fill();
-          targetCtx.stroke();
-
-          targetCtx.restore();
-        }
-      }
-
-      // 4. DESENHO DA ESTRUTURA DOS OSSOS E ALÇAS
-      if (!forcePlayView && !isPlaying) {
-        bones.forEach(bone => {
-          if (!bone.visibleBone) return;
-          targetCtx.save();
-          
-          const isSelected = (bone === selectedBone);
-          targetCtx.globalAlpha = (isSelected) ? 1.0 : unselectedOpacity;
-
-          targetCtx.strokeStyle = '#ff0055';
-          targetCtx.lineWidth = 4 / stageZoom;
-          bone.meshStrokes.forEach(stroke => {
-            targetCtx.beginPath();
-            for (let i = 0; i < stroke.length - 1; i++) {
-              const p1 = bone.localToWorld(stroke[i]);
-              const p2 = bone.localToWorld(stroke[i + 1]);
-              targetCtx.moveTo(p1.x, p1.y);
-              targetCtx.lineTo(p2.x, p2.y);
-            }
-            targetCtx.stroke();
-          });
-
-          targetCtx.beginPath();
-          targetCtx.moveTo(bone.startX, bone.startY);
-          targetCtx.lineTo(bone.endX, bone.endY);
-          targetCtx.strokeStyle = '#00d2ff';
-          targetCtx.lineWidth = 2 / stageZoom;
-          targetCtx.stroke();
-
-          // PONTOS DE CONTROLE DO OSSO
-          const handleRadius = (isSelected ? 7 : 5) / stageZoom;
-
-          // Ponto Raiz (Azul Ciano)
-          targetCtx.beginPath();
-          targetCtx.arc(bone.startX, bone.startY, handleRadius, 0, Math.PI * 2);
-          targetCtx.fillStyle = '#00d2ff';
-          targetCtx.fill();
-          targetCtx.strokeStyle = '#121216';
-          targetCtx.lineWidth = 1.5 / stageZoom;
-          targetCtx.stroke();
-
-          // Ponto Ponta (Amarelo Ouro)
-          targetCtx.beginPath();
-          targetCtx.arc(bone.endX, bone.endY, handleRadius, 0, Math.PI * 2);
-          targetCtx.fillStyle = '#ffcc00';
-          targetCtx.fill();
-          targetCtx.strokeStyle = '#121216';
-          targetCtx.lineWidth = 1.5 / stageZoom;
-          targetCtx.stroke();
-
-          targetCtx.restore();
-        });
-      }
-
-      targetCtx.restore();
-    }
-    
-    function render() {
-      renderToContext(ctx, false);
-    }
-
-    // ====================================
-    // SISTEMA DE IMPORTAÇÃO/CROP E SERIALIZAÇÃO
-    // ====================================
-
     function openImageModal() {
       document.getElementById('image-modal').style.display = 'flex';
-      resetCropCanvas();
     }
 
     function closeImageModal() {
       document.getElementById('image-modal').style.display = 'none';
-    }
-
-    function resetCropCanvas() {
-      loadedImage = null;
       polyPoints = [];
       isPolyClosed = false;
-      cropZoom = 1;
-      cropPan = { x: 0, y: 0 };
-      drawCropCanvas();
+      loadedImage = null;
+      cropCtx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
     }
 
-    const imageLoader = document.getElementById('image-loader');
-    imageLoader.addEventListener('change', (e) => {
+    document.getElementById('image-loader').addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (file) {
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = (evt) => {
           const img = new Image();
           img.onload = () => {
             loadedImage = img;
-            resetCropZoom();
-            drawCropCanvas();
+            polyPoints = [];
+            isPolyClosed = false;
+            cropZoom = 1;
+            cropPan = { x: 0, y: 0 };
+            renderCropCanvas();
           };
-          img.src = event.target.result;
+          img.src = evt.target.result;
         };
         reader.readAsDataURL(file);
       }
     });
 
     function resetCropZoom() {
-      if (!loadedImage) return;
-      cropCanvas.width = cropCanvas.parentElement.clientWidth;
-      cropCanvas.height = cropCanvas.parentElement.clientHeight;
-
-      const scaleX = cropCanvas.width / loadedImage.width;
-      const scaleY = cropCanvas.height / loadedImage.height;
-      cropZoom = Math.min(scaleX, scaleY) * 0.9;
-
-      cropPan.x = (cropCanvas.width - loadedImage.width * cropZoom) / 2;
-      cropPan.y = (cropCanvas.height - loadedImage.height * cropZoom) / 2;
-      drawCropCanvas();
+      cropZoom = 1;
+      cropPan = { x: 0, y: 0 };
+      renderCropCanvas();
     }
 
-    function drawCropCanvas() {
-      cropCtx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
+    function undoCropPoint() {
+      if (polyPoints.length > 0) {
+        polyPoints.pop();
+        isPolyClosed = false;
+        renderCropCanvas();
+      }
+    }
+
+    function finishPolygon() {
+      if (polyPoints.length >= 3) {
+        isPolyClosed = true;
+        renderCropCanvas();
+      }
+    }
+
+    function renderCropCanvas() {
+      cropCanvas.width = cropCanvas.parentElement.clientWidth;
+      cropCanvas.height = cropCanvas.parentElement.clientHeight;
       applySmoothing(cropCtx);
+      cropCtx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
 
       if (!loadedImage) return;
 
@@ -2952,15 +2630,10 @@
         cropCtx.lineWidth = 2 / cropZoom;
         cropCtx.stroke();
 
-        if (isPolyClosed) {
-          cropCtx.fillStyle = 'rgba(0, 210, 255, 0.2)';
-          cropCtx.fill();
-        }
-
-        polyPoints.forEach((pt) => {
+        cropCtx.fillStyle = '#ff0055';
+        polyPoints.forEach(p => {
           cropCtx.beginPath();
-          cropCtx.arc(pt.x, pt.y, 4 / cropZoom, 0, Math.PI * 2);
-          cropCtx.fillStyle = '#ff0055';
+          cropCtx.arc(p.x, p.y, 4 / cropZoom, 0, Math.PI * 2);
           cropCtx.fill();
         });
       }
@@ -2971,204 +2644,174 @@
     cropCanvas.addEventListener('mousedown', (e) => {
       if (!loadedImage) return;
       const rect = cropCanvas.getBoundingClientRect();
-      const clickX = e.clientX - rect.left;
-      const clickY = e.clientY - rect.top;
+      const clickX = (e.clientX - rect.left - cropPan.x) / cropZoom;
+      const clickY = (e.clientY - rect.top - cropPan.y) / cropZoom;
 
       if (e.button === 2) {
         isPanning = true;
-        panStart = { x: clickX - cropPan.x, y: clickY - cropPan.y };
+        panStart = { x: e.clientX - cropPan.x, y: e.clientY - cropPan.y };
         return;
       }
 
-      const imgX = (clickX - cropPan.x) / cropZoom;
-      const imgY = (clickY - cropPan.y) / cropZoom;
-
       if (!isPolyClosed) {
-        polyPoints.push({ x: imgX, y: imgY });
-        drawCropCanvas();
+        polyPoints.push({ x: clickX, y: clickY });
+        renderCropCanvas();
       }
     });
 
     cropCanvas.addEventListener('mousemove', (e) => {
       if (isPanning) {
-        const rect = cropCanvas.getBoundingClientRect();
-        cropPan.x = (e.clientX - rect.left) - panStart.x;
-        cropPan.y = (e.clientY - rect.top) - panStart.y;
-        drawCropCanvas();
+        cropPan.x = e.clientX - panStart.x;
+        cropPan.y = e.clientY - panStart.y;
+        renderCropCanvas();
       }
     });
 
     window.addEventListener('mouseup', () => { isPanning = false; });
-    cropCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
-    function undoCropPoint() {
-      if (polyPoints.length > 0 && !isPolyClosed) {
-        polyPoints.pop();
-        drawCropCanvas();
-      }
-    }
-
-    function finishPolygon() {
-      if (polyPoints.length >= 3) {
-        isPolyClosed = true;
-        drawCropCanvas();
-      }
-    }
+    cropCanvas.addEventListener('wheel', (e) => {
+      if (!loadedImage) return;
+      e.preventDefault();
+      const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
+      cropZoom = Math.max(0.1, Math.min(10, cropZoom * zoomFactor));
+      renderCropCanvas();
+    });
 
     function confirmCrop() {
       if (!loadedImage) return;
 
       saveState();
 
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = loadedImage.width;
-      tempCanvas.height = loadedImage.height;
-      const tCtx = tempCanvas.getContext('2d');
-      applySmoothing(tCtx);
-
-      if (polyPoints.length >= 3 && isPolyClosed) {
-        tCtx.beginPath();
-        tCtx.moveTo(polyPoints[0].x, polyPoints[0].y);
-        for (let i = 1; i < polyPoints.length; i++) {
-          tCtx.lineTo(polyPoints[i].x, polyPoints[i].y);
-        }
-        tCtx.closePath();
-        tCtx.clip();
+      let minX = 0, minY = 0, maxX = loadedImage.width, maxY = loadedImage.height;
+      if (polyPoints.length >= 3) {
+        minX = Math.min(...polyPoints.map(p => p.x));
+        minY = Math.min(...polyPoints.map(p => p.y));
+        maxX = Math.max(...polyPoints.map(p => p.x));
+        maxY = Math.max(...polyPoints.map(p => p.y));
       }
 
-      tCtx.drawImage(loadedImage, 0, 0);
+      const cropW = Math.max(1, maxX - minX);
+      const cropH = Math.max(1, maxY - minY);
+
+      const offCanvas = document.createElement('canvas');
+      offCanvas.width = cropW;
+      offCanvas.height = cropH;
+      const offCtx = offCanvas.getContext('2d');
+      applySmoothing(offCtx);
+
+      if (polyPoints.length >= 3) {
+        offCtx.beginPath();
+        offCtx.moveTo(polyPoints[0].x - minX, polyPoints[0].y - minY);
+        for (let i = 1; i < polyPoints.length; i++) {
+          offCtx.lineTo(polyPoints[i].x - minX, polyPoints[i].y - minY);
+        }
+        offCtx.closePath();
+        offCtx.clip();
+      }
+
+      offCtx.drawImage(loadedImage, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
 
       if (document.getElementById('chk-remove-white').checked) {
-        removeWhiteBackground(tempCanvas);
+        removeWhiteBackground(offCtx, cropW, cropH);
       }
 
-      let croppedCanvas = tempCanvas;
-      if (polyPoints.length >= 3) {
-        croppedCanvas = autoCropCanvas(tempCanvas);
-      }
-
-      const newSprite = {
-        name: `Recorte_${trayImages.length + unattachedImages.length + 1}`,
-        imageCanvas: croppedCanvas,
+      const imgObj = {
+        name: `Recorte_${trayImages.length + 1}`,
+        imageCanvas: offCanvas,
+        scale: 1,
+        rot: 0,
         offX: 0,
-        offY: 0,
-        scale: 1.0,
-        rot: 0
+        offY: 0
       };
 
-      trayImages.push(newSprite);
+      trayImages.push(imgObj);
       renderAssetTray();
       closeImageModal();
       updateUI();
     }
 
-    function removeWhiteBackground(cvs) {
-      const c = cvs.getContext('2d');
-      const imgData = c.getImageData(0, 0, cvs.width, cvs.height);
+    function removeWhiteBackground(context, w, h) {
+      const imgData = context.getImageData(0, 0, w, h);
       const data = imgData.data;
 
       for (let i = 0; i < data.length; i += 4) {
         const r = data[i];
         const g = data[i + 1];
         const b = data[i + 2];
+
         if (r > 230 && g > 230 && b > 230) {
           data[i + 3] = 0;
         }
       }
-      c.putImageData(imgData, 0, 0);
-    }
 
-    function autoCropCanvas(cvs) {
-      const c = cvs.getContext('2d');
-      const imgData = c.getImageData(0, 0, cvs.width, cvs.height);
-      const data = imgData.data;
-
-      let minX = cvs.width, minY = cvs.height, maxX = 0, maxY = 0;
-      let found = false;
-
-      for (let y = 0; y < cvs.height; y++) {
-        for (let x = 0; x < cvs.width; x++) {
-          const alpha = data[(y * cvs.width + x) * 4 + 3];
-          if (alpha > 0) {
-            if (x < minX) minX = x;
-            if (x > maxX) maxX = x;
-            if (y < minY) minY = y;
-            if (y > maxY) maxY = y;
-            found = true;
-          }
-        }
-      }
-
-      if (!found) return cvs;
-
-      const cropW = maxX - minX + 1;
-      const cropH = maxY - minY + 1;
-
-      const resCanvas = document.createElement('canvas');
-      resCanvas.width = cropW;
-      resCanvas.height = cropH;
-      const resCtx = resCanvas.getContext('2d');
-      applySmoothing(resCtx);
-
-      resCtx.drawImage(cvs, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
-      return resCanvas;
+      context.putImageData(imgData, 0, 0);
     }
 
     function autoCropSeparateShapes() {
-      if (!loadedImage) return;
+      if (!loadedImage) {
+        alert("Carregue uma imagem antes de executar o recorte automático.");
+        return;
+      }
 
       saveState();
 
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = loadedImage.width;
       tempCanvas.height = loadedImage.height;
-      const tCtx = tempCanvas.getContext('2d');
-      applySmoothing(tCtx);
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCtx.drawImage(loadedImage, 0, 0);
 
-      tCtx.drawImage(loadedImage, 0, 0);
-
-      if (document.getElementById('chk-remove-white').checked) {
-        removeWhiteBackground(tempCanvas);
-      }
-
-      const imgData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-      const width = tempCanvas.width;
-      const height = tempCanvas.height;
+      const w = tempCanvas.width;
+      const h = tempCanvas.height;
+      const imgData = tempCtx.getImageData(0, 0, w, h);
       const data = imgData.data;
 
-      const visited = new Uint8Array(width * height);
-      const boundingBoxes = [];
+      const removeWhite = document.getElementById('chk-remove-white').checked;
+      const visited = new Uint8Array(w * h);
+      const boundsList = [];
 
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          const idx = y * width + x;
-          if (visited[idx] === 0 && data[idx * 4 + 3] > 10) {
-            let minX = x, maxX = x, minY = y, maxY = y;
+      function isSolid(x, y) {
+        const idx = (y * w + x) * 4;
+        const r = data[idx];
+        const g = data[idx + 1];
+        const b = data[idx + 2];
+        const a = data[idx + 3];
+
+        if (a < 10) return false;
+        if (removeWhite && r > 230 && g > 230 && b > 230) return false;
+        return true;
+      }
+
+      for (let y = 0; y < h; y += 2) {
+        for (let x = 0; x < w; x += 2) {
+          const pixelIdx = y * w + x;
+          if (!visited[pixelIdx] && isSolid(x, y)) {
+            let bMinX = x, bMaxX = x, bMinY = y, bMaxY = y;
+            let pixelCount = 0;
             const queue = [x, y];
-            visited[idx] = 1;
+            visited[pixelIdx] = 1;
 
-            let head = 0;
-            while(head < queue.length) {
-              const cx = queue[head++];
-              const cy = queue[head++];
+            while (queue.length > 0) {
+              const cy = queue.pop();
+              const cx = queue.pop();
+              pixelCount++;
 
-              if (cx < minX) minX = cx;
-              if (cx > maxX) maxX = cx;
-              if (cy < minY) minY = cy;
-              if (cy > maxY) maxY = cy;
+              if (cx < bMinX) bMinX = cx;
+              if (cx > bMaxX) bMaxX = cx;
+              if (cy < bMinY) bMinY = cy;
+              if (cy > bMaxY) bMaxY = cy;
 
               const neighbors = [
-                [cx + 1, cy], [cx - 1, cy],
-                [cx, cy + 1], [cx, cy - 1]
+                [cx + 2, cy], [cx - 2, cy], [cx, cy + 2], [cx, cy - 2]
               ];
 
               for (let i = 0; i < neighbors.length; i++) {
                 const nx = neighbors[i][0];
                 const ny = neighbors[i][1];
 
-                if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-                  const nIdx = ny * width + nx;
-                  if (visited[nIdx] === 0 && data[nIdx * 4 + 3] > 10) {
+                if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+                  const nIdx = ny * w + nx;
+                  if (!visited[nIdx] && isSolid(nx, ny)) {
                     visited[nIdx] = 1;
                     queue.push(nx, ny);
                   }
@@ -3176,32 +2819,39 @@
               }
             }
 
-            if ((maxX - minX + 1) > 10 && (maxY - minY + 1) > 10) {
-              boundingBoxes.push({ minX, minY, maxX, maxY });
+            if (pixelCount > 50) {
+              boundsList.push({ minX: Math.max(0, bMinX - 2), minY: Math.max(0, bMinY - 2), maxX: Math.min(w, bMaxX + 2), maxY: Math.min(h, bMaxY + 2) });
             }
           }
         }
       }
 
-      boundingBoxes.forEach((box, i) => {
-        const w = box.maxX - box.minX + 1;
-        const h = box.maxY - box.minY + 1;
+      if (boundsList.length === 0) {
+        alert("Nenhuma figura individual detectada na imagem.");
+        return;
+      }
 
-        const resCanvas = document.createElement('canvas');
-        resCanvas.width = w;
-        resCanvas.height = h;
-        const resCtx = resCanvas.getContext('2d');
-        applySmoothing(resCtx);
+      boundsList.forEach((b) => {
+        const cropW = b.maxX - b.minX;
+        const cropH = b.maxY - b.minY;
 
-        resCtx.drawImage(tempCanvas, box.minX, box.minY, w, h, 0, 0, w, h);
+        const shapeCanvas = document.createElement('canvas');
+        shapeCanvas.width = cropW;
+        shapeCanvas.height = cropH;
+        const sCtx = shapeCanvas.getContext('2d');
+        sCtx.drawImage(loadedImage, b.minX, b.minY, cropW, cropH, 0, 0, cropW, cropH);
+
+        if (removeWhite) {
+          removeWhiteBackground(sCtx, cropW, cropH);
+        }
 
         trayImages.push({
-          name: `AutoShape_${trayImages.length + 1}`,
-          imageCanvas: resCanvas,
+          name: `Figura_${trayImages.length + 1}`,
+          imageCanvas: shapeCanvas,
+          scale: 1,
+          rot: 0,
           offX: 0,
-          offY: 0,
-          scale: 1.0,
-          rot: 0
+          offY: 0
         });
       });
 
@@ -3210,17 +2860,214 @@
       updateUI();
     }
 
-    function serializeProject() {
-      const serializeSprite = (s) => s ? {
-        name: s.name,
-        dataUrl: s.imageCanvas.toDataURL(),
-        offX: s.offX,
-        offY: s.offY,
-        scale: s.scale,
-        rot: s.rot
-      } : null;
+    function renderToContext(targetCtx, isExporting = false) {
+      const w = targetCtx.canvas.width;
+      const h = targetCtx.canvas.height;
+      targetCtx.clearRect(0, 0, w, h);
 
-      const bonesData = bones.map(b => ({
+      bones.forEach(b => b.updateTransform());
+
+      targetCtx.save();
+      if (!isExporting) {
+        targetCtx.translate(stagePan.x, stagePan.y);
+        targetCtx.scale(stageZoom, stageZoom);
+      }
+
+      if (onionSkinEnabled && !isExporting) {
+        const startGhostFrame = Math.max(0, currentFrame - onionSkinCount);
+        for (let f = startGhostFrame; f < currentFrame; f++) {
+          const ghostStateMap = calculateFrameState(f);
+          const alpha = 0.15 + 0.2 * ((f - startGhostFrame) / onionSkinCount);
+
+          targetCtx.save();
+          targetCtx.globalAlpha = alpha;
+
+          bones.forEach(bone => {
+            if (ghostStateMap[bone.id] && bone.attachedSprite && bone.visibleImage) {
+              const st = ghostStateMap[bone.id];
+              let pAngle = 0;
+              let pX = 0;
+              let pY = 0;
+
+              if (bone.parent) {
+                pX = bone.parent.endX;
+                pY = bone.parent.endY;
+                pAngle = bone.parent.worldAngle;
+              }
+
+              const bStartX = pX + st.posX;
+              const bStartY = pY + st.posY;
+              const bWorldAngle = pAngle + st.angle;
+
+              const sprite = bone.attachedSprite;
+              if (sprite.imageCanvas) {
+                targetCtx.save();
+                targetCtx.translate(bStartX, bStartY);
+                targetCtx.rotate(bWorldAngle);
+                targetCtx.translate(sprite.offX, sprite.offY);
+                targetCtx.rotate(sprite.rot);
+                targetCtx.scale(sprite.scale, sprite.scale);
+                targetCtx.drawImage(sprite.imageCanvas, -sprite.imageCanvas.width / 2, -sprite.imageCanvas.height / 2);
+                targetCtx.restore();
+              }
+            }
+          });
+          targetCtx.restore();
+        }
+      }
+
+      unattachedImages.forEach(imgObj => {
+        if (imgObj.imageCanvas) {
+          const centerX = (canvas.width / (2 * stageZoom)) + (imgObj.offX || 0);
+          const centerY = (canvas.height / (2 * stageZoom)) + (imgObj.offY || 0);
+          targetCtx.save();
+          targetCtx.drawImage(imgObj.imageCanvas, centerX - imgObj.imageCanvas.width / 2, centerY - imgObj.imageCanvas.height / 2);
+          targetCtx.restore();
+        }
+      });
+
+      bones.forEach(bone => {
+        if (!bone.visibleImage) return;
+        const sprite = bone.attachedSprite;
+        if (sprite && sprite.imageCanvas) {
+          targetCtx.save();
+          targetCtx.translate(bone.startX, bone.startY);
+          targetCtx.rotate(bone.worldAngle);
+          targetCtx.translate(sprite.offX, sprite.offY);
+          targetCtx.rotate(sprite.rot);
+          targetCtx.scale(sprite.scale, sprite.scale);
+
+          if (!isExporting && selectedBone && bone !== selectedBone) {
+            targetCtx.globalAlpha = unselectedOpacity;
+          }
+
+          targetCtx.drawImage(sprite.imageCanvas, -sprite.imageCanvas.width / 2, -sprite.imageCanvas.height / 2);
+          targetCtx.restore();
+        }
+      });
+
+      if (!isExporting) {
+        bones.forEach(bone => {
+          if (!bone.visibleBone) return;
+          const isSelected = (bone === selectedBone);
+
+          targetCtx.save();
+          if (selectedBone && !isSelected) {
+            targetCtx.globalAlpha = unselectedOpacity;
+          }
+
+          targetCtx.beginPath();
+          targetCtx.moveTo(bone.startX, bone.startY);
+          targetCtx.lineTo(bone.endX, bone.endY);
+          targetCtx.strokeStyle = isSelected ? '#00d2ff' : '#aaa';
+          targetCtx.lineWidth = (isSelected ? 4 : 2) / stageZoom;
+          targetCtx.stroke();
+
+          targetCtx.beginPath();
+          targetCtx.arc(bone.startX, bone.startY, (isSelected ? 6 : 4) / stageZoom, 0, Math.PI * 2);
+          targetCtx.fillStyle = isSelected ? '#ff0055' : '#888';
+          targetCtx.fill();
+
+          targetCtx.beginPath();
+          targetCtx.arc(bone.endX, bone.endY, (isSelected ? 5 : 3) / stageZoom, 0, Math.PI * 2);
+          targetCtx.fillStyle = isSelected ? '#00d2ff' : '#888';
+          targetCtx.fill();
+
+          bone.meshStrokes.forEach(stroke => {
+            if (stroke.length > 1) {
+              targetCtx.beginPath();
+              targetCtx.strokeStyle = isSelected ? '#ff0055' : '#888';
+              targetCtx.lineWidth = 2 / stageZoom;
+              for (let i = 0; i < stroke.length - 1; i++) {
+                const pt1 = bone.localToWorld(stroke[i]);
+                const pt2 = bone.localToWorld(stroke[i + 1]);
+                targetCtx.moveTo(pt1.x, pt1.y);
+                targetCtx.lineTo(pt2.x, pt2.y);
+              }
+              targetCtx.stroke();
+            }
+          });
+
+          if (isSelected && mode === 'POSE' && transformTarget === 'BONE') {
+            const rotHandleX = bone.endX + Math.cos(bone.worldAngle) * (20 / stageZoom);
+            const rotHandleY = bone.endY + Math.sin(bone.worldAngle) * (20 / stageZoom);
+
+            targetCtx.beginPath();
+            targetCtx.moveTo(bone.endX, bone.endY);
+            targetCtx.lineTo(rotHandleX, rotHandleY);
+            targetCtx.strokeStyle = '#00d2ff';
+            targetCtx.lineWidth = 1.5 / stageZoom;
+            targetCtx.stroke();
+
+            targetCtx.beginPath();
+            targetCtx.arc(rotHandleX, rotHandleY, 6 / stageZoom, 0, Math.PI * 2);
+            targetCtx.fillStyle = '#00d2ff';
+            targetCtx.fill();
+            targetCtx.strokeStyle = '#000';
+            targetCtx.lineWidth = 1 / stageZoom;
+            targetCtx.stroke();
+
+            const midX = (bone.startX + bone.endX) / 2;
+            const midY = (bone.startY + bone.endY) / 2;
+            targetCtx.beginPath();
+            targetCtx.arc(midX, midY, 5 / stageZoom, 0, Math.PI * 2);
+            targetCtx.fillStyle = '#ffcc00';
+            targetCtx.fill();
+            targetCtx.stroke();
+          }
+
+          if (isSelected && mode === 'POSE' && transformTarget === 'IMAGE' && bone.attachedSprite) {
+            const bbox = getSelectedSpriteBoundingBox();
+            if (bbox) {
+              targetCtx.save();
+              targetCtx.translate(bbox.centerWorld.x, bbox.centerWorld.y);
+              targetCtx.rotate(bbox.spriteWorldAngle);
+
+              targetCtx.strokeStyle = '#00d2ff';
+              targetCtx.lineWidth = 1.5 / stageZoom;
+              targetCtx.setLineDash([4, 4]);
+              targetCtx.strokeRect(-bbox.w / 2, -bbox.h / 2, bbox.w, bbox.h);
+              targetCtx.setLineDash([]);
+
+              targetCtx.beginPath();
+              targetCtx.arc(0, 0, 5 / stageZoom, 0, Math.PI * 2);
+              targetCtx.fillStyle = '#00d2ff';
+              targetCtx.fill();
+
+              targetCtx.beginPath();
+              targetCtx.moveTo(0, -bbox.h / 2);
+              targetCtx.lineTo(0, -bbox.h / 2 - 25 / stageZoom);
+              targetCtx.stroke();
+
+              targetCtx.beginPath();
+              targetCtx.arc(0, -bbox.h / 2 - 25 / stageZoom, 6 / stageZoom, 0, Math.PI * 2);
+              targetCtx.fillStyle = '#ffcc00';
+              targetCtx.fill();
+              targetCtx.stroke();
+
+              targetCtx.beginPath();
+              targetCtx.arc(bbox.w / 2, bbox.h / 2, 5 / stageZoom, 0, Math.PI * 2);
+              targetCtx.fillStyle = '#00d2ff';
+              targetCtx.fill();
+              targetCtx.stroke();
+
+              targetCtx.restore();
+            }
+          }
+
+          targetCtx.restore();
+        });
+      }
+
+      targetCtx.restore();
+    }
+
+    function render() {
+      renderToContext(ctx, false);
+    }
+
+    function serializeProject() {
+      const dataBones = bones.map(b => ({
         id: b.id,
         parentId: b.parent ? b.parent.id : null,
         length: b.length,
@@ -3228,22 +3075,51 @@
         posX: b.posX,
         posY: b.posY,
         meshStrokes: b.meshStrokes,
-        attachedSprite: serializeSprite(b.attachedSprite),
         visibleBone: b.visibleBone,
-        visibleImage: b.visibleImage
+        visibleImage: b.visibleImage,
+        attachedSprite: b.attachedSprite ? {
+          name: b.attachedSprite.name,
+          dataUrl: b.attachedSprite.imageCanvas.toDataURL(),
+          scale: b.attachedSprite.scale,
+          rot: b.attachedSprite.rot,
+          offX: b.attachedSprite.offX,
+          offY: b.attachedSprite.offY
+        } : null
       }));
 
-      const unattachedData = unattachedImages.map(s => serializeSprite(s));
-      const trayData = trayImages.map(s => serializeSprite(s));
+      const dataUnattached = unattachedImages.map(img => ({
+        name: img.name,
+        dataUrl: img.imageCanvas ? img.imageCanvas.toDataURL() : null,
+        scale: img.scale,
+        rot: img.rot,
+        offX: img.offX,
+        offY: img.offY
+      }));
+
+      const dataTray = trayImages.map(img => ({
+        name: img.name,
+        dataUrl: img.imageCanvas ? img.imageCanvas.toDataURL() : null,
+        scale: img.scale,
+        rot: img.rot,
+        offX: img.offX,
+        offY: img.offY
+      }));
 
       const serializedSpriteKeyframes = {};
-      Object.keys(spriteKeyframes).forEach(boneId => {
-        serializedSpriteKeyframes[boneId] = {};
-        Object.keys(spriteKeyframes[boneId]).forEach(frame => {
-          const group = spriteKeyframes[boneId][frame];
-          serializedSpriteKeyframes[boneId][frame] = {
+      Object.keys(spriteKeyframes).forEach(bId => {
+        serializedSpriteKeyframes[bId] = {};
+        Object.keys(spriteKeyframes[bId]).forEach(fIdx => {
+          const group = spriteKeyframes[bId][fIdx];
+          serializedSpriteKeyframes[bId][fIdx] = {
             activeIndex: group.activeIndex,
-            sprites: group.sprites.map(s => serializeSprite(s))
+            sprites: group.sprites.map(s => ({
+              name: s.name,
+              dataUrl: s.imageCanvas ? s.imageCanvas.toDataURL() : null,
+              scale: s.scale,
+              rot: s.rot,
+              offX: s.offX,
+              offY: s.offY
+            }))
           };
         });
       });
@@ -3251,65 +3127,55 @@
       return JSON.stringify({
         maxFrames,
         fps,
-        unselectedOpacity,
-        bones: bonesData,
-        unattachedImages: unattachedData,
-        trayImages: trayData,
+        bones: dataBones,
+        unattachedImages: dataUnattached,
+        trayImages: dataTray,
         boneKeyframes,
         spriteKeyframes: serializedSpriteKeyframes
       });
     }
 
-    function deserializeProject(jsonString, alertOnSuccess = true) {
+    function deserializeProject(jsonStr, isInitialLoad = false) {
       try {
-        const data = JSON.parse(jsonString);
-
+        const data = JSON.parse(jsonStr);
         maxFrames = data.maxFrames || 60;
         fps = data.fps || 24;
-        unselectedOpacity = data.unselectedOpacity !== undefined ? data.unselectedOpacity : 0.75;
 
         document.getElementById('max-frames-input').value = maxFrames;
         document.getElementById('fps-input').value = fps;
-        document.getElementById('unselected-opacity-slider').value = unselectedOpacity;
-        document.getElementById('lbl-unselected-opacity').innerText = `Opacidade Não Selecionados: ${Math.round(unselectedOpacity * 100)}%`;
 
         boneKeyframes = data.boneKeyframes || {};
-
-        const deserializeSprite = (sData) => {
-          if (!sData) return null;
-          const cvs = document.createElement('canvas');
-          const img = new Image();
-          img.onload = () => {
-            cvs.width = img.width;
-            cvs.height = img.height;
-            const c = cvs.getContext('2d');
-            applySmoothing(c);
-            c.drawImage(img, 0, 0);
-            render();
-          };
-          img.src = sData.dataUrl;
-          return {
-            name: sData.name,
-            imageCanvas: cvs,
-            offX: sData.offX,
-            offY: sData.offY,
-            scale: sData.scale,
-            rot: sData.rot
-          };
-        };
-
-        unattachedImages = (data.unattachedImages || []).map(deserializeSprite);
-        trayImages = (data.trayImages || []).map(deserializeSprite);
-
         spriteKeyframes = {};
+
         if (data.spriteKeyframes) {
-          Object.keys(data.spriteKeyframes).forEach(boneId => {
-            spriteKeyframes[boneId] = {};
-            Object.keys(data.spriteKeyframes[boneId]).forEach(frame => {
-              const group = data.spriteKeyframes[boneId][frame];
-              spriteKeyframes[boneId][frame] = {
+          Object.keys(data.spriteKeyframes).forEach(bId => {
+            spriteKeyframes[bId] = {};
+            Object.keys(data.spriteKeyframes[bId]).forEach(fIdx => {
+              const group = data.spriteKeyframes[bId][fIdx];
+              spriteKeyframes[bId][fIdx] = {
                 activeIndex: group.activeIndex,
-                sprites: group.sprites.map(deserializeSprite)
+                sprites: group.sprites.map(s => {
+                  const offCanvas = document.createElement('canvas');
+                  const img = new Image();
+                  img.onload = () => {
+                    offCanvas.width = img.width;
+                    offCanvas.height = img.height;
+                    const oCtx = offCanvas.getContext('2d');
+                    applySmoothing(oCtx);
+                    oCtx.drawImage(img, 0, 0);
+                    render();
+                  };
+                  if (s.dataUrl) img.src = s.dataUrl;
+
+                  return {
+                    name: s.name,
+                    imageCanvas: offCanvas,
+                    scale: s.scale,
+                    rot: s.rot,
+                    offX: s.offX,
+                    offY: s.offY
+                  };
+                })
               };
             });
           });
@@ -3318,81 +3184,190 @@
         bones = [];
         const boneMap = {};
 
-        data.bones.forEach(bData => {
-          const newBone = new Bone(
-            bData.id,
-            null,
-            bData.length,
-            bData.localAngle,
-            { x: bData.posX, y: bData.posY }
-          );
-          newBone.meshStrokes = bData.meshStrokes || [];
-          newBone.attachedSprite = deserializeSprite(bData.attachedSprite);
-          newBone.visibleBone = bData.visibleBone !== undefined ? bData.visibleBone : true;
-          newBone.visibleImage = bData.visibleImage !== undefined ? bData.visibleImage : true;
+        data.bones.forEach(bd => {
+          const newBone = new Bone(bd.id, null, bd.length, bd.localAngle, { x: bd.posX, y: bd.posY });
+          newBone.meshStrokes = bd.meshStrokes || [];
+          newBone.visibleBone = bd.visibleBone !== undefined ? bd.visibleBone : true;
+          newBone.visibleImage = bd.visibleImage !== undefined ? bd.visibleImage : true;
 
-          boneMap[bData.id] = newBone;
+          if (bd.attachedSprite && bd.attachedSprite.dataUrl) {
+            const offCanvas = document.createElement('canvas');
+            const img = new Image();
+            img.onload = () => {
+              offCanvas.width = img.width;
+              offCanvas.height = img.height;
+              const oCtx = offCanvas.getContext('2d');
+              applySmoothing(oCtx);
+              oCtx.drawImage(img, 0, 0);
+              render();
+            };
+            img.src = bd.attachedSprite.dataUrl;
+
+            newBone.attachedSprite = {
+              name: bd.attachedSprite.name,
+              imageCanvas: offCanvas,
+              scale: bd.attachedSprite.scale,
+              rot: bd.attachedSprite.rot,
+              offX: bd.attachedSprite.offX,
+              offY: bd.attachedSprite.offY
+            };
+          }
+
+          boneMap[bd.id] = newBone;
           bones.push(newBone);
         });
 
-        data.bones.forEach(bData => {
-          if (bData.parentId && boneMap[bData.parentId]) {
-            boneMap[bData.id].parent = boneMap[bData.parentId];
+        data.bones.forEach(bd => {
+          if (bd.parentId && boneMap[bd.parentId]) {
+            boneMap[bd.id].parent = boneMap[bd.parentId];
           }
         });
 
+        unattachedImages = [];
+        if (data.unattachedImages) {
+          data.unattachedImages.forEach(imgData => {
+            const offCanvas = document.createElement('canvas');
+            const img = new Image();
+            img.onload = () => {
+              offCanvas.width = img.width;
+              offCanvas.height = img.height;
+              const oCtx = offCanvas.getContext('2d');
+              applySmoothing(oCtx);
+              oCtx.drawImage(img, 0, 0);
+              render();
+            };
+            if (imgData.dataUrl) img.src = imgData.dataUrl;
+
+            unattachedImages.push({
+              name: imgData.name,
+              imageCanvas: offCanvas,
+              scale: imgData.scale || 1,
+              rot: imgData.rot || 0,
+              offX: imgData.offX || 0,
+              offY: imgData.offY || 0
+            });
+          });
+        }
+
+        trayImages = [];
+        if (data.trayImages) {
+          data.trayImages.forEach(imgData => {
+            const offCanvas = document.createElement('canvas');
+            const img = new Image();
+            img.onload = () => {
+              offCanvas.width = img.width;
+              offCanvas.height = img.height;
+              const oCtx = offCanvas.getContext('2d');
+              applySmoothing(oCtx);
+              oCtx.drawImage(img, 0, 0);
+              renderAssetTray();
+            };
+            if (imgData.dataUrl) img.src = imgData.dataUrl;
+
+            trayImages.push({
+              name: imgData.name,
+              imageCanvas: offCanvas,
+              scale: imgData.scale || 1,
+              rot: imgData.rot || 0,
+              offX: imgData.offX || 0,
+              offY: imgData.offY || 0
+            });
+          });
+        }
+
         selectedBone = bones.length > 0 ? bones[0] : null;
+        currentFrame = 0;
+        applyKeyframeState(currentFrame);
 
         renderAssetTray();
         updateUI();
         resizeCanvas();
+      } catch (err) {
+        console.error("Falha ao desserializar projeto:", err);
+      }
+    }
 
-        if (alertOnSuccess) alert("Projeto carregado com sucesso!");
-      } catch (e) {
-        alert("Erro ao ler dados do projeto: " + e.message);
+    function saveToLocalStorage() {
+      localStorage.setItem('nickeman_project_data', serializeProject());
+      alert("Projeto salvo no armazenamento local!");
+    }
+
+    function loadFromLocalStorage() {
+      const saved = localStorage.getItem('nickeman_project_data');
+      if (saved) {
+        saveState();
+        deserializeProject(saved);
+      } else {
+        alert("Nenhum projeto salvo encontrado.");
       }
     }
 
     function exportJSON() {
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(serializeProject());
-      const downloadAnchor = document.createElement('a');
-      downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", "nickeman_rig_project.json");
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
+      const jsonStr = serializeProject();
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'nickeman_rigging_project.json';
+      a.click();
+      URL.revokeObjectURL(url);
     }
 
-    function importJSON(e) {
-      const file = e.target.files[0];
+    function importJSON(event) {
+      const file = event.target.files[0];
       if (file) {
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = (e) => {
           saveState();
-          deserializeProject(event.target.result);
+          deserializeProject(e.target.result);
         };
         reader.readAsText(file);
       }
     }
 
-    function saveToLocalStorage() {
-      localStorage.setItem('nickeman_saved_project', serializeProject());
-      alert("Projeto salvo com sucesso no navegador!");
-    }
-
-    function loadFromLocalStorage() {
-      const saved = localStorage.getItem('nickeman_saved_project');
-      if (saved) {
-        saveState();
-        deserializeProject(saved);
-      } else {
-        alert("Nenhum projeto salvo no armazenamento local.");
+    async function exportImageSequence() {
+      if (typeof JSZip === 'undefined') {
+        alert("Biblioteca JSZip carregando, tente novamente.");
+        return;
       }
+
+      const zip = new JSZip();
+      const exportCanvas = document.createElement('canvas');
+      exportCanvas.width = canvas.width;
+      exportCanvas.height = canvas.height;
+      const exportCtx = exportCanvas.getContext('2d');
+      applySmoothing(exportCtx);
+
+      const initialFrame = currentFrame;
+
+      for (let f = 0; f <= maxFrames; f++) {
+        applyKeyframeState(f);
+        renderToContext(exportCtx, true);
+
+        const dataUrl = exportCanvas.toDataURL('image/png');
+        const base64Data = dataUrl.replace(/^data:image\/png;base64,/, "");
+        const frameNumber = String(f).padStart(4, '0');
+        zip.file(`frame_${frameNumber}.png`, base64Data, { base64: true });
+      }
+
+      currentFrame = initialFrame;
+      applyKeyframeState(currentFrame);
+      updateUI();
+      render();
+
+      const content = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(content);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'animacao_sequencia.zip';
+      a.click();
+      URL.revokeObjectURL(url);
     }
 
-    // Inicialização da interface
     resizeCanvas();
-    updateUI();
+    setMode('ADD_BONE_ROOT');
   </script>
 </body>
 </html>
