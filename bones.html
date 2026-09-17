@@ -745,7 +745,7 @@
             <label id="lbl-bone-name">Rotacionar Osso (°)</label>
             <input type="range" id="angle-slider" min="-180" max="180" value="0">
 
-            <label>Comprimento (Escala Osso):</label>
+            <label>Comprimento (Osso):</label>
             <input type="range" id="bone-len-slider" min="10" max="500" value="100">
 
             <label>Translação X:</label>
@@ -956,7 +956,7 @@
     let maxFrames = 60;
     let fps = 24;
     let boneKeyframes = {};
-    let spriteKeyframes = {}; // Armazena trocas/estados de imagem por osso e frame: spriteKeyframes[boneId][frame] = { activeIndex: 0, sprites: [spriteObj1, spriteObj2, ...] }
+    let spriteKeyframes = {}; 
     let isPlaying = false;
     let animationInterval = null;
 
@@ -1050,7 +1050,6 @@
       }
     });
 
-    // Evento de Drag and Drop na Linha do Tempo (Timeline) para adicionar/armazenar nova imagem no Keyframe mantendo as anteriores
     const timelineDropContainer = document.getElementById('timeline-drop-container');
     timelineDropContainer.addEventListener('dragover', (e) => {
       e.preventDefault();
@@ -1100,12 +1099,10 @@
             spriteKeyframes[targetBone.id] = {};
           }
           if (!spriteKeyframes[targetBone.id][clampedFrame]) {
-            // Inicializa estrutura de histórico de sprites para este frame/osso
             spriteKeyframes[targetBone.id][clampedFrame] = { activeIndex: 0, sprites: [] };
           }
 
           const spriteGroup = spriteKeyframes[targetBone.id][clampedFrame];
-          // Adiciona a nova imagem ao array de histórico e define ela como ativa
           spriteGroup.sprites.push(newItem);
           spriteGroup.activeIndex = spriteGroup.sprites.length - 1;
 
@@ -1119,7 +1116,7 @@
           render();
         }
       } else {
-        alert(`Solte a imagem sobre um keyframe existente (ponto amarelo ou laranja) do osso "${targetBone.id}" no frame ${clampedFrame}.`);
+        alert(`Solte a imagem sobre um keyframe existente do osso "${targetBone.id}" no frame ${clampedFrame}.`);
       }
     });
 
@@ -1537,9 +1534,13 @@
       } 
       else if (mode === 'POSE') {
         if (selectedBone) {
+          // ==========================================
+          // VERIFICAÇÃO DE ALÇAS VISUAIS DA IMAGEM ATIVA
+          // ==========================================
           if (transformTarget === 'IMAGE' && selectedBone.attachedSprite && selectedBone.visibleImage) {
             const bbox = getSelectedSpriteBoundingBox();
             if (bbox) {
+              // Alça de Rotação da Imagem (círculo superior)
               const rotHandleX = bbox.centerWorld.x + Math.sin(bbox.spriteWorldAngle) * (bbox.h / 2 + 25 / stageZoom);
               const rotHandleY = bbox.centerWorld.y - Math.cos(bbox.spriteWorldAngle) * (bbox.h / 2 + 25 / stageZoom);
               const distRot = Math.hypot(rotHandleX - worldPos.x, rotHandleY - worldPos.y);
@@ -1551,8 +1552,22 @@
                 saveState();
                 return;
               }
+
+              // Alça de Translação da Imagem (quadrado central)
+              const distTrans = Math.hypot(bbox.centerWorld.x - worldPos.x, bbox.centerWorld.y - worldPos.y);
+              if (distTrans < 18 / stageZoom) {
+                dragMode = 'SPRITE_TRANSLATE';
+                dragStartPos = worldPos;
+                dragInitialState = { offX: bbox.sprite.offX, offY: bbox.sprite.offY };
+                saveState();
+                return;
+              }
             }
-          } else if (transformTarget === 'BONE' && selectedBone.visibleBone) {
+          } 
+          // ==========================================
+          // VERIFICAÇÃO DE ALÇAS VISUAIS DO OSSO ATIVO
+          // ==========================================
+          else if (transformTarget === 'BONE' && selectedBone.visibleBone) {
             const rotHandleX = selectedBone.endX + Math.cos(selectedBone.worldAngle) * (20 / stageZoom);
             const rotHandleY = selectedBone.endY + Math.sin(selectedBone.worldAngle) * (20 / stageZoom);
             const distRot = Math.hypot(rotHandleX - worldPos.x, rotHandleY - worldPos.y);
@@ -1728,6 +1743,15 @@
           sprite.offX += dx * cos - dy * sin;
           sprite.offY += dx * sin + dy * cos;
           dragStartPos = worldPos;
+          
+          if (spriteKeyframes[selectedBone.id] && spriteKeyframes[selectedBone.id][currentFrame]) {
+            const group = spriteKeyframes[selectedBone.id][currentFrame];
+            if (group.sprites[group.activeIndex]) {
+              group.sprites[group.activeIndex].offX = sprite.offX;
+              group.sprites[group.activeIndex].offY = sprite.offY;
+            }
+          }
+
           updateUI();
           render();
         }
@@ -1736,6 +1760,14 @@
           if (bbox) {
             const angle = Math.atan2(worldPos.y - bbox.centerWorld.y, worldPos.x - bbox.centerWorld.x);
             bbox.sprite.rot = angle - selectedBone.worldAngle + Math.PI/2;
+            
+            if (spriteKeyframes[selectedBone.id] && spriteKeyframes[selectedBone.id][currentFrame]) {
+              const group = spriteKeyframes[selectedBone.id][currentFrame];
+              if (group.sprites[group.activeIndex]) {
+                group.sprites[group.activeIndex].rot = bbox.sprite.rot;
+              }
+            }
+
             updateUI();
             render();
           }
@@ -1745,6 +1777,14 @@
           if (bbox && dragInitialState.dist > 0) {
             const currentDist = Math.hypot(worldPos.x - bbox.centerWorld.x, worldPos.y - bbox.centerWorld.y);
             bbox.sprite.scale = Math.max(0.05, dragInitialState.scale * (currentDist / dragInitialState.dist));
+            
+            if (spriteKeyframes[selectedBone.id] && spriteKeyframes[selectedBone.id][currentFrame]) {
+              const group = spriteKeyframes[selectedBone.id][currentFrame];
+              if (group.sprites[group.activeIndex]) {
+                group.sprites[group.activeIndex].scale = bbox.sprite.scale;
+              }
+            }
+
             updateUI();
             render();
           }
@@ -1863,6 +1903,16 @@
         sprite.offY = parseFloat(offYSlider.value);
         sprite.scale = parseFloat(scaleSlider.value);
         sprite.rot = (parseFloat(rotSlider.value) * Math.PI) / 180;
+
+        if (spriteKeyframes[selectedBone.id] && spriteKeyframes[selectedBone.id][currentFrame]) {
+          const group = spriteKeyframes[selectedBone.id][currentFrame];
+          if (group.sprites[group.activeIndex]) {
+            group.sprites[group.activeIndex].offX = sprite.offX;
+            group.sprites[group.activeIndex].offY = sprite.offY;
+            group.sprites[group.activeIndex].scale = sprite.scale;
+            group.sprites[group.activeIndex].rot = sprite.rot;
+          }
+        }
         render();
       }
     }
@@ -1895,7 +1945,6 @@
       const sprite = selectedBone.attachedSprite;
       infoText.innerText = `Imagem Ativa: ${sprite.name}`;
 
-      // Popula o seletor de histórico de imagens da keyframe atual do osso selecionado
       if (spriteKeyframes[selectedBone.id] && spriteKeyframes[selectedBone.id][currentFrame]) {
         const group = spriteKeyframes[selectedBone.id][currentFrame];
         if (group.sprites && group.sprites.length > 1) {
@@ -2381,11 +2430,20 @@
         interpolated: existingKf ? (existingKf.interpolated !== false) : true
       };
 
-      // Garante também o registro de sprite atual na keyframe se houver sprite associado
       if (selectedBone.attachedSprite) {
         if (!spriteKeyframes[selectedBone.id]) spriteKeyframes[selectedBone.id] = {};
         if (!spriteKeyframes[selectedBone.id][currentFrame]) {
-          spriteKeyframes[selectedBone.id][currentFrame] = { activeIndex: 0, sprites: [selectedBone.attachedSprite] };
+          spriteKeyframes[selectedBone.id][currentFrame] = { 
+            activeIndex: 0, 
+            sprites: [{ ...selectedBone.attachedSprite }] 
+          };
+        } else {
+          const group = spriteKeyframes[selectedBone.id][currentFrame];
+          const activeSprite = group.sprites[group.activeIndex] || selectedBone.attachedSprite;
+          activeSprite.scale = selectedBone.attachedSprite.scale;
+          activeSprite.rot = selectedBone.attachedSprite.rot;
+          activeSprite.offX = selectedBone.attachedSprite.offX;
+          activeSprite.offY = selectedBone.attachedSprite.offY;
         }
       }
     }
@@ -2503,14 +2561,13 @@
             };
           } else {
             const factor = (frame - prevFrame) / (nextFrame - prevFrame);
-            const pLen = kfs[prevFrame].length || bone.length;
-            const nLen = kfs[nextFrame].length || bone.length;
+            const fixedLen = kfs[prevFrame].length !== undefined ? kfs[prevFrame].length : bone.length;
 
             frameStateMap[bone.id] = {
               angle: kfs[prevFrame].angle + (kfs[nextFrame].angle - kfs[prevFrame].angle) * factor,
               posX: kfs[prevFrame].posX + (kfs[nextFrame].posX - kfs[prevFrame].posX) * factor,
               posY: kfs[prevFrame].posY + (kfs[nextFrame].posY - kfs[prevFrame].posY) * factor,
-              length: pLen + (nLen - pLen) * factor
+              length: fixedLen
             };
           }
         } else if (prevFrame !== null) {
@@ -2537,20 +2594,53 @@
           bone.length = stateMap[bone.id].length;
         }
 
-        // Restaura a imagem ativa do histórico de sprites baseado no frame atual
         if (spriteKeyframes[bone.id]) {
           const sKfs = spriteKeyframes[bone.id];
           const activeSpriteFrames = Object.keys(sKfs).map(Number).sort((a, b) => a - b);
-          let activeGroup = null;
+          
+          if (activeSpriteFrames.length > 0) {
+            let prevF = null;
+            let nextF = null;
 
-          for (let f of activeSpriteFrames) {
-            if (f <= frame) {
-              activeGroup = sKfs[f];
+            for (let f of activeSpriteFrames) {
+              if (f <= frame) prevF = f;
+              if (f >= frame && nextF === null) nextF = f;
             }
-          }
-          if (activeGroup && activeGroup.sprites && activeGroup.sprites.length > 0) {
-            const activeIdx = Math.min(activeGroup.activeIndex, activeGroup.sprites.length - 1);
-            bone.attachedSprite = activeGroup.sprites[activeIdx];
+
+            if (prevF !== null) {
+              const prevGroup = sKfs[prevF];
+              const activeIdx = Math.min(prevGroup.activeIndex, prevGroup.sprites.length - 1);
+              const prevSprite = prevGroup.sprites[activeIdx];
+
+              if (prevSprite) {
+                if (!bone._interpolatedSprite) {
+                  bone._interpolatedSprite = { ...prevSprite };
+                } else {
+                  bone._interpolatedSprite.name = prevSprite.name;
+                  bone._interpolatedSprite.imageCanvas = prevSprite.imageCanvas;
+                  bone._interpolatedSprite.offX = prevSprite.offX;
+                  bone._interpolatedSprite.offY = prevSprite.offY;
+                  bone._interpolatedSprite.scale = prevSprite.scale;
+                  bone._interpolatedSprite.rot = prevSprite.rot;
+                }
+
+                if (nextF !== null && prevF !== nextF && boneKeyframes[bone.id] && boneKeyframes[bone.id][prevF] && boneKeyframes[bone.id][prevF].interpolated !== false) {
+                  const nextGroup = sKfs[nextF];
+                  const nextActiveIdx = Math.min(nextGroup.activeIndex, nextGroup.sprites.length - 1);
+                  const nextSprite = nextGroup.sprites[nextActiveIdx];
+
+                  if (nextSprite) {
+                    const factor = (frame - prevF) / (nextF - prevF);
+                    bone._interpolatedSprite.scale = prevSprite.scale + (nextSprite.scale - prevSprite.scale) * factor;
+                    bone._interpolatedSprite.offX = prevSprite.offX + (nextSprite.offX - prevSprite.offX) * factor;
+                    bone._interpolatedSprite.offY = prevSprite.offY + (nextSprite.offY - prevSprite.offY) * factor;
+                    bone._interpolatedSprite.rot = prevSprite.rot + (nextSprite.rot - prevSprite.rot) * factor;
+                  }
+                }
+
+                bone.attachedSprite = bone._interpolatedSprite;
+              }
+            }
           }
         }
       });
@@ -2575,7 +2665,6 @@
       render();
     }
 
-    // Função de Exportação para Sequência de Imagens
     async function exportImageSequence() {
       if (typeof JSZip === 'undefined') {
         alert("Aguarde o carregamento da biblioteca de compactação (JSZip) e tente novamente em instantes.");
@@ -2676,6 +2765,49 @@
         targetCtx.restore();
       });
 
+      // ==========================================
+      // DESENHO DE ALÇAS VISUAIS DE MANUSEIO DA IMAGEM SELECIONADA
+      // ==========================================
+      if (!forcePlayView && !isPlaying && transformTarget === 'IMAGE' && selectedBone && selectedBone.attachedSprite && selectedBone.visibleImage) {
+        const bbox = getSelectedSpriteBoundingBox();
+        if (bbox) {
+          targetCtx.save();
+          targetCtx.translate(bbox.centerWorld.x, bbox.centerWorld.y);
+          targetCtx.rotate(bbox.spriteWorldAngle);
+
+          // Contorno retangular de seleção da imagem
+          targetCtx.strokeStyle = '#00d2ff';
+          targetCtx.lineWidth = 1.5 / stageZoom;
+          targetCtx.setLineDash([4, 4]);
+          targetCtx.strokeRect(-bbox.w / 2, -bbox.h / 2, bbox.w, bbox.h);
+          targetCtx.setLineDash([]);
+
+          // 1. Alça de Translação (Centro da imagem - Quadrado Ciano)
+          targetCtx.fillStyle = '#00d2ff';
+          targetCtx.fillRect(-5 / stageZoom, -5 / stageZoom, 10 / stageZoom, 10 / stageZoom);
+          targetCtx.strokeStyle = '#121216';
+          targetCtx.lineWidth = 1 / stageZoom;
+          targetCtx.strokeRect(-5 / stageZoom, -5 / stageZoom, 10 / stageZoom, 10 / stageZoom);
+
+          // 2. Alça de Rotação (Haste superior + Círculo Amarelo)
+          const rotHandleOffsetY = bbox.h / 2 + 25 / stageZoom;
+          targetCtx.beginPath();
+          targetCtx.moveTo(0, -bbox.h / 2);
+          targetCtx.lineTo(0, -rotHandleOffsetY);
+          targetCtx.strokeStyle = '#ffcc00';
+          targetCtx.lineWidth = 1.5 / stageZoom;
+          targetCtx.stroke();
+
+          targetCtx.beginPath();
+          targetCtx.arc(0, -rotHandleOffsetY, 6 / stageZoom, 0, Math.PI * 2);
+          targetCtx.fillStyle = '#ffcc00';
+          targetCtx.fill();
+          targetCtx.stroke();
+
+          targetCtx.restore();
+        }
+      }
+
       if (!forcePlayView && !isPlaying) {
         bones.forEach(bone => {
           if (!bone.visibleBone) return;
@@ -2699,11 +2831,40 @@
           targetCtx.strokeStyle = '#00d2ff';
           targetCtx.lineWidth = 2 / stageZoom;
           targetCtx.stroke();
+
+          // ==========================================
+          // DESENHO DE ALÇAS VISUAIS NOS PONTOS DE CONTROLE DO OSSO
+          // ==========================================
+          const isSelected = (bone === selectedBone);
+          const handleRadius = (isSelected ? 7 : 5) / stageZoom;
+
+          // 1. Ponto de Translação / Raiz (Início do osso) - Azul Ciano
+          targetCtx.beginPath();
+          targetCtx.arc(bone.startX, bone.startY, handleRadius, 0, Math.PI * 2);
+          targetCtx.fillStyle = '#00d2ff';
+          targetCtx.fill();
+          targetCtx.strokeStyle = '#121216';
+          targetCtx.lineWidth = 1.5 / stageZoom;
+          targetCtx.stroke();
+
+          // 2. Ponto de Rotação / Ponta (Fim do osso) - Amarelo Ouro
+          targetCtx.beginPath();
+          targetCtx.arc(bone.endX, bone.endY, handleRadius, 0, Math.PI * 2);
+          targetCtx.fillStyle = '#ffcc00';
+          targetCtx.fill();
+          targetCtx.strokeStyle = '#121216';
+          targetCtx.lineWidth = 1.5 / stageZoom;
+          targetCtx.stroke();
+
           targetCtx.restore();
         });
       }
 
       targetCtx.restore();
+    }
+
+    function render() {
+      renderToContext(ctx, false);
     }
 
     function serializeProject() {
@@ -2801,7 +2962,6 @@
             spriteKeyframes[bId] = {};
             for (let frm in data.spriteKeyframes[bId]) {
               const groupData = data.spriteKeyframes[bId][frm];
-              // Compatibilidade caso o JSON antigo venha como objeto único ou array
               const spriteList = groupData.sprites || [groupData];
               const activeIdx = groupData.activeIndex !== undefined ? groupData.activeIndex : 0;
 
@@ -2983,118 +3143,34 @@
 
       const reader = new FileReader();
       reader.onload = (event) => {
-        loadedImage = new Image();
-        loadedImage.onload = () => resetCropZoom();
-        loadedImage.src = event.target.result;
+        const img = new Image();
+        img.onload = () => {
+          loadedImage = img;
+          cropZoom = Math.min(cropCanvas.width / img.width, cropCanvas.height / img.height) * 0.8;
+          cropPan = {
+            x: (cropCanvas.width - img.width * cropZoom) / 2,
+            y: (cropCanvas.height - img.height * cropZoom) / 2
+          };
+          polyPoints = [];
+          isPolyClosed = false;
+          drawCropCanvas();
+        };
+        img.src = event.target.result;
       };
       reader.readAsDataURL(file);
     });
 
-    function resetCropZoom() {
-      if (!loadedImage) return;
-      cropZoom = Math.min(cropCanvas.width / loadedImage.width, cropCanvas.height / loadedImage.height) * 0.9;
-      cropPan.x = (cropCanvas.width - loadedImage.width * cropZoom) / 2;
-      cropPan.y = (cropCanvas.height - loadedImage.height * cropZoom) / 2;
-      polyPoints = [];
-      isPolyClosed = false;
-      drawCropCanvas();
-    }
-
-    function canvasToImageCoords(cx, cy) {
-      return { x: (cx - cropPan.x) / cropZoom, y: (cy - cropPan.y) / cropZoom };
-    }
-
-    function imageToCanvasCoords(ix, iy) {
-      return { x: ix * cropZoom + cropPan.x, y: iy * cropZoom + cropPan.y };
-    }
-
-    cropCanvas.addEventListener('mousedown', (e) => {
-      if (!loadedImage) return;
-      const rect = cropCanvas.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
-
-      if (e.button === 2) {
-        isPanning = true;
-        panStart = { x: mx - cropPan.x, y: my - cropPan.y };
-        return;
-      }
-
-      if (e.button === 0 && !isPolyClosed) {
-        polyPoints.push(canvasToImageCoords(mx, my));
-        drawCropCanvas();
-      }
-    });
-
-    cropCanvas.addEventListener('mousemove', (e) => {
-      const rect = cropCanvas.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
-
-      if (isPanning) {
-        cropPan.x = mx - panStart.x;
-        cropPan.y = my - panStart.y;
-        drawCropCanvas();
-        return;
-      }
-
-      if (loadedImage && polyPoints.length > 0 && !isPolyClosed) {
-        drawCropCanvas();
-        const lastPt = imageToCanvasCoords(polyPoints[polyPoints.length - 1].x, polyPoints[polyPoints.length - 1].y);
-        cropCtx.beginPath();
-        cropCtx.moveTo(lastPt.x, lastPt.y);
-        cropCtx.lineTo(mx, my);
-        cropCtx.strokeStyle = '#00d2ff';
-        cropCtx.setLineDash([4, 4]);
-        cropCtx.lineWidth = 1.5;
-        cropCtx.stroke();
-        cropCtx.setLineDash([]);
-      }
-    });
-
-    cropCanvas.addEventListener('mouseup', (e) => {
-      if (e.button === 2) isPanning = false;
-    });
-
-    cropCanvas.addEventListener('dblclick', () => finishPolygon());
-
-    cropCanvas.addEventListener('wheel', (e) => {
-      e.preventDefault();
-      if (!loadedImage) return;
-
-      const rect = cropCanvas.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
-
-      const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
-      const newZoom = Math.max(0.1, Math.min(20, cropZoom * zoomFactor));
-
-      cropPan.x = mx - (mx - cropPan.x) * (newZoom / cropZoom);
-      cropPan.y = my - (my - cropPan.y) * (newZoom / cropZoom);
-      cropZoom = newZoom;
-
-      drawCropCanvas();
-    });
-
-    function undoCropPoint() {
-      if (polyPoints.length > 0 && !isPolyClosed) {
-        polyPoints.pop();
-        drawCropCanvas();
-      }
-    }
-
-    function finishPolygon() {
-      if (polyPoints.length >= 3) {
-        isPolyClosed = true;
-        drawCropCanvas();
-      }
-    }
-
     function drawCropCanvas() {
       cropCtx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
-      if (!loadedImage) return;
-
       applySmoothing(cropCtx);
+
+      if (!loadedImage) {
+        cropCtx.fillStyle = '#666';
+        cropCtx.font = '14px sans-serif';
+        cropCtx.textAlign = 'center';
+        cropCtx.fillText("Selecione uma imagem acima para começar", cropCanvas.width / 2, cropCanvas.height / 2);
+        return;
+      }
 
       cropCtx.save();
       cropCtx.translate(cropPan.x, cropPan.y);
@@ -3103,458 +3179,332 @@
       cropCtx.restore();
 
       if (polyPoints.length > 0) {
+        cropCtx.save();
         cropCtx.beginPath();
-        const first = imageToCanvasCoords(polyPoints[0].x, polyPoints[0].y);
-        cropCtx.moveTo(first.x, first.y);
+        polyPoints.forEach((pt, idx) => {
+          const screenPt = {
+            x: pt.x * cropZoom + cropPan.x,
+            y: pt.y * cropZoom + cropPan.y
+          };
+          if (idx === 0) cropCtx.moveTo(screenPt.x, screenPt.y);
+          else cropCtx.lineTo(screenPt.x, screenPt.y);
+        });
 
-        for (let i = 1; i < polyPoints.length; i++) {
-          const pt = imageToCanvasCoords(polyPoints[i].x, polyPoints[i].y);
-          cropCtx.lineTo(pt.x, pt.y);
-        }
-
-        if (isPolyClosed) {
-          cropCtx.closePath();
-          cropCtx.fillStyle = 'rgba(0, 210, 255, 0.25)';
-          cropCtx.fill();
-        }
-
+        if (isPolyClosed) cropCtx.closePath();
         cropCtx.strokeStyle = '#00d2ff';
         cropCtx.lineWidth = 2;
         cropCtx.stroke();
 
-        polyPoints.forEach((p, idx) => {
-          const pt = imageToCanvasCoords(p.x, p.y);
+        if (isPolyClosed) {
+          cropCtx.fillStyle = 'rgba(0, 210, 255, 0.2)';
+          cropCtx.fill();
+        }
+
+        polyPoints.forEach((pt) => {
+          const screenPt = {
+            x: pt.x * cropZoom + cropPan.x,
+            y: pt.y * cropZoom + cropPan.y
+          };
           cropCtx.beginPath();
-          cropCtx.arc(pt.x, pt.y, idx === 0 ? 6 : 4, 0, Math.PI * 2);
-          cropCtx.fillStyle = idx === 0 ? '#ffcc00' : '#00ff88';
+          cropCtx.arc(screenPt.x, screenPt.y, 4, 0, Math.PI * 2);
+          cropCtx.fillStyle = '#ff0055';
           cropCtx.fill();
         });
+        cropCtx.restore();
       }
     }
 
-    function confirmCrop() {
-      if (!loadedImage || polyPoints.length < 3) {
-        alert("Crie ao menos 3 pontos de retas conectadas para definir o recorte.");
+    cropCanvas.addEventListener('mousedown', (e) => {
+      if (!loadedImage) return;
+      const rect = cropCanvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      if (e.button === 2) {
+        isPanning = true;
+        panStart = { x: clickX - cropPan.x, y: clickY - cropPan.y };
         return;
       }
 
-      saveState();
+      const imgX = (clickX - cropPan.x) / cropZoom;
+      const imgY = (clickY - cropPan.y) / cropZoom;
 
-      if (!isPolyClosed) finishPolygon();
-
-      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-      polyPoints.forEach(p => {
-        if (p.x < minX) minX = p.x;
-        if (p.y < minY) minY = p.y;
-        if (p.x > maxX) maxX = p.x;
-        if (p.y > maxY) maxY = p.y;
-      });
-
-      const width = maxX - minX;
-      const height = maxY - minY;
-      if (width <= 0 || height <= 0) return;
-
-      const offCanvas = document.createElement('canvas');
-      offCanvas.width = width;
-      offCanvas.height = height;
-      const offCtx = offCanvas.getContext('2d');
-
-      applySmoothing(offCtx);
-
-      offCtx.beginPath();
-      offCtx.moveTo(polyPoints[0].x - minX, polyPoints[0].y - minY);
-      for (let i = 1; i < polyPoints.length; i++) {
-        offCtx.lineTo(polyPoints[i].x - minX, polyPoints[i].y - minY);
-      }
-      offCtx.closePath();
-      offCtx.clip();
-
-      offCtx.drawImage(loadedImage, -minX, -minY);
-
-      if (document.getElementById('chk-remove-white').checked) {
-        const imgData = offCtx.getImageData(0, 0, width, height);
-        const data = imgData.data;
-
-        for (let i = 0; i < data.length; i += 4) {
-          if (data[i] > 225 && data[i + 1] > 225 && data[i + 2] > 225) {
-            data[i + 3] = 0;
-          }
+      if (imgX >= 0 && imgX <= loadedImage.width && imgY >= 0 && imgY <= loadedImage.height) {
+        if (!isPolyClosed) {
+          polyPoints.push({ x: imgX, y: imgY });
+          drawCropCanvas();
         }
-        offCtx.putImageData(imgData, 0, 0);
       }
+    });
 
-      const imgCount = unattachedImages.length + trayImages.length + 1;
-      const newSprite = {
-        name: `Img_Solta_${imgCount}`,
-        imageCanvas: offCanvas,
-        offX: 0,
-        offY: 0,
-        scale: 1.0,
-        rot: 0
+    cropCanvas.addEventListener('mousemove', (e) => {
+      if (!isPanning) return;
+      const rect = cropCanvas.getBoundingClientRect();
+      cropPan.x = (e.clientX - rect.left) - panStart.x;
+      cropPan.y = (e.clientY - rect.top) - panStart.y;
+      drawCropCanvas();
+    });
+
+    cropCanvas.addEventListener('mouseup', () => { isPanning = false; });
+    cropCanvas.addEventListener('contextmenu', e => e.preventDefault());
+
+    cropCanvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      if (!loadedImage) return;
+      const rect = cropCanvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
+      const newZoom = Math.max(0.1, Math.min(20, cropZoom * zoomFactor));
+
+      cropPan.x = mouseX - (mouseX - cropPan.x) * (newZoom / cropZoom);
+      cropPan.y = mouseY - (mouseY - cropPan.y) * (newZoom / cropZoom);
+      cropZoom = newZoom;
+      drawCropCanvas();
+    });
+
+    function resetCropZoom() {
+      if (!loadedImage) return;
+      cropZoom = Math.min(cropCanvas.width / loadedImage.width, cropCanvas.height / loadedImage.height) * 0.8;
+      cropPan = {
+        x: (cropCanvas.width - loadedImage.width * cropZoom) / 2,
+        y: (cropCanvas.height - loadedImage.height * cropZoom) / 2
       };
-
-      trayImages.push(newSprite);
-
-      closeImageModal();
-      renderAssetTray();
-      updateUI();
-      render();
+      drawCropCanvas();
     }
 
+    function undoCropPoint() {
+      if (polyPoints.length > 0) {
+        polyPoints.pop();
+        isPolyClosed = false;
+        drawCropCanvas();
+      }
+    }
+
+    function finishPolygon() {
+      if (polyPoints.length >= 3) {
+        isPolyClosed = true;
+        drawCropCanvas();
+      } else {
+        alert("Defina pelo menos 3 pontos para fechar o polígono de recorte.");
+      }
+    }
+
+    // ==========================================
+    // MELHORIA NA IMPORTAÇÃO AUTOMÁTICA E RECORTE INTELIGENTE
+    // ==========================================
     function autoCropSeparateShapes() {
       if (!loadedImage) {
-        alert("Carregue uma imagem antes de executar o recorte automático.");
+        alert("Carregue uma imagem primeiro.");
         return;
       }
 
-      saveState();
-
       const tempCanvas = document.createElement('canvas');
-      const w = loadedImage.width;
-      const h = loadedImage.height;
-      tempCanvas.width = w;
-      tempCanvas.height = h;
-      const tempCtx = tempCanvas.getContext('2d');
-      tempCtx.drawImage(loadedImage, 0, 0);
+      tempCanvas.width = loadedImage.width;
+      tempCanvas.height = loadedImage.height;
+      const tCtx = tempCanvas.getContext('2d');
+      tCtx.drawImage(loadedImage, 0, 0);
 
-      const imgData = tempCtx.getImageData(0, 0, w, h);
+      const imgData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
       const data = imgData.data;
+      const width = tempCanvas.width;
+      const height = tempCanvas.height;
+
       const removeWhite = document.getElementById('chk-remove-white').checked;
+      const visited = new Uint8Array(width * height);
+      const boxes = [];
 
-      const isSolid = new Uint8Array(w * h);
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const idx = y * width + x;
+          if (visited[idx]) continue;
 
-      for (let i = 0; i < data.length; i += 4) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-        const a = data[i + 3];
+          const alpha = data[idx * 4 + 3];
+          const r = data[idx * 4];
+          const g = data[idx * 4 + 1];
+          const b = data[idx * 4 + 2];
 
-        let solid = a > 20;
-        if (removeWhite && r > 225 && g > 225 && b > 225) {
-          solid = false;
-        }
-        isSolid[i / 4] = solid ? 1 : 0;
-      }
+          const isTransparentOrWhite = alpha < 10 || (removeWhite && r > 240 && g > 240 && b > 240);
 
-      const visited = new Uint8Array(w * h);
-      const components = [];
-
-      for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-          const idx = y * w + x;
-          if (isSolid[idx] && !visited[idx]) {
-            const queue = [x, y];
-            visited[idx] = 1;
-
+          if (!isTransparentOrWhite) {
             let minX = x, maxX = x, minY = y, maxY = y;
-            const pixels = [];
+            let pixelCount = 0;
+            const queue = [idx];
+            visited[idx] = 1;
 
             let head = 0;
             while (head < queue.length) {
-              const cx = queue[head++];
-              const cy = queue[head++];
-              pixels.push(cx, cy);
+              const currIdx = queue[head++];
+              const cx = currIdx % width;
+              const cy = Math.floor(currIdx / width);
 
+              pixelCount++;
               if (cx < minX) minX = cx;
               if (cx > maxX) maxX = cx;
               if (cy < minY) minY = cy;
               if (cy > maxY) maxY = cy;
 
               const neighbors = [
-                [cx + 1, cy], [cx - 1, cy],
-                [cx, cy + 1], [cx, cy - 1]
+                currIdx + 1, currIdx - 1,
+                currIdx + width, currIdx - width
               ];
 
-              for (let i = 0; i < neighbors.length; i++) {
-                const nx = neighbors[i][0];
-                const ny = neighbors[i][1];
+              for (let n of neighbors) {
+                if (n >= 0 && n < width * height && !visited[n]) {
+                  const nx = n % width;
+                  const ny = Math.floor(n / width);
+                  if (Math.abs(nx - cx) > 1) continue;
 
-                if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
-                  const nIdx = ny * w + nx;
-                  if (isSolid[nIdx] && !visited[nIdx]) {
-                    visited[nIdx] = 1;
-                    queue.push(nx, ny);
+                  visited[n] = 1;
+                  const nAlpha = data[n * 4 + 3];
+                  const nr = data[n * 4];
+                  const ng = data[n * 4 + 1];
+                  const nb = data[n * 4 + 2];
+                  const nIsTransparentOrWhite = nAlpha < 10 || (removeWhite && nr > 240 && ng > 240 && nb > 240);
+
+                  if (!nIsTransparentOrWhite) {
+                    queue.push(n);
                   }
                 }
               }
             }
 
-            if (pixels.length >= 25) {
-              components.push({ minX, maxX, minY, maxY, pixels });
+            if (pixelCount > 100) {
+              boxes.push({ minX, maxX, minY, maxY });
             }
+          } else {
+            visited[idx] = 1;
           }
         }
       }
 
-      if (components.length === 0) {
-        alert("Nenhuma figura/objeto foi detectado na imagem.");
+      if (boxes.length === 0) {
+        alert("Nenhuma figura destacada foi encontrada.");
         return;
       }
 
-      let createdCount = 0;
+      boxes.forEach((box, i) => {
+        const padding = 4;
+        const bMinX = Math.max(0, box.minX - padding);
+        const bMaxX = Math.min(width, box.maxX + padding);
+        const bMinY = Math.max(0, box.minY - padding);
+        const bMaxY = Math.min(height, box.maxY + padding);
 
-      components.forEach((comp) => {
-        const compW = comp.maxX - comp.minX + 1;
-        const compH = comp.maxY - comp.minY + 1;
+        const bw = bMaxX - bMinX;
+        const bh = bMaxY - bMinY;
 
-        const offCanvas = document.createElement('canvas');
-        offCanvas.width = compW;
-        offCanvas.height = compH;
-        const offCtx = offCanvas.getContext('2d');
-        applySmoothing(offCtx);
+        if (bw < 5 || bh < 5) return;
 
-        const newImgData = offCtx.createImageData(compW, compH);
-        const newData = newImgData.data;
+        const subCanvas = document.createElement('canvas');
+        subCanvas.width = bw;
+        subCanvas.height = bh;
+        const sCtx = subCanvas.getContext('2d');
+        sCtx.drawImage(tempCanvas, bMinX, bMinY, bw, bh, 0, 0, bw, bh);
 
-        for (let i = 0; i < comp.pixels.length; i += 2) {
-          const px = comp.pixels[i];
-          const py = comp.pixels[i + 1];
-          const srcIdx = (py * w + px) * 4;
-          const dstIdx = ((py - comp.minY) * compW + (px - comp.minX)) * 4;
-
-          newData[dstIdx] = data[srcIdx];
-          newData[dstIdx + 1] = data[srcIdx + 1];
-          newData[dstIdx + 2] = data[srcIdx + 2];
-          newData[dstIdx + 3] = data[srcIdx + 3];
-
-          if (removeWhite && data[srcIdx] > 225 && data[srcIdx + 1] > 225 && data[srcIdx + 2] > 225) {
-            newData[dstIdx + 3] = 0;
+        if (removeWhite) {
+          const subImgData = sCtx.getImageData(0, 0, bw, bh);
+          const subData = subImgData.data;
+          for (let p = 0; p < subData.length; p += 4) {
+            if (subData[p + 3] > 10 && subData[p] > 240 && subData[p + 1] > 240 && subData[p + 2] > 240) {
+              subData[p + 3] = 0;
+            }
           }
+          sCtx.putImageData(subImgData, 0, 0);
         }
 
-        offCtx.putImageData(newImgData, 0, 0);
-
-        createdCount++;
-        const imgCount = unattachedImages.length + trayImages.length + 1;
-
         trayImages.push({
-          name: `Figura_Auto_${imgCount}`,
-          imageCanvas: offCanvas,
+          name: `Figura_${trayImages.length + 1}`,
+          imageCanvas: subCanvas,
           offX: 0,
           offY: 0,
-          scale: 1.0,
+          scale: 1,
           rot: 0
         });
       });
 
-      closeImageModal();
       renderAssetTray();
-      updateUI();
-      render();
-      alert(`Foram identificadas ${createdCount} figura(s). Elas foram adicionadas ao menu horizontal!`);
+      closeImageModal();
+      alert(`${boxes.length} figura(s) recortada(s) com sucesso!`);
     }
 
-    function renderGhostFrames() {
-      if (!onionSkinEnabled || currentFrame <= 0 || isPlaying) return;
+    function confirmCrop() {
+      if (!loadedImage) return;
 
-      const startGhostFrame = Math.max(0, currentFrame - onionSkinCount);
+      const removeWhite = document.getElementById('chk-remove-white').checked;
+      const subCanvas = document.createElement('canvas');
+      const subCtx = subCanvas.getContext('2d');
+      applySmoothing(subCtx);
 
-      for (let f = startGhostFrame; f < currentFrame; f++) {
-        const ghostStates = calculateFrameState(f);
-        const distance = currentFrame - f;
-        const opacity = Math.max(0.08, 0.35 - (distance - 1) * 0.08);
+      if (polyPoints.length >= 3 && isPolyClosed) {
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        polyPoints.forEach(pt => {
+          if (pt.x < minX) minX = pt.x;
+          if (pt.x > maxX) maxX = pt.x;
+          if (pt.y < minY) minY = pt.y;
+          if (pt.y > maxY) maxY = pt.y;
+        });
 
-        const tempTransforms = {};
+        const w = Math.ceil(maxX - minX);
+        const h = Math.ceil(maxY - minY);
+        subCanvas.width = w;
+        subCanvas.height = h;
 
-        bones.forEach(bone => {
-          tempTransforms[bone.id] = {
-            localAngle: bone.localAngle,
-            posX: bone.posX,
-            posY: bone.posY,
-            length: bone.length,
-            startX: bone.startX,
-            startY: bone.startY,
-            endX: bone.endX,
-            worldAngle: bone.worldAngle
-          };
+        subCtx.save();
+        subCtx.beginPath();
+        polyPoints.forEach((pt, idx) => {
+          const rx = pt.x - minX;
+          const ry = pt.y - minY;
+          if (idx === 0) subCtx.moveTo(rx, ry);
+          else subCtx.lineTo(rx, ry);
+        });
+        subCtx.closePath();
+        subCtx.clip();
 
-          if (ghostStates[bone.id]) {
-            bone.localAngle = ghostStates[bone.id].angle;
-            bone.posX = ghostStates[bone.id].posX;
-            bone.posY = ghostStates[bone.id].posY;
-            bone.length = ghostStates[bone.id].length;
+        subCtx.drawImage(loadedImage, -minX, -minY);
+        subCtx.restore();
+
+        if (removeWhite) {
+          const imgData = subCtx.getImageData(0, 0, w, h);
+          const data = imgData.data;
+          for (let i = 0; i < data.length; i += 4) {
+            if (data[i] > 240 && data[i+1] > 240 && data[i+2] > 240) {
+              data[i+3] = 0;
+            }
           }
-        });
-
-        bones.forEach(b => b.updateTransform());
-
-        bones.forEach(bone => {
-          if (!bone.attachedSprite || !bone.visibleImage) return;
-
-          const s = bone.attachedSprite;
-          ctx.save();
-          ctx.globalAlpha = opacity;
-
-          ctx.translate(bone.startX, bone.startY);
-          ctx.rotate(bone.worldAngle);
-          ctx.translate(s.offX, s.offY);
-          ctx.rotate(s.rot);
-          ctx.scale(s.scale, s.scale);
-
-          ctx.drawImage(s.imageCanvas, -s.imageCanvas.width / 2, -s.imageCanvas.height / 2);
-          ctx.restore();
-        });
-
-        bones.forEach(bone => {
-          const t = tempTransforms[bone.id];
-          if (t) {
-            bone.localAngle = t.localAngle;
-            bone.posX = t.posX;
-            bone.posY = t.posY;
-            bone.length = t.length;
-            bone.startX = t.startX;
-            bone.startY = t.startY;
-            bone.endX = t.endX;
-            bone.worldAngle = t.worldAngle;
-          }
-        });
-      }
-    }
-
-    function render() {
-      bones.forEach(b => b.updateTransform());
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      applySmoothing(ctx);
-
-      renderGhostFrames();
-
-      ctx.save();
-      ctx.translate(stagePan.x, stagePan.y);
-      ctx.scale(stageZoom, stageZoom);
-
-      if (unattachedImages.length > 0) {
-        unattachedImages.forEach((imgObj, idx) => {
-          ctx.save();
-          ctx.globalAlpha = unselectedOpacity;
-          const centerX = (canvas.width / (2 * stageZoom)) + (imgObj.offX || 0);
-          const centerY = (canvas.height / (2 * stageZoom)) + (imgObj.offY || 0);
-          ctx.drawImage(imgObj.imageCanvas, centerX - imgObj.imageCanvas.width / 2, centerY - imgObj.imageCanvas.height / 2);
-          ctx.restore();
-        });
-      }
-
-      bones.forEach(bone => {
-        if (!bone.attachedSprite || !bone.visibleImage) return;
-        const s = bone.attachedSprite;
-        const isSelected = (bone === selectedBone && transformTarget === 'IMAGE');
-
-        ctx.save();
-        ctx.globalAlpha = (selectedBone && bone !== selectedBone) ? unselectedOpacity : 1.0;
-
-        ctx.translate(bone.startX, bone.startY);
-        ctx.rotate(bone.worldAngle);
-        ctx.translate(s.offX, s.offY);
-        ctx.rotate(s.rot);
-        ctx.scale(s.scale, s.scale);
-
-        ctx.drawImage(s.imageCanvas, -s.imageCanvas.width / 2, -s.imageCanvas.height / 2);
-
-        if (isSelected) {
-          ctx.strokeStyle = '#00d2ff';
-          ctx.lineWidth = 2 / (stageZoom * s.scale);
-          ctx.strokeRect(-s.imageCanvas.width / 2, -s.imageCanvas.height / 2, s.imageCanvas.width, s.imageCanvas.height);
+          subCtx.putImageData(imgData, 0, 0);
         }
+      } else {
+        subCanvas.width = loadedImage.width;
+        subCanvas.height = loadedImage.height;
+        subCtx.drawImage(loadedImage, 0, 0);
 
-        ctx.restore();
+        if (removeWhite) {
+          const imgData = subCtx.getImageData(0, 0, subCanvas.width, subCanvas.height);
+          const data = imgData.data;
+          for (let i = 0; i < data.length; i += 4) {
+            if (data[i] > 240 && data[i+1] > 240 && data[i+2] > 240) {
+              data[i+3] = 0;
+            }
+          }
+          subCtx.putImageData(imgData, 0, 0);
+        }
+      }
+
+      trayImages.push({
+        name: `Figura_${trayImages.length + 1}`,
+        imageCanvas: subCanvas,
+        offX: 0,
+        offY: 0,
+        scale: 1.0,
+        rot: 0
       });
 
-      bones.forEach(bone => {
-        if (!bone.visibleBone) return;
-        const isSelected = (bone === selectedBone);
-
-        ctx.save();
-        ctx.strokeStyle = '#ff0055';
-        ctx.lineWidth = (isSelected ? 5 : 4) / stageZoom;
-
-        bone.meshStrokes.forEach(stroke => {
-          ctx.beginPath();
-          for (let i = 0; i < stroke.length - 1; i++) {
-            const p1 = bone.localToWorld(stroke[i]);
-            const p2 = bone.localToWorld(stroke[i + 1]);
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-          }
-          ctx.stroke();
-        });
-
-        ctx.beginPath();
-        ctx.moveTo(bone.startX, bone.startY);
-        ctx.lineTo(bone.endX, bone.endY);
-        ctx.strokeStyle = isSelected ? '#ffcc00' : '#00d2ff';
-        ctx.lineWidth = (isSelected ? 4 : 2) / stageZoom;
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.arc(bone.startX, bone.startY, (isSelected ? 7 : 5) / stageZoom, 0, Math.PI * 2);
-        ctx.arc(bone.endX, bone.endY, (isSelected ? 7 : 5) / stageZoom, 0, Math.PI * 2);
-        ctx.fillStyle = '#fff';
-        ctx.fill();
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 1.5 / stageZoom;
-        ctx.stroke();
-
-        if (isSelected && transformTarget === 'BONE') {
-          const rotHandleX = bone.endX + Math.cos(bone.worldAngle) * (20 / stageZoom);
-          const rotHandleY = bone.endY + Math.sin(bone.worldAngle) * (20 / stageZoom);
-
-          ctx.beginPath();
-          ctx.moveTo(bone.endX, bone.endY);
-          ctx.lineTo(rotHandleX, rotHandleY);
-          ctx.strokeStyle = '#ff0055';
-          ctx.lineWidth = 2 / stageZoom;
-          ctx.stroke();
-
-          ctx.beginPath();
-          ctx.arc(rotHandleX, rotHandleY, 6 / stageZoom, 0, Math.PI * 2);
-          ctx.fillStyle = '#ff0055';
-          ctx.fill();
-          ctx.stroke();
-        }
-
-        ctx.restore();
-      });
-
-      if (transformTarget === 'IMAGE' && selectedBone && selectedBone.attachedSprite && selectedBone.visibleImage) {
-        const bbox = getSelectedSpriteBoundingBox();
-        if (bbox) {
-          ctx.save();
-          ctx.strokeStyle = '#00d2ff';
-          ctx.lineWidth = 1.5 / stageZoom;
-          ctx.setLineDash([4, 4]);
-
-          ctx.translate(bbox.centerWorld.x, bbox.centerWorld.y);
-          ctx.rotate(bbox.spriteWorldAngle);
-          ctx.strokeRect(-bbox.w/2, -bbox.h/2, bbox.w, bbox.h);
-
-          // Handle de Rotação
-          ctx.beginPath();
-          ctx.moveTo(0, -bbox.h/2);
-          ctx.lineTo(0, -bbox.h/2 - 25 / stageZoom);
-          ctx.stroke();
-
-          ctx.beginPath();
-          ctx.arc(0, -bbox.h/2 - 25 / stageZoom, 6 / stageZoom, 0, Math.PI*2);
-          ctx.fillStyle = '#ffcc00';
-          ctx.fill();
-          ctx.stroke();
-
-          // Handle de Escala
-          ctx.beginPath();
-          ctx.arc(bbox.w/2, bbox.h/2, 6 / stageZoom, 0, Math.PI*2);
-          ctx.fillStyle = '#00ff88';
-          ctx.fill();
-          ctx.stroke();
-
-          ctx.restore();
-        }
-      }
-
-      ctx.restore();
+      renderAssetTray();
+      closeImageModal();
     }
 
     resizeCanvas();
-    updateUI();
   </script>
 </body>
 </html>
