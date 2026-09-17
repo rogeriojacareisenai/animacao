@@ -1534,13 +1534,10 @@
       } 
       else if (mode === 'POSE') {
         if (selectedBone) {
-          // ==========================================
           // VERIFICAÇÃO DE ALÇAS VISUAIS DA IMAGEM ATIVA
-          // ==========================================
           if (transformTarget === 'IMAGE' && selectedBone.attachedSprite && selectedBone.visibleImage) {
             const bbox = getSelectedSpriteBoundingBox();
             if (bbox) {
-              // Alça de Rotação da Imagem (círculo superior)
               const rotHandleX = bbox.centerWorld.x + Math.sin(bbox.spriteWorldAngle) * (bbox.h / 2 + 25 / stageZoom);
               const rotHandleY = bbox.centerWorld.y - Math.cos(bbox.spriteWorldAngle) * (bbox.h / 2 + 25 / stageZoom);
               const distRot = Math.hypot(rotHandleX - worldPos.x, rotHandleY - worldPos.y);
@@ -1553,7 +1550,6 @@
                 return;
               }
 
-              // Alça de Translação da Imagem (quadrado central)
               const distTrans = Math.hypot(bbox.centerWorld.x - worldPos.x, bbox.centerWorld.y - worldPos.y);
               if (distTrans < 18 / stageZoom) {
                 dragMode = 'SPRITE_TRANSLATE';
@@ -1564,9 +1560,7 @@
               }
             }
           } 
-          // ==========================================
           // VERIFICAÇÃO DE ALÇAS VISUAIS DO OSSO ATIVO
-          // ==========================================
           else if (transformTarget === 'BONE' && selectedBone.visibleBone) {
             const rotHandleX = selectedBone.endX + Math.cos(selectedBone.worldAngle) * (20 / stageZoom);
             const rotHandleY = selectedBone.endY + Math.sin(selectedBone.worldAngle) * (20 / stageZoom);
@@ -2728,7 +2722,7 @@
       });
     }
 
-    function renderToContext(targetCtx, forcePlayView = false) {
+  function renderToContext(targetCtx, forcePlayView = false) {
       bones.forEach(b => b.updateTransform());
       targetCtx.clearRect(0, 0, targetCtx.canvas.width, targetCtx.canvas.height);
       applySmoothing(targetCtx);
@@ -2737,10 +2731,11 @@
       targetCtx.translate(stagePan.x, stagePan.y);
       targetCtx.scale(stageZoom, stageZoom);
 
+      // 1. DESENHO DAS IMAGENS SOLTAS (Aplica unselectedOpacity quando fora de exportação/play)
       if (unattachedImages.length > 0) {
         unattachedImages.forEach((imgObj) => {
           targetCtx.save();
-          targetCtx.globalAlpha = forcePlayView ? 1.0 : unselectedOpacity;
+          targetCtx.globalAlpha = (forcePlayView || isPlaying) ? 1.0 : unselectedOpacity;
           const centerX = (targetCtx.canvas.width / (2 * stageZoom)) + (imgObj.offX || 0);
           const centerY = (targetCtx.canvas.height / (2 * stageZoom)) + (imgObj.offY || 0);
           targetCtx.drawImage(imgObj.imageCanvas, centerX - imgObj.imageCanvas.width / 2, centerY - imgObj.imageCanvas.height / 2);
@@ -2748,12 +2743,21 @@
         });
       }
 
+      // 2. DESENHO DAS IMAGENS DOS OSSOS (Aplica unselectedOpacity para ossos não selecionados)
       bones.forEach(bone => {
         if (!bone.attachedSprite || !bone.visibleImage) return;
         const s = bone.attachedSprite;
 
         targetCtx.save();
-        targetCtx.globalAlpha = 1.0;
+
+        // Se o osso atual for o selecionado (ou se estiver em Play/Exportação), usa opacidade total (1.0).
+        // Caso contrário, aplica a opacidade configurada no slider (unselectedOpacity).
+        const isSelected = (bone === selectedBone);
+        if (forcePlayView || isPlaying || isSelected) {
+          targetCtx.globalAlpha = 1.0;
+        } else {
+          targetCtx.globalAlpha = unselectedOpacity;
+        }
 
         targetCtx.translate(bone.startX, bone.startY);
         targetCtx.rotate(bone.worldAngle);
@@ -2765,13 +2769,12 @@
         targetCtx.restore();
       });
 
-      // ==========================================
-      // DESENHO DE ALÇAS VISUAIS DE MANUSEIO DA IMAGEM SELECIONADA
-      // ==========================================
+      // 3. DESENHO DE ALÇAS VISUAIS DE MANUSEIO DA IMAGEM SELECIONADA
       if (!forcePlayView && !isPlaying && transformTarget === 'IMAGE' && selectedBone && selectedBone.attachedSprite && selectedBone.visibleImage) {
         const bbox = getSelectedSpriteBoundingBox();
         if (bbox) {
           targetCtx.save();
+          targetCtx.globalAlpha = 1.0; // Força visualização 100% para os controles
           targetCtx.translate(bbox.centerWorld.x, bbox.centerWorld.y);
           targetCtx.rotate(bbox.spriteWorldAngle);
 
@@ -2808,10 +2811,15 @@
         }
       }
 
+      // 4. DESENHO DA ESTRUTURA DOS OSSOS E ALÇAS
       if (!forcePlayView && !isPlaying) {
         bones.forEach(bone => {
           if (!bone.visibleBone) return;
           targetCtx.save();
+          
+          const isSelected = (bone === selectedBone);
+          targetCtx.globalAlpha = (isSelected) ? 1.0 : unselectedOpacity;
+
           targetCtx.strokeStyle = '#ff0055';
           targetCtx.lineWidth = 4 / stageZoom;
           bone.meshStrokes.forEach(stroke => {
@@ -2832,13 +2840,10 @@
           targetCtx.lineWidth = 2 / stageZoom;
           targetCtx.stroke();
 
-          // ==========================================
-          // DESENHO DE ALÇAS VISUAIS NOS PONTOS DE CONTROLE DO OSSO
-          // ==========================================
-          const isSelected = (bone === selectedBone);
+          // PONTOS DE CONTROLE DO OSSO
           const handleRadius = (isSelected ? 7 : 5) / stageZoom;
 
-          // 1. Ponto de Translação / Raiz (Início do osso) - Azul Ciano
+          // Ponto Raiz (Azul Ciano)
           targetCtx.beginPath();
           targetCtx.arc(bone.startX, bone.startY, handleRadius, 0, Math.PI * 2);
           targetCtx.fillStyle = '#00d2ff';
@@ -2847,7 +2852,7 @@
           targetCtx.lineWidth = 1.5 / stageZoom;
           targetCtx.stroke();
 
-          // 2. Ponto de Rotação / Ponta (Fim do osso) - Amarelo Ouro
+          // Ponto Ponta (Amarelo Ouro)
           targetCtx.beginPath();
           targetCtx.arc(bone.endX, bone.endY, handleRadius, 0, Math.PI * 2);
           targetCtx.fillStyle = '#ffcc00';
@@ -2862,337 +2867,87 @@
 
       targetCtx.restore();
     }
-
+    
     function render() {
       renderToContext(ctx, false);
     }
 
-    function serializeProject() {
-      const projectData = {
-        maxFrames: maxFrames,
-        fps: fps,
-        bones: bones.map(bone => ({
-          id: bone.id,
-          parentId: bone.parent ? bone.parent.id : null,
-          length: bone.length,
-          localAngle: bone.localAngle,
-          posX: bone.posX,
-          posY: bone.posY,
-          meshStrokes: bone.meshStrokes,
-          visibleBone: bone.visibleBone,
-          visibleImage: bone.visibleImage,
-          attachedSprite: bone.attachedSprite ? {
-            name: bone.attachedSprite.name,
-            offX: bone.attachedSprite.offX,
-            offY: bone.attachedSprite.offY,
-            scale: bone.attachedSprite.scale,
-            rot: bone.attachedSprite.rot,
-            dataUrl: bone.attachedSprite.imageCanvas.toDataURL()
-          } : null
-        })),
-        unattachedImages: unattachedImages.map(s => ({
-          name: s.name,
-          offX: s.offX,
-          offY: s.offY,
-          scale: s.scale,
-          rot: s.rot,
-          dataUrl: s.imageCanvas.toDataURL()
-        })),
-        trayImages: trayImages.map(s => ({
-          name: s.name,
-          offX: s.offX,
-          offY: s.offY,
-          scale: s.scale,
-          rot: s.rot,
-          dataUrl: s.imageCanvas.toDataURL()
-        })),
-        boneKeyframes: boneKeyframes,
-        spriteKeyframes: (() => {
-          const serializedSKfs = {};
-          for (let bId in spriteKeyframes) {
-            serializedSKfs[bId] = {};
-            for (let frm in spriteKeyframes[bId]) {
-              const group = spriteKeyframes[bId][frm];
-              serializedSKfs[bId][frm] = {
-                activeIndex: group.activeIndex,
-                sprites: group.sprites.map(spr => ({
-                  name: spr.name,
-                  offX: spr.offX,
-                  offY: spr.offY,
-                  scale: spr.scale,
-                  rot: spr.rot,
-                  dataUrl: spr.imageCanvas.toDataURL()
-                }))
-              };
-            }
-          }
-          return serializedSKfs;
-        })()
-      };
-      return JSON.stringify(projectData);
-    }
-
-    function deserializeProject(jsonString, alertOnSuccess = true) {
-      try {
-        const data = JSON.parse(jsonString);
-        bones = [];
-        unattachedImages = [];
-        trayImages = [];
-        selectedBone = null;
-        maxFrames = data.maxFrames || 60;
-        fps = data.fps || 24;
-        document.getElementById('max-frames-input').value = maxFrames;
-        document.getElementById('fps-input').value = fps;
-        boneKeyframes = data.boneKeyframes || {};
-        spriteKeyframes = {};
-
-        const boneMap = {};
-
-        data.bones.forEach(bData => {
-          const bone = new Bone(bData.id, null, bData.length, bData.localAngle, { x: bData.posX || 0, y: bData.posY || 0 });
-          bone.meshStrokes = bData.meshStrokes || [];
-          bone.visibleBone = bData.visibleBone !== undefined ? bData.visibleBone : true;
-          bone.visibleImage = bData.visibleImage !== undefined ? bData.visibleImage : true;
-          boneMap[bData.id] = { instance: bone, parentId: bData.parentId, rawSprite: bData.attachedSprite };
-          bones.push(bone);
-        });
-
-        if (data.spriteKeyframes) {
-          for (let bId in data.spriteKeyframes) {
-            spriteKeyframes[bId] = {};
-            for (let frm in data.spriteKeyframes[bId]) {
-              const groupData = data.spriteKeyframes[bId][frm];
-              const spriteList = groupData.sprites || [groupData];
-              const activeIdx = groupData.activeIndex !== undefined ? groupData.activeIndex : 0;
-
-              spriteKeyframes[bId][frm] = { activeIndex: activeIdx, sprites: [] };
-
-              spriteList.forEach((sData, sIdx) => {
-                const img = new Image();
-                img.onload = () => {
-                  const offCanvas = document.createElement('canvas');
-                  offCanvas.width = img.width;
-                  offCanvas.height = img.height;
-                  const oCtx = offCanvas.getContext('2d');
-                  applySmoothing(oCtx);
-                  oCtx.drawImage(img, 0, 0);
-
-                  const loadedSpr = {
-                    name: sData.name,
-                    imageCanvas: offCanvas,
-                    offX: sData.offX,
-                    offY: sData.offY,
-                    scale: sData.scale,
-                    rot: sData.rot
-                  };
-
-                  if (!spriteKeyframes[bId][frm].sprites[sIdx]) {
-                    spriteKeyframes[bId][frm].sprites[sIdx] = loadedSpr;
-                  } else {
-                    spriteKeyframes[bId][frm].sprites.push(loadedSpr);
-                  }
-                  render();
-                };
-                img.src = sData.dataUrl;
-              });
-            }
-          }
-        }
-
-        if (data.unattachedImages) {
-          data.unattachedImages.forEach(sData => {
-            const img = new Image();
-            img.onload = () => {
-              const offCanvas = document.createElement('canvas');
-              offCanvas.width = img.width;
-              offCanvas.height = img.height;
-              const oCtx = offCanvas.getContext('2d');
-              applySmoothing(oCtx);
-              oCtx.drawImage(img, 0, 0);
-
-              unattachedImages.push({
-                name: sData.name,
-                imageCanvas: offCanvas,
-                offX: sData.offX,
-                offY: sData.offY,
-                scale: sData.scale,
-                rot: sData.rot
-              });
-              updateUI();
-              render();
-            };
-            img.src = sData.dataUrl;
-          });
-        }
-
-        if (data.trayImages) {
-          data.trayImages.forEach(sData => {
-            const img = new Image();
-            img.onload = () => {
-              const offCanvas = document.createElement('canvas');
-              offCanvas.width = img.width;
-              offCanvas.height = img.height;
-              const oCtx = offCanvas.getContext('2d');
-              applySmoothing(oCtx);
-              oCtx.drawImage(img, 0, 0);
-
-              trayImages.push({
-                name: sData.name,
-                imageCanvas: offCanvas,
-                offX: sData.offX,
-                offY: sData.offY,
-                scale: sData.scale,
-                rot: sData.rot
-              });
-              renderAssetTray();
-            };
-            img.src = sData.dataUrl;
-          });
-        }
-
-        bones.forEach(bone => {
-          const raw = boneMap[bone.id];
-          if (raw.parentId && boneMap[raw.parentId]) {
-            bone.parent = boneMap[raw.parentId].instance;
-          }
-
-          if (raw.rawSprite) {
-            const sData = raw.rawSprite;
-            const img = new Image();
-            img.onload = () => {
-              const offCanvas = document.createElement('canvas');
-              offCanvas.width = img.width;
-              offCanvas.height = img.height;
-              const oCtx = offCanvas.getContext('2d');
-              applySmoothing(oCtx);
-              oCtx.drawImage(img, 0, 0);
-
-              bone.attachedSprite = {
-                name: sData.name,
-                imageCanvas: offCanvas,
-                offX: sData.offX,
-                offY: sData.offY,
-                scale: sData.scale,
-                rot: sData.rot
-              };
-              render();
-            };
-            img.src = sData.dataUrl;
-          }
-        });
-
-        if (bones.length > 0) selectBone(bones[0]);
-        resizeCanvas();
-        if (alertOnSuccess) alert("Projeto carregado com sucesso!");
-      } catch (err) {
-        alert("Erro ao carregar dados do projeto.");
-        console.error(err);
-      }
-    }
-
-    function saveToLocalStorage() {
-      localStorage.setItem('2d_rigging_project_v3', serializeProject());
-      alert("Projeto salvo localmente!");
-    }
-
-    function loadFromLocalStorage() {
-      saveState();
-      const data = localStorage.getItem('2d_rigging_project_v3');
-      if (data) deserializeProject(data);
-      else alert("Nenhum projeto salvo encontrado.");
-    }
-
-    function exportJSON() {
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(serializeProject());
-      const downloadAnchor = document.createElement('a');
-      downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", "rig_animation_project.json");
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
-    }
-
-    function importJSON(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      saveState();
-      const reader = new FileReader();
-      reader.onload = (event) => deserializeProject(event.target.result);
-      reader.readAsText(file);
-    }
+    // ====================================
+    // SISTEMA DE IMPORTAÇÃO/CROP E SERIALIZAÇÃO
+    // ====================================
 
     function openImageModal() {
       document.getElementById('image-modal').style.display = 'flex';
-      const container = document.getElementById('crop-canvas-container');
-      cropCanvas.width = container.clientWidth;
-      cropCanvas.height = container.clientHeight;
-      applySmoothing(cropCtx);
-      drawCropCanvas();
+      resetCropCanvas();
     }
 
     function closeImageModal() {
       document.getElementById('image-modal').style.display = 'none';
-      polyPoints = [];
-      isPolyClosed = false;
     }
 
-    document.getElementById('image-loader').addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+    function resetCropCanvas() {
+      loadedImage = null;
+      polyPoints = [];
+      isPolyClosed = false;
+      cropZoom = 1;
+      cropPan = { x: 0, y: 0 };
+      drawCropCanvas();
+    }
 
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          loadedImage = img;
-          cropZoom = Math.min(cropCanvas.width / img.width, cropCanvas.height / img.height) * 0.8;
-          cropPan = {
-            x: (cropCanvas.width - img.width * cropZoom) / 2,
-            y: (cropCanvas.height - img.height * cropZoom) / 2
+    const imageLoader = document.getElementById('image-loader');
+    imageLoader.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+            loadedImage = img;
+            resetCropZoom();
+            drawCropCanvas();
           };
-          polyPoints = [];
-          isPolyClosed = false;
-          drawCropCanvas();
+          img.src = event.target.result;
         };
-        img.src = event.target.result;
-      };
-      reader.readAsDataURL(file);
+        reader.readAsDataURL(file);
+      }
     });
+
+    function resetCropZoom() {
+      if (!loadedImage) return;
+      cropCanvas.width = cropCanvas.parentElement.clientWidth;
+      cropCanvas.height = cropCanvas.parentElement.clientHeight;
+
+      const scaleX = cropCanvas.width / loadedImage.width;
+      const scaleY = cropCanvas.height / loadedImage.height;
+      cropZoom = Math.min(scaleX, scaleY) * 0.9;
+
+      cropPan.x = (cropCanvas.width - loadedImage.width * cropZoom) / 2;
+      cropPan.y = (cropCanvas.height - loadedImage.height * cropZoom) / 2;
+      drawCropCanvas();
+    }
 
     function drawCropCanvas() {
       cropCtx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
       applySmoothing(cropCtx);
 
-      if (!loadedImage) {
-        cropCtx.fillStyle = '#666';
-        cropCtx.font = '14px sans-serif';
-        cropCtx.textAlign = 'center';
-        cropCtx.fillText("Selecione uma imagem acima para começar", cropCanvas.width / 2, cropCanvas.height / 2);
-        return;
-      }
+      if (!loadedImage) return;
 
       cropCtx.save();
       cropCtx.translate(cropPan.x, cropPan.y);
       cropCtx.scale(cropZoom, cropZoom);
+
       cropCtx.drawImage(loadedImage, 0, 0);
-      cropCtx.restore();
 
       if (polyPoints.length > 0) {
-        cropCtx.save();
         cropCtx.beginPath();
-        polyPoints.forEach((pt, idx) => {
-          const screenPt = {
-            x: pt.x * cropZoom + cropPan.x,
-            y: pt.y * cropZoom + cropPan.y
-          };
-          if (idx === 0) cropCtx.moveTo(screenPt.x, screenPt.y);
-          else cropCtx.lineTo(screenPt.x, screenPt.y);
-        });
-
+        cropCtx.moveTo(polyPoints[0].x, polyPoints[0].y);
+        for (let i = 1; i < polyPoints.length; i++) {
+          cropCtx.lineTo(polyPoints[i].x, polyPoints[i].y);
+        }
         if (isPolyClosed) cropCtx.closePath();
+
         cropCtx.strokeStyle = '#00d2ff';
-        cropCtx.lineWidth = 2;
+        cropCtx.lineWidth = 2 / cropZoom;
         cropCtx.stroke();
 
         if (isPolyClosed) {
@@ -3201,17 +2956,14 @@
         }
 
         polyPoints.forEach((pt) => {
-          const screenPt = {
-            x: pt.x * cropZoom + cropPan.x,
-            y: pt.y * cropZoom + cropPan.y
-          };
           cropCtx.beginPath();
-          cropCtx.arc(screenPt.x, screenPt.y, 4, 0, Math.PI * 2);
+          cropCtx.arc(pt.x, pt.y, 4 / cropZoom, 0, Math.PI * 2);
           cropCtx.fillStyle = '#ff0055';
           cropCtx.fill();
         });
-        cropCtx.restore();
       }
+
+      cropCtx.restore();
     }
 
     cropCanvas.addEventListener('mousedown', (e) => {
@@ -3229,55 +2981,27 @@
       const imgX = (clickX - cropPan.x) / cropZoom;
       const imgY = (clickY - cropPan.y) / cropZoom;
 
-      if (imgX >= 0 && imgX <= loadedImage.width && imgY >= 0 && imgY <= loadedImage.height) {
-        if (!isPolyClosed) {
-          polyPoints.push({ x: imgX, y: imgY });
-          drawCropCanvas();
-        }
+      if (!isPolyClosed) {
+        polyPoints.push({ x: imgX, y: imgY });
+        drawCropCanvas();
       }
     });
 
     cropCanvas.addEventListener('mousemove', (e) => {
-      if (!isPanning) return;
-      const rect = cropCanvas.getBoundingClientRect();
-      cropPan.x = (e.clientX - rect.left) - panStart.x;
-      cropPan.y = (e.clientY - rect.top) - panStart.y;
-      drawCropCanvas();
+      if (isPanning) {
+        const rect = cropCanvas.getBoundingClientRect();
+        cropPan.x = (e.clientX - rect.left) - panStart.x;
+        cropPan.y = (e.clientY - rect.top) - panStart.y;
+        drawCropCanvas();
+      }
     });
 
-    cropCanvas.addEventListener('mouseup', () => { isPanning = false; });
-    cropCanvas.addEventListener('contextmenu', e => e.preventDefault());
-
-    cropCanvas.addEventListener('wheel', (e) => {
-      e.preventDefault();
-      if (!loadedImage) return;
-      const rect = cropCanvas.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-
-      const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
-      const newZoom = Math.max(0.1, Math.min(20, cropZoom * zoomFactor));
-
-      cropPan.x = mouseX - (mouseX - cropPan.x) * (newZoom / cropZoom);
-      cropPan.y = mouseY - (mouseY - cropPan.y) * (newZoom / cropZoom);
-      cropZoom = newZoom;
-      drawCropCanvas();
-    });
-
-    function resetCropZoom() {
-      if (!loadedImage) return;
-      cropZoom = Math.min(cropCanvas.width / loadedImage.width, cropCanvas.height / loadedImage.height) * 0.8;
-      cropPan = {
-        x: (cropCanvas.width - loadedImage.width * cropZoom) / 2,
-        y: (cropCanvas.height - loadedImage.height * cropZoom) / 2
-      };
-      drawCropCanvas();
-    }
+    window.addEventListener('mouseup', () => { isPanning = false; });
+    cropCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
     function undoCropPoint() {
-      if (polyPoints.length > 0) {
+      if (polyPoints.length > 0 && !isPolyClosed) {
         polyPoints.pop();
-        isPolyClosed = false;
         drawCropCanvas();
       }
     }
@@ -3286,225 +3010,387 @@
       if (polyPoints.length >= 3) {
         isPolyClosed = true;
         drawCropCanvas();
-      } else {
-        alert("Defina pelo menos 3 pontos para fechar o polígono de recorte.");
       }
     }
 
-    // ==========================================
-    // MELHORIA NA IMPORTAÇÃO AUTOMÁTICA E RECORTE INTELIGENTE
-    // ==========================================
-    function autoCropSeparateShapes() {
-      if (!loadedImage) {
-        alert("Carregue uma imagem primeiro.");
-        return;
-      }
+    function confirmCrop() {
+      if (!loadedImage) return;
+
+      saveState();
 
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = loadedImage.width;
       tempCanvas.height = loadedImage.height;
       const tCtx = tempCanvas.getContext('2d');
+      applySmoothing(tCtx);
+
+      if (polyPoints.length >= 3 && isPolyClosed) {
+        tCtx.beginPath();
+        tCtx.moveTo(polyPoints[0].x, polyPoints[0].y);
+        for (let i = 1; i < polyPoints.length; i++) {
+          tCtx.lineTo(polyPoints[i].x, polyPoints[i].y);
+        }
+        tCtx.closePath();
+        tCtx.clip();
+      }
+
       tCtx.drawImage(loadedImage, 0, 0);
 
-      const imgData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+      if (document.getElementById('chk-remove-white').checked) {
+        removeWhiteBackground(tempCanvas);
+      }
+
+      let croppedCanvas = tempCanvas;
+      if (polyPoints.length >= 3) {
+        croppedCanvas = autoCropCanvas(tempCanvas);
+      }
+
+      const newSprite = {
+        name: `Recorte_${trayImages.length + unattachedImages.length + 1}`,
+        imageCanvas: croppedCanvas,
+        offX: 0,
+        offY: 0,
+        scale: 1.0,
+        rot: 0
+      };
+
+      trayImages.push(newSprite);
+      renderAssetTray();
+      closeImageModal();
+      updateUI();
+    }
+
+    function removeWhiteBackground(cvs) {
+      const c = cvs.getContext('2d');
+      const imgData = c.getImageData(0, 0, cvs.width, cvs.height);
       const data = imgData.data;
+
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        if (r > 230 && g > 230 && b > 230) {
+          data[i + 3] = 0;
+        }
+      }
+      c.putImageData(imgData, 0, 0);
+    }
+
+    function autoCropCanvas(cvs) {
+      const c = cvs.getContext('2d');
+      const imgData = c.getImageData(0, 0, cvs.width, cvs.height);
+      const data = imgData.data;
+
+      let minX = cvs.width, minY = cvs.height, maxX = 0, maxY = 0;
+      let found = false;
+
+      for (let y = 0; y < cvs.height; y++) {
+        for (let x = 0; x < cvs.width; x++) {
+          const alpha = data[(y * cvs.width + x) * 4 + 3];
+          if (alpha > 0) {
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+            found = true;
+          }
+        }
+      }
+
+      if (!found) return cvs;
+
+      const cropW = maxX - minX + 1;
+      const cropH = maxY - minY + 1;
+
+      const resCanvas = document.createElement('canvas');
+      resCanvas.width = cropW;
+      resCanvas.height = cropH;
+      const resCtx = resCanvas.getContext('2d');
+      applySmoothing(resCtx);
+
+      resCtx.drawImage(cvs, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
+      return resCanvas;
+    }
+
+    function autoCropSeparateShapes() {
+      if (!loadedImage) return;
+
+      saveState();
+
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = loadedImage.width;
+      tempCanvas.height = loadedImage.height;
+      const tCtx = tempCanvas.getContext('2d');
+      applySmoothing(tCtx);
+
+      tCtx.drawImage(loadedImage, 0, 0);
+
+      if (document.getElementById('chk-remove-white').checked) {
+        removeWhiteBackground(tempCanvas);
+      }
+
+      const imgData = tCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
       const width = tempCanvas.width;
       const height = tempCanvas.height;
+      const data = imgData.data;
 
-      const removeWhite = document.getElementById('chk-remove-white').checked;
       const visited = new Uint8Array(width * height);
-      const boxes = [];
+      const boundingBoxes = [];
 
       for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
           const idx = y * width + x;
-          if (visited[idx]) continue;
-
-          const alpha = data[idx * 4 + 3];
-          const r = data[idx * 4];
-          const g = data[idx * 4 + 1];
-          const b = data[idx * 4 + 2];
-
-          const isTransparentOrWhite = alpha < 10 || (removeWhite && r > 240 && g > 240 && b > 240);
-
-          if (!isTransparentOrWhite) {
+          if (visited[idx] === 0 && data[idx * 4 + 3] > 10) {
             let minX = x, maxX = x, minY = y, maxY = y;
-            let pixelCount = 0;
-            const queue = [idx];
+            const queue = [x, y];
             visited[idx] = 1;
 
             let head = 0;
-            while (head < queue.length) {
-              const currIdx = queue[head++];
-              const cx = currIdx % width;
-              const cy = Math.floor(currIdx / width);
+            while(head < queue.length) {
+              const cx = queue[head++];
+              const cy = queue[head++];
 
-              pixelCount++;
               if (cx < minX) minX = cx;
               if (cx > maxX) maxX = cx;
               if (cy < minY) minY = cy;
               if (cy > maxY) maxY = cy;
 
               const neighbors = [
-                currIdx + 1, currIdx - 1,
-                currIdx + width, currIdx - width
+                [cx + 1, cy], [cx - 1, cy],
+                [cx, cy + 1], [cx, cy - 1]
               ];
 
-              for (let n of neighbors) {
-                if (n >= 0 && n < width * height && !visited[n]) {
-                  const nx = n % width;
-                  const ny = Math.floor(n / width);
-                  if (Math.abs(nx - cx) > 1) continue;
+              for (let i = 0; i < neighbors.length; i++) {
+                const nx = neighbors[i][0];
+                const ny = neighbors[i][1];
 
-                  visited[n] = 1;
-                  const nAlpha = data[n * 4 + 3];
-                  const nr = data[n * 4];
-                  const ng = data[n * 4 + 1];
-                  const nb = data[n * 4 + 2];
-                  const nIsTransparentOrWhite = nAlpha < 10 || (removeWhite && nr > 240 && ng > 240 && nb > 240);
-
-                  if (!nIsTransparentOrWhite) {
-                    queue.push(n);
+                if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                  const nIdx = ny * width + nx;
+                  if (visited[nIdx] === 0 && data[nIdx * 4 + 3] > 10) {
+                    visited[nIdx] = 1;
+                    queue.push(nx, ny);
                   }
                 }
               }
             }
 
-            if (pixelCount > 100) {
-              boxes.push({ minX, maxX, minY, maxY });
+            if ((maxX - minX + 1) > 10 && (maxY - minY + 1) > 10) {
+              boundingBoxes.push({ minX, minY, maxX, maxY });
             }
-          } else {
-            visited[idx] = 1;
           }
         }
       }
 
-      if (boxes.length === 0) {
-        alert("Nenhuma figura destacada foi encontrada.");
-        return;
-      }
+      boundingBoxes.forEach((box, i) => {
+        const w = box.maxX - box.minX + 1;
+        const h = box.maxY - box.minY + 1;
 
-      boxes.forEach((box, i) => {
-        const padding = 4;
-        const bMinX = Math.max(0, box.minX - padding);
-        const bMaxX = Math.min(width, box.maxX + padding);
-        const bMinY = Math.max(0, box.minY - padding);
-        const bMaxY = Math.min(height, box.maxY + padding);
+        const resCanvas = document.createElement('canvas');
+        resCanvas.width = w;
+        resCanvas.height = h;
+        const resCtx = resCanvas.getContext('2d');
+        applySmoothing(resCtx);
 
-        const bw = bMaxX - bMinX;
-        const bh = bMaxY - bMinY;
-
-        if (bw < 5 || bh < 5) return;
-
-        const subCanvas = document.createElement('canvas');
-        subCanvas.width = bw;
-        subCanvas.height = bh;
-        const sCtx = subCanvas.getContext('2d');
-        sCtx.drawImage(tempCanvas, bMinX, bMinY, bw, bh, 0, 0, bw, bh);
-
-        if (removeWhite) {
-          const subImgData = sCtx.getImageData(0, 0, bw, bh);
-          const subData = subImgData.data;
-          for (let p = 0; p < subData.length; p += 4) {
-            if (subData[p + 3] > 10 && subData[p] > 240 && subData[p + 1] > 240 && subData[p + 2] > 240) {
-              subData[p + 3] = 0;
-            }
-          }
-          sCtx.putImageData(subImgData, 0, 0);
-        }
+        resCtx.drawImage(tempCanvas, box.minX, box.minY, w, h, 0, 0, w, h);
 
         trayImages.push({
-          name: `Figura_${trayImages.length + 1}`,
-          imageCanvas: subCanvas,
+          name: `AutoShape_${trayImages.length + 1}`,
+          imageCanvas: resCanvas,
           offX: 0,
           offY: 0,
-          scale: 1,
+          scale: 1.0,
           rot: 0
         });
       });
 
       renderAssetTray();
       closeImageModal();
-      alert(`${boxes.length} figura(s) recortada(s) com sucesso!`);
+      updateUI();
     }
 
-    function confirmCrop() {
-      if (!loadedImage) return;
+    function serializeProject() {
+      const serializeSprite = (s) => s ? {
+        name: s.name,
+        dataUrl: s.imageCanvas.toDataURL(),
+        offX: s.offX,
+        offY: s.offY,
+        scale: s.scale,
+        rot: s.rot
+      } : null;
 
-      const removeWhite = document.getElementById('chk-remove-white').checked;
-      const subCanvas = document.createElement('canvas');
-      const subCtx = subCanvas.getContext('2d');
-      applySmoothing(subCtx);
+      const bonesData = bones.map(b => ({
+        id: b.id,
+        parentId: b.parent ? b.parent.id : null,
+        length: b.length,
+        localAngle: b.localAngle,
+        posX: b.posX,
+        posY: b.posY,
+        meshStrokes: b.meshStrokes,
+        attachedSprite: serializeSprite(b.attachedSprite),
+        visibleBone: b.visibleBone,
+        visibleImage: b.visibleImage
+      }));
 
-      if (polyPoints.length >= 3 && isPolyClosed) {
-        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-        polyPoints.forEach(pt => {
-          if (pt.x < minX) minX = pt.x;
-          if (pt.x > maxX) maxX = pt.x;
-          if (pt.y < minY) minY = pt.y;
-          if (pt.y > maxY) maxY = pt.y;
+      const unattachedData = unattachedImages.map(s => serializeSprite(s));
+      const trayData = trayImages.map(s => serializeSprite(s));
+
+      const serializedSpriteKeyframes = {};
+      Object.keys(spriteKeyframes).forEach(boneId => {
+        serializedSpriteKeyframes[boneId] = {};
+        Object.keys(spriteKeyframes[boneId]).forEach(frame => {
+          const group = spriteKeyframes[boneId][frame];
+          serializedSpriteKeyframes[boneId][frame] = {
+            activeIndex: group.activeIndex,
+            sprites: group.sprites.map(s => serializeSprite(s))
+          };
         });
-
-        const w = Math.ceil(maxX - minX);
-        const h = Math.ceil(maxY - minY);
-        subCanvas.width = w;
-        subCanvas.height = h;
-
-        subCtx.save();
-        subCtx.beginPath();
-        polyPoints.forEach((pt, idx) => {
-          const rx = pt.x - minX;
-          const ry = pt.y - minY;
-          if (idx === 0) subCtx.moveTo(rx, ry);
-          else subCtx.lineTo(rx, ry);
-        });
-        subCtx.closePath();
-        subCtx.clip();
-
-        subCtx.drawImage(loadedImage, -minX, -minY);
-        subCtx.restore();
-
-        if (removeWhite) {
-          const imgData = subCtx.getImageData(0, 0, w, h);
-          const data = imgData.data;
-          for (let i = 0; i < data.length; i += 4) {
-            if (data[i] > 240 && data[i+1] > 240 && data[i+2] > 240) {
-              data[i+3] = 0;
-            }
-          }
-          subCtx.putImageData(imgData, 0, 0);
-        }
-      } else {
-        subCanvas.width = loadedImage.width;
-        subCanvas.height = loadedImage.height;
-        subCtx.drawImage(loadedImage, 0, 0);
-
-        if (removeWhite) {
-          const imgData = subCtx.getImageData(0, 0, subCanvas.width, subCanvas.height);
-          const data = imgData.data;
-          for (let i = 0; i < data.length; i += 4) {
-            if (data[i] > 240 && data[i+1] > 240 && data[i+2] > 240) {
-              data[i+3] = 0;
-            }
-          }
-          subCtx.putImageData(imgData, 0, 0);
-        }
-      }
-
-      trayImages.push({
-        name: `Figura_${trayImages.length + 1}`,
-        imageCanvas: subCanvas,
-        offX: 0,
-        offY: 0,
-        scale: 1.0,
-        rot: 0
       });
 
-      renderAssetTray();
-      closeImageModal();
+      return JSON.stringify({
+        maxFrames,
+        fps,
+        unselectedOpacity,
+        bones: bonesData,
+        unattachedImages: unattachedData,
+        trayImages: trayData,
+        boneKeyframes,
+        spriteKeyframes: serializedSpriteKeyframes
+      });
     }
 
+    function deserializeProject(jsonString, alertOnSuccess = true) {
+      try {
+        const data = JSON.parse(jsonString);
+
+        maxFrames = data.maxFrames || 60;
+        fps = data.fps || 24;
+        unselectedOpacity = data.unselectedOpacity !== undefined ? data.unselectedOpacity : 0.75;
+
+        document.getElementById('max-frames-input').value = maxFrames;
+        document.getElementById('fps-input').value = fps;
+        document.getElementById('unselected-opacity-slider').value = unselectedOpacity;
+        document.getElementById('lbl-unselected-opacity').innerText = `Opacidade Não Selecionados: ${Math.round(unselectedOpacity * 100)}%`;
+
+        boneKeyframes = data.boneKeyframes || {};
+
+        const deserializeSprite = (sData) => {
+          if (!sData) return null;
+          const cvs = document.createElement('canvas');
+          const img = new Image();
+          img.onload = () => {
+            cvs.width = img.width;
+            cvs.height = img.height;
+            const c = cvs.getContext('2d');
+            applySmoothing(c);
+            c.drawImage(img, 0, 0);
+            render();
+          };
+          img.src = sData.dataUrl;
+          return {
+            name: sData.name,
+            imageCanvas: cvs,
+            offX: sData.offX,
+            offY: sData.offY,
+            scale: sData.scale,
+            rot: sData.rot
+          };
+        };
+
+        unattachedImages = (data.unattachedImages || []).map(deserializeSprite);
+        trayImages = (data.trayImages || []).map(deserializeSprite);
+
+        spriteKeyframes = {};
+        if (data.spriteKeyframes) {
+          Object.keys(data.spriteKeyframes).forEach(boneId => {
+            spriteKeyframes[boneId] = {};
+            Object.keys(data.spriteKeyframes[boneId]).forEach(frame => {
+              const group = data.spriteKeyframes[boneId][frame];
+              spriteKeyframes[boneId][frame] = {
+                activeIndex: group.activeIndex,
+                sprites: group.sprites.map(deserializeSprite)
+              };
+            });
+          });
+        }
+
+        bones = [];
+        const boneMap = {};
+
+        data.bones.forEach(bData => {
+          const newBone = new Bone(
+            bData.id,
+            null,
+            bData.length,
+            bData.localAngle,
+            { x: bData.posX, y: bData.posY }
+          );
+          newBone.meshStrokes = bData.meshStrokes || [];
+          newBone.attachedSprite = deserializeSprite(bData.attachedSprite);
+          newBone.visibleBone = bData.visibleBone !== undefined ? bData.visibleBone : true;
+          newBone.visibleImage = bData.visibleImage !== undefined ? bData.visibleImage : true;
+
+          boneMap[bData.id] = newBone;
+          bones.push(newBone);
+        });
+
+        data.bones.forEach(bData => {
+          if (bData.parentId && boneMap[bData.parentId]) {
+            boneMap[bData.id].parent = boneMap[bData.parentId];
+          }
+        });
+
+        selectedBone = bones.length > 0 ? bones[0] : null;
+
+        renderAssetTray();
+        updateUI();
+        resizeCanvas();
+
+        if (alertOnSuccess) alert("Projeto carregado com sucesso!");
+      } catch (e) {
+        alert("Erro ao ler dados do projeto: " + e.message);
+      }
+    }
+
+    function exportJSON() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(serializeProject());
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", "nickeman_rig_project.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function importJSON(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          saveState();
+          deserializeProject(event.target.result);
+        };
+        reader.readAsText(file);
+      }
+    }
+
+    function saveToLocalStorage() {
+      localStorage.setItem('nickeman_saved_project', serializeProject());
+      alert("Projeto salvo com sucesso no navegador!");
+    }
+
+    function loadFromLocalStorage() {
+      const saved = localStorage.getItem('nickeman_saved_project');
+      if (saved) {
+        saveState();
+        deserializeProject(saved);
+      } else {
+        alert("Nenhum projeto salvo no armazenamento local.");
+      }
+    }
+
+    // Inicialização da interface
     resizeCanvas();
+    updateUI();
   </script>
 </body>
 </html>
