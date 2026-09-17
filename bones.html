@@ -192,7 +192,33 @@
       display: none;
     }
 
-    /* COMPONENTES DE UI DA LATERAL E CONTROLES */
+    /* TIMELINE REDIMENSIONÁVEL */
+    #win-timeline {
+      width: 95vw;
+      max-width: 1200px;
+      height: 280px;
+      min-width: 400px;
+      min-height: 180px;
+    }
+
+    #win-timeline .floating-body {
+      flex: 1;
+      max-height: none;
+      height: calc(100% - 37px);
+    }
+
+    .window-resize-handle {
+      position: absolute;
+      right: 3px;
+      bottom: 3px;
+      width: 12px;
+      height: 12px;
+      cursor: nwse-resize;
+      background: linear-gradient(135deg, transparent 50%, #00d2ff 50%);
+      z-index: 20;
+    }
+
+    /* COMPONENTES DE UI */
     .section {
       display: flex;
       flex-direction: column;
@@ -325,8 +351,9 @@
 
     .timeline-track-wrapper {
       display: flex;
+      flex: 1;
       width: 100%;
-      height: 150px;
+      min-height: 80px;
       position: relative;
       overflow: hidden;
       border: 1px solid #3f3f52;
@@ -508,7 +535,8 @@
   <div id="intro-overlay">
     <div class="intro-title">NickeMan</div>
     <div class="sub-title">2D RIGGING STUDIO</div>
-  </div>
+     <font color="yellow"> Rogério Benedito de Andrade, com uso de I.A.</font>
+      </div>
 
   <div id="canvas-container">
     <canvas id="stage"></canvas>
@@ -664,7 +692,7 @@
   </div>
 
   <!-- JANELA 4: BANDEJA DE FIGURAS RECORTADAS -->
-  <div class="floating-window" id="win-tray" style="bottom: 270px; left: 15px; width: 555px;">
+  <div class="floating-window" id="win-tray" style="bottom: 310px; left: 15px; width: 555px;">
     <div class="floating-header">
       <span>📦 Bandeja de Figuras Recortadas</span>
       <div class="window-controls">
@@ -678,7 +706,7 @@
   </div>
 
   <!-- JANELA 5: TIMELINE & ANIMATOR -->
-  <div class="floating-window" id="win-timeline" style="bottom: 15px; left: 15px; width: 95vw; max-width: 1200px;">
+  <div class="floating-window" id="win-timeline" style="bottom: 15px; left: 15px;">
     <div class="floating-header">
       <span>🎞️ Linha do Tempo & Animação</span>
       <div class="window-controls">
@@ -716,6 +744,7 @@
         </div>
       </div>
     </div>
+    <div class="window-resize-handle" id="timeline-resize-handle"></div>
   </div>
 
   <div id="image-context-menu">
@@ -802,6 +831,49 @@
         document.onmouseup = null;
         document.onmousemove = null;
       }
+    }
+
+    // Redimensionamento Completo da Janela da Timeline (Horizontal e Vertical)
+    const timelineWin = document.getElementById('win-timeline');
+    const resizeHandle = document.getElementById('timeline-resize-handle');
+    let isResizingTimelineWindow = false;
+    let resizeStartX = 0, resizeStartY = 0;
+    let startWidth = 0, startHeight = 0;
+
+    resizeHandle.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      isResizingTimelineWindow = true;
+      resizeStartX = e.clientX;
+      resizeStartY = e.clientY;
+      startWidth = timelineWin.offsetWidth;
+      startHeight = timelineWin.offsetHeight;
+      
+      document.addEventListener('mousemove', onTimelineResizeMouseMove);
+      document.addEventListener('mouseup', onTimelineResizeMouseUp);
+    });
+
+    function onTimelineResizeMouseMove(e) {
+      if (!isResizingTimelineWindow) return;
+      const dx = e.clientX - resizeStartX;
+      const dy = e.clientY - resizeStartY;
+
+      const newWidth = Math.max(400, startWidth + dx);
+      const newHeight = Math.max(180, startHeight + dy);
+
+      timelineWin.style.width = newWidth + 'px';
+      timelineWin.style.height = newHeight + 'px';
+      timelineWin.style.maxHeight = 'none';
+      timelineWin.style.maxWidth = 'none';
+
+      resizeCanvas();
+    }
+
+    function onTimelineResizeMouseUp() {
+      isResizingTimelineWindow = false;
+      document.removeEventListener('mousemove', onTimelineResizeMouseMove);
+      document.removeEventListener('mouseup', onTimelineResizeMouseUp);
+      resizeCanvas();
     }
 
     function toggleWindowBody(winId) {
@@ -1159,7 +1231,7 @@
       const container = timelineCanvas.parentElement;
       if (container) {
         timelineCanvas.width = container.clientWidth;
-        timelineCanvas.height = Math.max(100, (bones.length + 1) * 24 + 30);
+        timelineCanvas.height = Math.max(container.clientHeight, (bones.length + 1) * 24 + 30);
       }
 
       applySmoothing(ctx);
@@ -2860,6 +2932,237 @@
       updateUI();
     }
 
+    function serializeProject() {
+      return {
+        bones: bones.map(b => ({
+          id: b.id,
+          parentId: b.parent ? b.parent.id : null,
+          length: b.length,
+          localAngle: b.localAngle,
+          posX: b.posX,
+          posY: b.posY,
+          meshStrokes: b.meshStrokes,
+          visibleBone: b.visibleBone,
+          visibleImage: b.visibleImage,
+          attachedSprite: b.attachedSprite ? {
+            name: b.attachedSprite.name,
+            dataUrl: b.attachedSprite.imageCanvas.toDataURL(),
+            scale: b.attachedSprite.scale,
+            rot: b.attachedSprite.rot,
+            offX: b.attachedSprite.offX,
+            offY: b.attachedSprite.offY
+          } : null
+        })),
+        unattachedImages: unattachedImages.map(img => ({
+          name: img.name,
+          dataUrl: img.imageCanvas.toDataURL(),
+          scale: img.scale,
+          rot: img.rot,
+          offX: img.offX,
+          offY: img.offY
+        })),
+        trayImages: trayImages.map(img => ({
+          name: img.name,
+          dataUrl: img.imageCanvas.toDataURL(),
+          scale: img.scale,
+          rot: img.rot,
+          offX: img.offX,
+          offY: img.offY
+        })),
+        boneKeyframes,
+        spriteKeyframes,
+        maxFrames,
+        fps
+      };
+    }
+
+    function deserializeProject(data, resetHistory = true) {
+      if (resetHistory) undoStack = [];
+      maxFrames = data.maxFrames || 60;
+      fps = data.fps || 24;
+      document.getElementById('max-frames-input').value = maxFrames;
+      document.getElementById('fps-input').value = fps;
+
+      boneKeyframes = data.boneKeyframes || {};
+      spriteKeyframes = data.spriteKeyframes || {};
+
+      const loadedBones = [];
+      data.bones.forEach(bData => {
+        const parentBone = loadedBones.find(b => b.id === bData.parentId) || null;
+        const bone = new Bone(bData.id, parentBone, bData.length, bData.localAngle, { x: bData.posX, y: bData.posY });
+        bone.meshStrokes = bData.meshStrokes || [];
+        bone.visibleBone = bData.visibleBone !== false;
+        bone.visibleImage = bData.visibleImage !== false;
+
+        if (bData.attachedSprite) {
+          const img = new Image();
+          img.src = bData.attachedSprite.dataUrl;
+          const c = document.createElement('canvas');
+          const ctxC = c.getContext('2d');
+          img.onload = () => {
+            c.width = img.width;
+            c.height = img.height;
+            ctxC.drawImage(img, 0, 0);
+            render();
+          };
+          bone.attachedSprite = {
+            name: bData.attachedSprite.name,
+            imageCanvas: c,
+            scale: bData.attachedSprite.scale,
+            rot: bData.attachedSprite.rot,
+            offX: bData.attachedSprite.offX,
+            offY: bData.attachedSprite.offY
+          };
+        }
+        loadedBones.push(bone);
+      });
+      bones = loadedBones;
+
+      unattachedImages = [];
+      (data.unattachedImages || []).forEach(imgData => {
+        const img = new Image();
+        img.src = imgData.dataUrl;
+        const c = document.createElement('canvas');
+        const ctxC = c.getContext('2d');
+        img.onload = () => {
+          c.width = img.width;
+          c.height = img.height;
+          ctxC.drawImage(img, 0, 0);
+          render();
+        };
+        unattachedImages.push({
+          name: imgData.name,
+          imageCanvas: c,
+          scale: imgData.scale,
+          rot: imgData.rot,
+          offX: imgData.offX,
+          offY: imgData.offY
+        });
+      });
+
+      trayImages = [];
+      (data.trayImages || []).forEach(imgData => {
+        const img = new Image();
+        img.src = imgData.dataUrl;
+        const c = document.createElement('canvas');
+        const ctxC = c.getContext('2d');
+        img.onload = () => {
+          c.width = img.width;
+          c.height = img.height;
+          ctxC.drawImage(img, 0, 0);
+          renderAssetTray();
+        };
+        trayImages.push({
+          name: imgData.name,
+          imageCanvas: c,
+          scale: imgData.scale,
+          rot: imgData.rot,
+          offX: imgData.offX,
+          offY: imgData.offY
+        });
+      });
+
+      selectedBone = bones.length > 0 ? bones[0] : null;
+      renderAssetTray();
+      updateUI();
+      resizeCanvas();
+    }
+
+    function saveToLocalStorage() {
+      const state = serializeProject();
+      localStorage.setItem('nickeman_project', JSON.stringify(state));
+      alert("Projeto salvo com sucesso no LocalStorage!");
+    }
+
+    function loadFromLocalStorage() {
+      const raw = localStorage.getItem('nickeman_project');
+      if (!raw) {
+        alert("Nenhum projeto salvo encontrado no LocalStorage.");
+        return;
+      }
+      try {
+        const data = JSON.parse(raw);
+        deserializeProject(data);
+        alert("Projeto carregado com sucesso!");
+      } catch (err) {
+        console.error(err);
+        alert("Erro ao carregar o projeto salvo.");
+      }
+    }
+
+    function exportJSON() {
+      const state = serializeProject();
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'nickeman_project.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importJSON(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const data = JSON.parse(evt.target.result);
+          deserializeProject(data);
+          alert("Projeto JSON importado com sucesso!");
+        } catch (err) {
+          console.error(err);
+          alert("Erro ao ler o arquivo JSON do projeto.");
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    async function exportImageSequence() {
+      if (typeof JSZip === 'undefined') {
+        alert("Biblioteca JSZip carregando... Tente novamente em alguns segundos.");
+        return;
+      }
+
+      const zip = new JSZip();
+      const folder = zip.folder("anim_frames");
+
+      const origFrame = currentFrame;
+      const origPlaying = isPlaying;
+      if (origPlaying) togglePlay();
+
+      const exportCanvas = document.createElement('canvas');
+      exportCanvas.width = 1280;
+      exportCanvas.height = 720;
+      const eCtx = exportCanvas.getContext('2d');
+      applySmoothing(eCtx);
+
+      for (let f = 0; f <= maxFrames; f++) {
+        currentFrame = f;
+        applyKeyframeState(f);
+        renderToContext(eCtx, true);
+
+        const dataUrl = exportCanvas.toDataURL('image/png');
+        const base64Data = dataUrl.replace(/^data:image\/png;base64,/, "");
+        const paddedNum = String(f).padStart(4, '0');
+        folder.file(`frame_${paddedNum}.png`, base64Data, { base64: true });
+      }
+
+      currentFrame = origFrame;
+      applyKeyframeState(currentFrame);
+      updateUI();
+      render();
+
+      alert("Gerando arquivo ZIP com os frames... Por favor, aguarde.");
+      const content = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = "anim_sequence.zip";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
     function renderToContext(targetCtx, isExporting = false) {
       const w = targetCtx.canvas.width;
       const h = targetCtx.canvas.height;
@@ -3037,28 +3340,11 @@
               targetCtx.beginPath();
               targetCtx.moveTo(0, -bbox.h / 2);
               targetCtx.lineTo(0, -bbox.h / 2 - 25 / stageZoom);
-              targetCtx.stroke();
-
-              targetCtx.beginPath();
-              targetCtx.arc(0, -bbox.h / 2 - 25 / stageZoom, 6 / stageZoom, 0, Math.PI * 2);
-              targetCtx.fillStyle = '#ffcc00';
-              targetCtx.fill();
-              targetCtx.stroke();
-
-              targetCtx.beginPath();
-              targetCtx.arc(bbox.w / 2, bbox.h / 2, 5 / stageZoom, 0, Math.PI * 2);
-              targetCtx.fillStyle = '#00d2ff';
-              targetCtx.fill();
-              targetCtx.stroke();
-
-              targetCtx.restore();
             }
           }
-
           targetCtx.restore();
         });
       }
-
       targetCtx.restore();
     }
 
@@ -3066,308 +3352,7 @@
       renderToContext(ctx, false);
     }
 
-    function serializeProject() {
-      const dataBones = bones.map(b => ({
-        id: b.id,
-        parentId: b.parent ? b.parent.id : null,
-        length: b.length,
-        localAngle: b.localAngle,
-        posX: b.posX,
-        posY: b.posY,
-        meshStrokes: b.meshStrokes,
-        visibleBone: b.visibleBone,
-        visibleImage: b.visibleImage,
-        attachedSprite: b.attachedSprite ? {
-          name: b.attachedSprite.name,
-          dataUrl: b.attachedSprite.imageCanvas.toDataURL(),
-          scale: b.attachedSprite.scale,
-          rot: b.attachedSprite.rot,
-          offX: b.attachedSprite.offX,
-          offY: b.attachedSprite.offY
-        } : null
-      }));
-
-      const dataUnattached = unattachedImages.map(img => ({
-        name: img.name,
-        dataUrl: img.imageCanvas ? img.imageCanvas.toDataURL() : null,
-        scale: img.scale,
-        rot: img.rot,
-        offX: img.offX,
-        offY: img.offY
-      }));
-
-      const dataTray = trayImages.map(img => ({
-        name: img.name,
-        dataUrl: img.imageCanvas ? img.imageCanvas.toDataURL() : null,
-        scale: img.scale,
-        rot: img.rot,
-        offX: img.offX,
-        offY: img.offY
-      }));
-
-      const serializedSpriteKeyframes = {};
-      Object.keys(spriteKeyframes).forEach(bId => {
-        serializedSpriteKeyframes[bId] = {};
-        Object.keys(spriteKeyframes[bId]).forEach(fIdx => {
-          const group = spriteKeyframes[bId][fIdx];
-          serializedSpriteKeyframes[bId][fIdx] = {
-            activeIndex: group.activeIndex,
-            sprites: group.sprites.map(s => ({
-              name: s.name,
-              dataUrl: s.imageCanvas ? s.imageCanvas.toDataURL() : null,
-              scale: s.scale,
-              rot: s.rot,
-              offX: s.offX,
-              offY: s.offY
-            }))
-          };
-        });
-      });
-
-      return JSON.stringify({
-        maxFrames,
-        fps,
-        bones: dataBones,
-        unattachedImages: dataUnattached,
-        trayImages: dataTray,
-        boneKeyframes,
-        spriteKeyframes: serializedSpriteKeyframes
-      });
-    }
-
-    function deserializeProject(jsonStr, isInitialLoad = false) {
-      try {
-        const data = JSON.parse(jsonStr);
-        maxFrames = data.maxFrames || 60;
-        fps = data.fps || 24;
-
-        document.getElementById('max-frames-input').value = maxFrames;
-        document.getElementById('fps-input').value = fps;
-
-        boneKeyframes = data.boneKeyframes || {};
-        spriteKeyframes = {};
-
-        if (data.spriteKeyframes) {
-          Object.keys(data.spriteKeyframes).forEach(bId => {
-            spriteKeyframes[bId] = {};
-            Object.keys(data.spriteKeyframes[bId]).forEach(fIdx => {
-              const group = data.spriteKeyframes[bId][fIdx];
-              spriteKeyframes[bId][fIdx] = {
-                activeIndex: group.activeIndex,
-                sprites: group.sprites.map(s => {
-                  const offCanvas = document.createElement('canvas');
-                  const img = new Image();
-                  img.onload = () => {
-                    offCanvas.width = img.width;
-                    offCanvas.height = img.height;
-                    const oCtx = offCanvas.getContext('2d');
-                    applySmoothing(oCtx);
-                    oCtx.drawImage(img, 0, 0);
-                    render();
-                  };
-                  if (s.dataUrl) img.src = s.dataUrl;
-
-                  return {
-                    name: s.name,
-                    imageCanvas: offCanvas,
-                    scale: s.scale,
-                    rot: s.rot,
-                    offX: s.offX,
-                    offY: s.offY
-                  };
-                })
-              };
-            });
-          });
-        }
-
-        bones = [];
-        const boneMap = {};
-
-        data.bones.forEach(bd => {
-          const newBone = new Bone(bd.id, null, bd.length, bd.localAngle, { x: bd.posX, y: bd.posY });
-          newBone.meshStrokes = bd.meshStrokes || [];
-          newBone.visibleBone = bd.visibleBone !== undefined ? bd.visibleBone : true;
-          newBone.visibleImage = bd.visibleImage !== undefined ? bd.visibleImage : true;
-
-          if (bd.attachedSprite && bd.attachedSprite.dataUrl) {
-            const offCanvas = document.createElement('canvas');
-            const img = new Image();
-            img.onload = () => {
-              offCanvas.width = img.width;
-              offCanvas.height = img.height;
-              const oCtx = offCanvas.getContext('2d');
-              applySmoothing(oCtx);
-              oCtx.drawImage(img, 0, 0);
-              render();
-            };
-            img.src = bd.attachedSprite.dataUrl;
-
-            newBone.attachedSprite = {
-              name: bd.attachedSprite.name,
-              imageCanvas: offCanvas,
-              scale: bd.attachedSprite.scale,
-              rot: bd.attachedSprite.rot,
-              offX: bd.attachedSprite.offX,
-              offY: bd.attachedSprite.offY
-            };
-          }
-
-          boneMap[bd.id] = newBone;
-          bones.push(newBone);
-        });
-
-        data.bones.forEach(bd => {
-          if (bd.parentId && boneMap[bd.parentId]) {
-            boneMap[bd.id].parent = boneMap[bd.parentId];
-          }
-        });
-
-        unattachedImages = [];
-        if (data.unattachedImages) {
-          data.unattachedImages.forEach(imgData => {
-            const offCanvas = document.createElement('canvas');
-            const img = new Image();
-            img.onload = () => {
-              offCanvas.width = img.width;
-              offCanvas.height = img.height;
-              const oCtx = offCanvas.getContext('2d');
-              applySmoothing(oCtx);
-              oCtx.drawImage(img, 0, 0);
-              render();
-            };
-            if (imgData.dataUrl) img.src = imgData.dataUrl;
-
-            unattachedImages.push({
-              name: imgData.name,
-              imageCanvas: offCanvas,
-              scale: imgData.scale || 1,
-              rot: imgData.rot || 0,
-              offX: imgData.offX || 0,
-              offY: imgData.offY || 0
-            });
-          });
-        }
-
-        trayImages = [];
-        if (data.trayImages) {
-          data.trayImages.forEach(imgData => {
-            const offCanvas = document.createElement('canvas');
-            const img = new Image();
-            img.onload = () => {
-              offCanvas.width = img.width;
-              offCanvas.height = img.height;
-              const oCtx = offCanvas.getContext('2d');
-              applySmoothing(oCtx);
-              oCtx.drawImage(img, 0, 0);
-              renderAssetTray();
-            };
-            if (imgData.dataUrl) img.src = imgData.dataUrl;
-
-            trayImages.push({
-              name: imgData.name,
-              imageCanvas: offCanvas,
-              scale: imgData.scale || 1,
-              rot: imgData.rot || 0,
-              offX: imgData.offX || 0,
-              offY: imgData.offY || 0
-            });
-          });
-        }
-
-        selectedBone = bones.length > 0 ? bones[0] : null;
-        currentFrame = 0;
-        applyKeyframeState(currentFrame);
-
-        renderAssetTray();
-        updateUI();
-        resizeCanvas();
-      } catch (err) {
-        console.error("Falha ao desserializar projeto:", err);
-      }
-    }
-
-    function saveToLocalStorage() {
-      localStorage.setItem('nickeman_project_data', serializeProject());
-      alert("Projeto salvo no armazenamento local!");
-    }
-
-    function loadFromLocalStorage() {
-      const saved = localStorage.getItem('nickeman_project_data');
-      if (saved) {
-        saveState();
-        deserializeProject(saved);
-      } else {
-        alert("Nenhum projeto salvo encontrado.");
-      }
-    }
-
-    function exportJSON() {
-      const jsonStr = serializeProject();
-      const blob = new Blob([jsonStr], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'nickeman_rigging_project.json';
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-
-    function importJSON(event) {
-      const file = event.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          saveState();
-          deserializeProject(e.target.result);
-        };
-        reader.readAsText(file);
-      }
-    }
-
-    async function exportImageSequence() {
-      if (typeof JSZip === 'undefined') {
-        alert("Biblioteca JSZip carregando, tente novamente.");
-        return;
-      }
-
-      const zip = new JSZip();
-      const exportCanvas = document.createElement('canvas');
-      exportCanvas.width = canvas.width;
-      exportCanvas.height = canvas.height;
-      const exportCtx = exportCanvas.getContext('2d');
-      applySmoothing(exportCtx);
-
-      const initialFrame = currentFrame;
-
-      for (let f = 0; f <= maxFrames; f++) {
-        applyKeyframeState(f);
-        renderToContext(exportCtx, true);
-
-        const dataUrl = exportCanvas.toDataURL('image/png');
-        const base64Data = dataUrl.replace(/^data:image\/png;base64,/, "");
-        const frameNumber = String(f).padStart(4, '0');
-        zip.file(`frame_${frameNumber}.png`, base64Data, { base64: true });
-      }
-
-      currentFrame = initialFrame;
-      applyKeyframeState(currentFrame);
-      updateUI();
-      render();
-
-      const content = await zip.generateAsync({ type: 'blob' });
-      const url = URL.createObjectURL(content);
-
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'animacao_sequencia.zip';
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-
     resizeCanvas();
-    setMode('ADD_BONE_ROOT');
   </script>
 </body>
 </html>
