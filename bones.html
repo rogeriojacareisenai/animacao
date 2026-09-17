@@ -760,6 +760,12 @@
               Nenhuma imagem associada
             </div>
 
+            <!-- Seletor de Histórico de Imagens na Keyframe Atual -->
+            <div id="sprite-history-selector-box" class="section" style="margin-bottom: 6px;">
+              <label>Alternar Imagem Histórica (Keyframe Atual):</label>
+              <select id="sprite-history-select" onchange="switchActiveSpriteFromHistory(this.value)"></select>
+            </div>
+
             <div id="sprite-editor-controls" class="section">
               <button class="warning-btn" onclick="detachSelectedSprite()">🔓 Desassociar e Mover para Soltas</button>
 
@@ -785,7 +791,7 @@
     <div id="stage-wrapper">
       <div id="asset-tray-container">
         <div id="asset-tray-title">
-          <span>📦 Bandeja de Figuras Recortadas (Arraste para o Palco)</span>
+          <span>📦 Bandeja de Figuras Recortadas (Arraste para o Palco ou Timeline)</span>
           <span id="asset-tray-count" style="color: #aaa; font-weight: normal;">0 itens</span>
         </div>
         <div id="asset-tray"></div>
@@ -836,7 +842,7 @@
 
     <div class="timeline-track-wrapper">
       <div id="bone-layers-panel"></div>
-      <div class="timeline-canvas-container">
+      <div class="timeline-canvas-container" id="timeline-drop-container">
         <canvas id="timeline-canvas"></canvas>
       </div>
     </div>
@@ -950,6 +956,7 @@
     let maxFrames = 60;
     let fps = 24;
     let boneKeyframes = {};
+    let spriteKeyframes = {}; // Armazena trocas/estados de imagem por osso e frame: spriteKeyframes[boneId][frame] = { activeIndex: 0, sprites: [spriteObj1, spriteObj2, ...] }
     let isPlaying = false;
     let animationInterval = null;
 
@@ -1043,6 +1050,79 @@
       }
     });
 
+    // Evento de Drag and Drop na Linha do Tempo (Timeline) para adicionar/armazenar nova imagem no Keyframe mantendo as anteriores
+    const timelineDropContainer = document.getElementById('timeline-drop-container');
+    timelineDropContainer.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    });
+
+    timelineDropContainer.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const trayIndexStr = e.dataTransfer.getData('text/plain');
+      if (trayIndexStr === "") return;
+
+      const trayIdx = parseInt(trayIndexStr);
+      if (isNaN(trayIdx) || !trayImages[trayIdx]) return;
+
+      const rect = timelineCanvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      const headerHeight = 30;
+      const trackHeight = 24;
+      const paddingRight = 20;
+      const trackWidth = timelineCanvas.width - paddingRight;
+      const step = trackWidth / maxFrames;
+
+      if (clickY <= headerHeight) return;
+
+      const boneIndex = Math.floor((clickY - headerHeight) / trackHeight);
+      if (boneIndex < 0 || boneIndex >= bones.length) return;
+
+      const targetBone = bones[boneIndex];
+      const targetFrame = Math.round(clickX / step);
+      const clampedFrame = Math.max(0, Math.min(maxFrames, targetFrame));
+
+      const hasKeyframe = boneKeyframes[targetBone.id] && boneKeyframes[targetBone.id][clampedFrame] !== undefined;
+
+      if (hasKeyframe) {
+        if (confirm(`Deseja adicionar/substituir a imagem no osso "${targetBone.id}" no frame ${clampedFrame} (armazenando histórico)?`)) {
+          saveState();
+
+          const newItem = trayImages.splice(trayIdx, 1)[0];
+          newItem.offX = 0;
+          newItem.offY = 0;
+          newItem.scale = 1.0;
+          newItem.rot = 0;
+
+          if (!spriteKeyframes[targetBone.id]) {
+            spriteKeyframes[targetBone.id] = {};
+          }
+          if (!spriteKeyframes[targetBone.id][clampedFrame]) {
+            // Inicializa estrutura de histórico de sprites para este frame/osso
+            spriteKeyframes[targetBone.id][clampedFrame] = { activeIndex: 0, sprites: [] };
+          }
+
+          const spriteGroup = spriteKeyframes[targetBone.id][clampedFrame];
+          // Adiciona a nova imagem ao array de histórico e define ela como ativa
+          spriteGroup.sprites.push(newItem);
+          spriteGroup.activeIndex = spriteGroup.sprites.length - 1;
+
+          boneKeyframes[targetBone.id][clampedFrame].interpolated = false;
+
+          currentFrame = clampedFrame;
+          applyKeyframeState(currentFrame);
+
+          renderAssetTray();
+          updateUI();
+          render();
+        }
+      } else {
+        alert(`Solte a imagem sobre um keyframe existente (ponto amarelo ou laranja) do osso "${targetBone.id}" no frame ${clampedFrame}.`);
+      }
+    });
+
     function renderAssetTray() {
       const tray = document.getElementById('asset-tray');
       const countLabel = document.getElementById('asset-tray-count');
@@ -1053,7 +1133,7 @@
         const thumb = document.createElement('div');
         thumb.className = 'thumb-item';
         thumb.draggable = true;
-        thumb.title = `${imgObj.name} (Arraste para o palco)`;
+        thumb.title = `${imgObj.name} (Arraste para o palco ou timeline)`;
 
         const imgEl = document.createElement('img');
         imgEl.src = imgObj.imageCanvas.toDataURL();
@@ -1177,6 +1257,7 @@
       }
 
       delete boneKeyframes[boneToDelete.id];
+      delete spriteKeyframes[boneToDelete.id];
       bones = bones.filter(b => b !== boneToDelete);
 
       if (selectedBone === boneToDelete) {
@@ -1402,6 +1483,7 @@
 
       bones.push(newBone);
       boneKeyframes[newBone.id] = {};
+      spriteKeyframes[newBone.id] = {};
       selectBone(newBone);
       setTransformTarget('BONE');
       
@@ -1698,6 +1780,7 @@
           const newBone = new Bone(`Osso_${bones.length + 1}`, parentBone, length, localAngle, basePos);
           bones.push(newBone);
           boneKeyframes[newBone.id] = {};
+          spriteKeyframes[newBone.id] = {};
           selectBone(newBone);
           setTransformTarget('BONE');
           resizeCanvas();
@@ -1798,16 +1881,39 @@
     function updateSpritePanel() {
       const infoText = document.getElementById('attached-image-info');
       const editorBox = document.getElementById('sprite-editor-controls');
+      const historyBox = document.getElementById('sprite-history-selector-box');
+      const historySelect = document.getElementById('sprite-history-select');
 
       if (!selectedBone || !selectedBone.attachedSprite) {
         infoText.innerText = "Nenhuma imagem associada a este osso.";
         editorBox.style.display = 'none';
+        historyBox.style.display = 'none';
         return;
       }
 
       editorBox.style.display = 'flex';
       const sprite = selectedBone.attachedSprite;
-      infoText.innerText = `Imagem: ${sprite.name}`;
+      infoText.innerText = `Imagem Ativa: ${sprite.name}`;
+
+      // Popula o seletor de histórico de imagens da keyframe atual do osso selecionado
+      if (spriteKeyframes[selectedBone.id] && spriteKeyframes[selectedBone.id][currentFrame]) {
+        const group = spriteKeyframes[selectedBone.id][currentFrame];
+        if (group.sprites && group.sprites.length > 1) {
+          historyBox.style.display = 'flex';
+          historySelect.innerHTML = '';
+          group.sprites.forEach((s, idx) => {
+            const opt = document.createElement('option');
+            opt.value = idx;
+            opt.text = `${s.name} ${idx === group.activeIndex ? '(Ativa)' : ''}`;
+            if (idx === group.activeIndex) opt.selected = true;
+            historySelect.appendChild(opt);
+          });
+        } else {
+          historyBox.style.display = 'none';
+        }
+      } else {
+        historyBox.style.display = 'none';
+      }
 
       offXSlider.value = sprite.offX;
       offYSlider.value = sprite.offY;
@@ -1815,6 +1921,21 @@
       rotSlider.value = Math.round((sprite.rot * 180) / Math.PI);
 
       render();
+    }
+
+    function switchActiveSpriteFromHistory(indexStr) {
+      if (!selectedBone) return;
+      const idx = parseInt(indexStr);
+      if (spriteKeyframes[selectedBone.id] && spriteKeyframes[selectedBone.id][currentFrame]) {
+        const group = spriteKeyframes[selectedBone.id][currentFrame];
+        if (!isNaN(idx) && group.sprites[idx]) {
+          saveState();
+          group.activeIndex = idx;
+          selectedBone.attachedSprite = group.sprites[idx];
+          updateSpritePanel();
+          render();
+        }
+      }
     }
 
     function updateUnattachedImagesList() {
@@ -1959,6 +2080,10 @@
               boneKeyframes[trimmedName] = boneKeyframes[oldId];
               delete boneKeyframes[oldId];
             }
+            if (spriteKeyframes[oldId]) {
+              spriteKeyframes[trimmedName] = spriteKeyframes[oldId];
+              delete spriteKeyframes[oldId];
+            }
 
             updateUI();
             render();
@@ -2022,6 +2147,7 @@
       selectedBone = null;
       currentDrawingStroke = [];
       boneKeyframes = {};
+      spriteKeyframes = {};
       renderAssetTray();
       updateUI();
       resizeCanvas();
@@ -2254,6 +2380,14 @@
         length: selectedBone.length,
         interpolated: existingKf ? (existingKf.interpolated !== false) : true
       };
+
+      // Garante também o registro de sprite atual na keyframe se houver sprite associado
+      if (selectedBone.attachedSprite) {
+        if (!spriteKeyframes[selectedBone.id]) spriteKeyframes[selectedBone.id] = {};
+        if (!spriteKeyframes[selectedBone.id][currentFrame]) {
+          spriteKeyframes[selectedBone.id][currentFrame] = { activeIndex: 0, sprites: [selectedBone.attachedSprite] };
+        }
+      }
     }
 
     function toggleKeyframeInterpolation() {
@@ -2279,6 +2413,9 @@
       if (boneKeyframes[boneId] && boneKeyframes[boneId][frameIndex] !== undefined) {
         saveState();
         delete boneKeyframes[boneId][frameIndex];
+        if (spriteKeyframes[boneId]) {
+          delete spriteKeyframes[boneId][frameIndex];
+        }
         applyKeyframeState(currentFrame);
         updateUI();
         render();
@@ -2399,6 +2536,23 @@
           bone.posY = stateMap[bone.id].posY;
           bone.length = stateMap[bone.id].length;
         }
+
+        // Restaura a imagem ativa do histórico de sprites baseado no frame atual
+        if (spriteKeyframes[bone.id]) {
+          const sKfs = spriteKeyframes[bone.id];
+          const activeSpriteFrames = Object.keys(sKfs).map(Number).sort((a, b) => a - b);
+          let activeGroup = null;
+
+          for (let f of activeSpriteFrames) {
+            if (f <= frame) {
+              activeGroup = sKfs[f];
+            }
+          }
+          if (activeGroup && activeGroup.sprites && activeGroup.sprites.length > 0) {
+            const activeIdx = Math.min(activeGroup.activeIndex, activeGroup.sprites.length - 1);
+            bone.attachedSprite = activeGroup.sprites[activeIdx];
+          }
+        }
       });
     }
 
@@ -2418,10 +2572,10 @@
         btn.innerText = '▶ Play';
         clearInterval(animationInterval);
       }
-      render(); // Atualiza a tela imediatamente aplicando o modo Play (opacidade total e skins desligados)
+      render();
     }
 
-    // Função de Exportação para Sequência de Imagens (com intervalo customizado de keyframes/frames)
+    // Função de Exportação para Sequência de Imagens
     async function exportImageSequence() {
       if (typeof JSZip === 'undefined') {
         alert("Aguarde o carregamento da biblioteca de compactação (JSZip) e tente novamente em instantes.");
@@ -2437,12 +2591,11 @@
 
       const originalFrame = currentFrame;
       const wasPlaying = isPlaying;
-      if (wasPlaying) togglePlay(); // Pausa se estiver rodando
+      if (wasPlaying) togglePlay();
 
       const oldZoom = stageZoom;
       const oldPan = { ...stagePan };
 
-      // Opcional: Centraliza e reseta zoom para exportação limpa na resolução nativa do canvas
       stageZoom = 1;
       stagePan = { x: 0, y: 0 };
 
@@ -2458,7 +2611,6 @@
         currentFrame = f;
         applyKeyframeState(currentFrame);
         
-        // Renderiza no canvas temporário forçando modo de Play (opacidade 100% e sem ossos/skins visíveis)
         renderToContext(eCtx, true);
 
         const dataUrl = exportCanvas.toDataURL('image/png');
@@ -2487,7 +2639,6 @@
       });
     }
 
-    // Renderizador genérico customizado para exportação ou exibição em Play
     function renderToContext(targetCtx, forcePlayView = false) {
       bones.forEach(b => b.updateTransform());
       targetCtx.clearRect(0, 0, targetCtx.canvas.width, targetCtx.canvas.height);
@@ -2497,11 +2648,6 @@
       targetCtx.translate(stagePan.x, stagePan.y);
       targetCtx.scale(stageZoom, stageZoom);
 
-      if (!forcePlayView) {
-        // Renderiza fantasmas se habilitado
-      }
-
-      // Imagens soltas
       if (unattachedImages.length > 0) {
         unattachedImages.forEach((imgObj) => {
           targetCtx.save();
@@ -2513,13 +2659,12 @@
         });
       }
 
-      // Sprites associados aos ossos
       bones.forEach(bone => {
         if (!bone.attachedSprite || !bone.visibleImage) return;
         const s = bone.attachedSprite;
 
         targetCtx.save();
-        targetCtx.globalAlpha = 1.0; // Opacidade 100% no modo Play ou exportação
+        targetCtx.globalAlpha = 1.0;
 
         targetCtx.translate(bone.startX, bone.startY);
         targetCtx.rotate(bone.worldAngle);
@@ -2531,7 +2676,6 @@
         targetCtx.restore();
       });
 
-      // Se não estiver em modo Play/Exportação, desenha o esqueleto e malhas
       if (!forcePlayView && !isPlaying) {
         bones.forEach(bone => {
           if (!bone.visibleBone) return;
@@ -2601,7 +2745,28 @@
           rot: s.rot,
           dataUrl: s.imageCanvas.toDataURL()
         })),
-        boneKeyframes: boneKeyframes
+        boneKeyframes: boneKeyframes,
+        spriteKeyframes: (() => {
+          const serializedSKfs = {};
+          for (let bId in spriteKeyframes) {
+            serializedSKfs[bId] = {};
+            for (let frm in spriteKeyframes[bId]) {
+              const group = spriteKeyframes[bId][frm];
+              serializedSKfs[bId][frm] = {
+                activeIndex: group.activeIndex,
+                sprites: group.sprites.map(spr => ({
+                  name: spr.name,
+                  offX: spr.offX,
+                  offY: spr.offY,
+                  scale: spr.scale,
+                  rot: spr.rot,
+                  dataUrl: spr.imageCanvas.toDataURL()
+                }))
+              };
+            }
+          }
+          return serializedSKfs;
+        })()
       };
       return JSON.stringify(projectData);
     }
@@ -2618,6 +2783,7 @@
         document.getElementById('max-frames-input').value = maxFrames;
         document.getElementById('fps-input').value = fps;
         boneKeyframes = data.boneKeyframes || {};
+        spriteKeyframes = {};
 
         const boneMap = {};
 
@@ -2629,6 +2795,49 @@
           boneMap[bData.id] = { instance: bone, parentId: bData.parentId, rawSprite: bData.attachedSprite };
           bones.push(bone);
         });
+
+        if (data.spriteKeyframes) {
+          for (let bId in data.spriteKeyframes) {
+            spriteKeyframes[bId] = {};
+            for (let frm in data.spriteKeyframes[bId]) {
+              const groupData = data.spriteKeyframes[bId][frm];
+              // Compatibilidade caso o JSON antigo venha como objeto único ou array
+              const spriteList = groupData.sprites || [groupData];
+              const activeIdx = groupData.activeIndex !== undefined ? groupData.activeIndex : 0;
+
+              spriteKeyframes[bId][frm] = { activeIndex: activeIdx, sprites: [] };
+
+              spriteList.forEach((sData, sIdx) => {
+                const img = new Image();
+                img.onload = () => {
+                  const offCanvas = document.createElement('canvas');
+                  offCanvas.width = img.width;
+                  offCanvas.height = img.height;
+                  const oCtx = offCanvas.getContext('2d');
+                  applySmoothing(oCtx);
+                  oCtx.drawImage(img, 0, 0);
+
+                  const loadedSpr = {
+                    name: sData.name,
+                    imageCanvas: offCanvas,
+                    offX: sData.offX,
+                    offY: sData.offY,
+                    scale: sData.scale,
+                    rot: sData.rot
+                  };
+
+                  if (!spriteKeyframes[bId][frm].sprites[sIdx]) {
+                    spriteKeyframes[bId][frm].sprites[sIdx] = loadedSpr;
+                  } else {
+                    spriteKeyframes[bId][frm].sprites.push(loadedSpr);
+                  }
+                  render();
+                };
+                img.src = sData.dataUrl;
+              });
+            }
+          }
+        }
 
         if (data.unattachedImages) {
           data.unattachedImages.forEach(sData => {
@@ -3204,48 +3413,34 @@
 
     function render() {
       bones.forEach(b => b.updateTransform());
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       applySmoothing(ctx);
+
+      renderGhostFrames();
 
       ctx.save();
       ctx.translate(stagePan.x, stagePan.y);
       ctx.scale(stageZoom, stageZoom);
 
-      renderGhostFrames();
-
       if (unattachedImages.length > 0) {
-        const select = document.getElementById('unattached-select');
-        const activeUnattachedIdx = select ? parseInt(select.value) : -1;
-
         unattachedImages.forEach((imgObj, idx) => {
           ctx.save();
-          ctx.globalAlpha = isPlaying ? 1.0 : ((idx === activeUnattachedIdx) ? 1.0 : unselectedOpacity);
-          
+          ctx.globalAlpha = unselectedOpacity;
           const centerX = (canvas.width / (2 * stageZoom)) + (imgObj.offX || 0);
           const centerY = (canvas.height / (2 * stageZoom)) + (imgObj.offY || 0);
-          
           ctx.drawImage(imgObj.imageCanvas, centerX - imgObj.imageCanvas.width / 2, centerY - imgObj.imageCanvas.height / 2);
-
-          if (!isPlaying && idx === activeUnattachedIdx) {
-            ctx.lineWidth = 2 / stageZoom;
-            ctx.setLineDash([4, 4]);
-            ctx.strokeStyle = '#ffcc00';
-            ctx.strokeRect(centerX - imgObj.imageCanvas.width / 2, centerY - imgObj.imageCanvas.height / 2, imgObj.imageCanvas.width, imgObj.imageCanvas.height);
-            ctx.setLineDash([]);
-          }
           ctx.restore();
         });
       }
 
       bones.forEach(bone => {
         if (!bone.attachedSprite || !bone.visibleImage) return;
-
         const s = bone.attachedSprite;
-        const isSelectedBone = (bone === selectedBone);
+        const isSelected = (bone === selectedBone && transformTarget === 'IMAGE');
 
         ctx.save();
-        ctx.globalAlpha = isPlaying ? 1.0 : (isSelectedBone ? 1.0 : unselectedOpacity);
+        ctx.globalAlpha = (selectedBone && bone !== selectedBone) ? unselectedOpacity : 1.0;
 
         ctx.translate(bone.startX, bone.startY);
         ctx.rotate(bone.worldAngle);
@@ -3255,107 +3450,104 @@
 
         ctx.drawImage(s.imageCanvas, -s.imageCanvas.width / 2, -s.imageCanvas.height / 2);
 
-        if (!isPlaying && isSelectedBone) {
-          const w = s.imageCanvas.width;
-          const h = s.imageCanvas.height;
-
-          ctx.lineWidth = 2 / (s.scale * stageZoom);
-          ctx.setLineDash([6, 4]);
-          ctx.strokeStyle = '#ffcc00';
-          ctx.strokeRect(-w/2, -h/2, w, h);
-          ctx.setLineDash([]);
-
-          if (mode === 'POSE' && transformTarget === 'IMAGE') {
-            const rotHandleDist = 25 / (s.scale * stageZoom);
-            ctx.beginPath();
-            ctx.moveTo(0, -h/2);
-            ctx.lineTo(0, -h/2 - rotHandleDist);
-            ctx.strokeStyle = '#00d2ff';
-            ctx.lineWidth = 2 / (s.scale * stageZoom);
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.arc(0, -h/2 - rotHandleDist, 6 / (s.scale * stageZoom), 0, Math.PI * 2);
-            ctx.fillStyle = '#ffcc00';
-            ctx.fill();
-            ctx.strokeStyle = '#000';
-            ctx.lineWidth = 1 / (s.scale * stageZoom);
-            ctx.stroke();
-
-            const sBox = 10 / (s.scale * stageZoom);
-            ctx.beginPath();
-            ctx.rect(w/2 - sBox/2, h/2 - sBox/2, sBox, sBox);
-            ctx.fillStyle = '#00ff88';
-            ctx.fill();
-            ctx.stroke();
-          }
+        if (isSelected) {
+          ctx.strokeStyle = '#00d2ff';
+          ctx.lineWidth = 2 / (stageZoom * s.scale);
+          ctx.strokeRect(-s.imageCanvas.width / 2, -s.imageCanvas.height / 2, s.imageCanvas.width, s.imageCanvas.height);
         }
 
         ctx.restore();
       });
 
-      // Se estiver em modo Play, os ossos e skins/malhas ficam totalmente ocultos
-      if (!isPlaying) {
-        bones.forEach(bone => {
-          if (!bone.visibleBone) return;
+      bones.forEach(bone => {
+        if (!bone.visibleBone) return;
+        const isSelected = (bone === selectedBone);
 
-          const isSelected = bone === selectedBone;
+        ctx.save();
+        ctx.strokeStyle = '#ff0055';
+        ctx.lineWidth = (isSelected ? 5 : 4) / stageZoom;
 
-          ctx.save();
-          ctx.globalAlpha = isSelected ? 1.0 : unselectedOpacity;
-
-          ctx.strokeStyle = '#ff0055';
-          ctx.lineWidth = 4 / stageZoom;
-          ctx.lineCap = 'round';
-          ctx.lineJoin = 'round';
-
-          bone.meshStrokes.forEach(stroke => {
-            ctx.beginPath();
-            for (let i = 0; i < stroke.length - 1; i++) {
-              const p1 = bone.localToWorld(stroke[i]);
-              const p2 = bone.localToWorld(stroke[i + 1]);
-              ctx.moveTo(p1.x, p1.y);
-              ctx.lineTo(p2.x, p2.y);
-            }
-            ctx.stroke();
-          });
-
+        bone.meshStrokes.forEach(stroke => {
           ctx.beginPath();
-          ctx.moveTo(bone.startX, bone.startY);
-          ctx.lineTo(bone.endX, bone.endY);
-          ctx.strokeStyle = isSelected ? '#00d2ff' : 'rgba(255,255,255,0.7)';
-          ctx.lineWidth = (isSelected ? 3 : 1.5) / stageZoom;
-          ctx.stroke();
-
-          ctx.beginPath();
-          ctx.arc(bone.endX, bone.endY, (isSelected ? 5 : 3.5) / stageZoom, 0, Math.PI * 2);
-          ctx.fillStyle = isSelected ? '#00d2ff' : '#ffffff';
-          ctx.fill();
-          ctx.strokeStyle = '#000';
-          ctx.lineWidth = 1 / stageZoom;
-          ctx.stroke();
-
-          if (isSelected && mode === 'POSE' && transformTarget === 'BONE') {
-            const rotHandleDist = 20 / stageZoom;
-            const rotX = bone.endX + Math.cos(bone.worldAngle) * rotHandleDist;
-            const rotY = bone.endY + Math.sin(bone.worldAngle) * rotHandleDist;
-
-            ctx.beginPath();
-            ctx.moveTo(bone.endX, bone.endY);
-            ctx.lineTo(rotX, rotY);
-            ctx.strokeStyle = '#00ff88';
-            ctx.lineWidth = 2 / stageZoom;
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.arc(rotX, rotY, 5 / stageZoom, 0, Math.PI * 2);
-            ctx.fillStyle = '#00ff88';
-            ctx.fill();
-            ctx.stroke();
+          for (let i = 0; i < stroke.length - 1; i++) {
+            const p1 = bone.localToWorld(stroke[i]);
+            const p2 = bone.localToWorld(stroke[i + 1]);
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
           }
+          ctx.stroke();
+        });
+
+        ctx.beginPath();
+        ctx.moveTo(bone.startX, bone.startY);
+        ctx.lineTo(bone.endX, bone.endY);
+        ctx.strokeStyle = isSelected ? '#ffcc00' : '#00d2ff';
+        ctx.lineWidth = (isSelected ? 4 : 2) / stageZoom;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(bone.startX, bone.startY, (isSelected ? 7 : 5) / stageZoom, 0, Math.PI * 2);
+        ctx.arc(bone.endX, bone.endY, (isSelected ? 7 : 5) / stageZoom, 0, Math.PI * 2);
+        ctx.fillStyle = '#fff';
+        ctx.fill();
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1.5 / stageZoom;
+        ctx.stroke();
+
+        if (isSelected && transformTarget === 'BONE') {
+          const rotHandleX = bone.endX + Math.cos(bone.worldAngle) * (20 / stageZoom);
+          const rotHandleY = bone.endY + Math.sin(bone.worldAngle) * (20 / stageZoom);
+
+          ctx.beginPath();
+          ctx.moveTo(bone.endX, bone.endY);
+          ctx.lineTo(rotHandleX, rotHandleY);
+          ctx.strokeStyle = '#ff0055';
+          ctx.lineWidth = 2 / stageZoom;
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.arc(rotHandleX, rotHandleY, 6 / stageZoom, 0, Math.PI * 2);
+          ctx.fillStyle = '#ff0055';
+          ctx.fill();
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      });
+
+      if (transformTarget === 'IMAGE' && selectedBone && selectedBone.attachedSprite && selectedBone.visibleImage) {
+        const bbox = getSelectedSpriteBoundingBox();
+        if (bbox) {
+          ctx.save();
+          ctx.strokeStyle = '#00d2ff';
+          ctx.lineWidth = 1.5 / stageZoom;
+          ctx.setLineDash([4, 4]);
+
+          ctx.translate(bbox.centerWorld.x, bbox.centerWorld.y);
+          ctx.rotate(bbox.spriteWorldAngle);
+          ctx.strokeRect(-bbox.w/2, -bbox.h/2, bbox.w, bbox.h);
+
+          // Handle de Rotação
+          ctx.beginPath();
+          ctx.moveTo(0, -bbox.h/2);
+          ctx.lineTo(0, -bbox.h/2 - 25 / stageZoom);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.arc(0, -bbox.h/2 - 25 / stageZoom, 6 / stageZoom, 0, Math.PI*2);
+          ctx.fillStyle = '#ffcc00';
+          ctx.fill();
+          ctx.stroke();
+
+          // Handle de Escala
+          ctx.beginPath();
+          ctx.arc(bbox.w/2, bbox.h/2, 6 / stageZoom, 0, Math.PI*2);
+          ctx.fillStyle = '#00ff88';
+          ctx.fill();
+          ctx.stroke();
 
           ctx.restore();
-        });
+        }
       }
 
       ctx.restore();
