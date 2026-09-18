@@ -148,6 +148,15 @@
       min-width: 220px;
     }
 
+    /* A janela da timeline pode ser redimensionada nos dois sentidos. */
+    #win-timeline {
+      resize: both;
+      min-width: 620px;
+      min-height: 230px;
+      max-width: 95vw;
+      max-height: 90vh;
+    }
+
     .floating-header {
       background-color: #18181f;
       padding: 8px 12px;
@@ -190,6 +199,14 @@
 
     .floating-body.collapsed {
       display: none;
+    }
+
+    /* Na janela da timeline, o corpo acompanha o tamanho da janela. */
+    #win-timeline .floating-body {
+      flex: 1 1 auto;
+      min-height: 0;
+      max-height: none;
+      overflow: hidden;
     }
 
     /* COMPONENTES DE UI DA LATERAL E CONTROLES */
@@ -326,7 +343,9 @@
     .timeline-track-wrapper {
       display: flex;
       width: 100%;
-      height: 150px;
+      flex: 1 1 auto;
+      min-height: 90px;
+      height: auto;
       position: relative;
       overflow: hidden;
       border: 1px solid #3f3f52;
@@ -337,9 +356,12 @@
 
     #bone-layers-panel {
       width: 160px;
+      flex: 0 0 160px;
+      height: 100%;
       background: #18181f;
       border-right: 1px solid #3f3f52;
-      margin-top: 30px;
+      margin-top: 0;
+      padding-top: 30px;
       display: flex;
       flex-direction: column;
       z-index: 5;
@@ -348,6 +370,8 @@
 
     .bone-layer-row {
       height: 24px;
+      min-height: 24px;
+      flex: 0 0 24px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -396,7 +420,10 @@
     .btn-layer-order:hover { background: #00d2ff; color: #121216; }
 
     .timeline-canvas-container {
-      flex: 1;
+      flex: 1 1 auto;
+      min-width: 0;
+      min-height: 0;
+      overflow-x: auto;
       overflow-y: auto;
       position: relative;
     }
@@ -404,7 +431,7 @@
     canvas#timeline-canvas {
       display: block;
       width: 100%;
-      height: 100%;
+      height: auto;
       cursor: pointer;
     }
 
@@ -679,7 +706,7 @@
   </div>
 
   <!-- JANELA 5: TIMELINE & ANIMATOR -->
-  <div class="floating-window" id="win-timeline" style="bottom: 15px; left: 15px; width: 95vw; max-width: 1200px;">
+  <div class="floating-window" id="win-timeline" style="bottom: 15px; left: 15px; width: 95vw; height: 330px;">
     <div class="floating-header">
       <span>🎞️ Linha do Tempo & Animação</span>
       <div class="window-controls">
@@ -1160,23 +1187,54 @@
       }
     }
 
+    function resizeTimelineCanvas() {
+      const container = document.getElementById('timeline-drop-container');
+      if (!container) return;
+
+      /*
+       * A régua continua com a mesma altura do cabeçalho (30 px)
+       * e cada osso ocupa exatamente 24 px.
+       * O painel da esquerda usa a mesma estrutura através do
+       * padding-top: 30px + .bone-layer-row de 24px.
+       */
+      const requiredHeight = Math.max(
+        100,
+        30 + (bones.length * 24)
+      );
+
+      timelineCanvas.width = Math.max(1, container.clientWidth);
+      timelineCanvas.height = requiredHeight;
+
+      applySmoothing(tCtx);
+      drawTimelineCanvas();
+    }
+
     function resizeCanvas() {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
 
-      const container = timelineCanvas.parentElement;
-      if (container) {
-        timelineCanvas.width = container.clientWidth;
-        timelineCanvas.height = Math.max(100, (bones.length + 1) * 24 + 30);
-      }
+      resizeTimelineCanvas();
 
       applySmoothing(ctx);
       applySmoothing(tCtx);
 
       render();
-      drawTimelineCanvas();
     }
+
     window.addEventListener('resize', resizeCanvas);
+
+    /*
+     * O resize nativo da janela .floating-window não dispara
+     * window.resize. O ResizeObserver atualiza a timeline sempre
+     * que o usuário arrastar o canto inferior direito da janela.
+     */
+    const timelineWindow = document.getElementById('win-timeline');
+    if (timelineWindow && typeof ResizeObserver !== 'undefined') {
+      const timelineResizeObserver = new ResizeObserver(() => {
+        requestAnimationFrame(resizeTimelineCanvas);
+      });
+      timelineResizeObserver.observe(timelineWindow);
+    }
 
     function screenToWorld(sp) {
       return {
