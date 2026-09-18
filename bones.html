@@ -695,6 +695,10 @@
         <button id="btn-toggle-interp" onclick="toggleKeyframeInterpolation()">⚡ Interpolação</button>
         <button class="accent-btn" onclick="addKeyframe()">+ Gravar KF</button>
         <button class="danger-btn" onclick="removeKeyframe()">- Remover KF</button>
+                <!-- Dentro do bloco de .timeline-controls da JANELA 5 -->
+<button class="accent-btn" onclick="copyTimelineData()">📋 Copiar Linha</button>
+<button class="accent-btn" onclick="pasteTimelineData()">📌 Colar Linha</button>
+
 
         <div style="display:flex; align-items:center; gap:4px; margin-left:10px;">
           <label>Frames:</label>
@@ -762,6 +766,9 @@
   <script>
     let topZIndex = 100;
 
+
+
+    
     function makeWindowDraggableAndFocusable(win) {
       const header = win.querySelector('.floating-header');
       let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
@@ -2300,6 +2307,400 @@
       updateUI();
       render();
     }
+
+
+    // ============================================================
+    // COPIAR / COLAR UMA LINHA DA TIMELINE
+    // Copia somente a animação do osso selecionado:
+    // - todos os keyframes
+    // - posições, rotação e comprimento
+    // - estado de interpolação de cada keyframe
+    // - grupos de imagens dos keyframes
+    // - imagem ativa de cada grupo
+    // - transformações das imagens (escala, rotação e offsets)
+    //
+    // O osso de destino NÃO é recriado. A animação é aplicada ao
+    // osso atualmente selecionado, preservando sua hierarquia.
+    // ============================================================
+
+    let timelineClipboard = null;
+
+    function spriteToClipboardData(sprite) {
+      if (!sprite) return null;
+
+      return {
+        name: sprite.name || "Imagem",
+        dataUrl: sprite.imageCanvas ? sprite.imageCanvas.toDataURL("image/png") : null,
+        scale: sprite.scale !== undefined ? sprite.scale : 1,
+        rot: sprite.rot !== undefined ? sprite.rot : 0,
+        offX: sprite.offX !== undefined ? sprite.offX : 0,
+        offY: sprite.offY !== undefined ? sprite.offY : 0
+      };
+    }
+
+    function buildTimelineClipboard(bone) {
+      if (!bone) return null;
+
+      const boneKfs = boneKeyframes[bone.id] || {};
+      const spriteKfs = spriteKeyframes[bone.id] || {};
+
+      const copiedBoneKeyframes = {};
+      Object.keys(boneKfs).forEach(frame => {
+        const kf = boneKfs[frame];
+
+        copiedBoneKeyframes[frame] = {
+          angle: kf.angle,
+          posX: kf.posX,
+          posY: kf.posY,
+          length: kf.length,
+          // Mantém exatamente o estado da interpolação.
+          interpolated: kf.interpolated !== false
+        };
+      });
+
+      const copiedSpriteKeyframes = {};
+      Object.keys(spriteKfs).forEach(frame => {
+        const group = spriteKfs[frame];
+
+        copiedSpriteKeyframes[frame] = {
+          activeIndex: group.activeIndex || 0,
+          sprites: (group.sprites || [])
+            .map(spriteToClipboardData)
+            .filter(Boolean)
+        };
+      });
+
+      return {
+        type: "NICKEMAN_TIMELINE_ROW",
+        version: 2,
+        sourceBoneId: bone.id,
+        bone: {
+          length: bone.length,
+          localAngle: bone.localAngle,
+          posX: bone.posX,
+          posY: bone.posY,
+          parentId: bone.parent ? bone.parent.id : null,
+          meshStrokes: JSON.parse(JSON.stringify(bone.meshStrokes || [])),
+          visibleBone: bone.visibleBone !== false,
+          visibleImage: bone.visibleImage !== false,
+          attachedSprite: bone.attachedSprite ? spriteToClipboardData(bone.attachedSprite) : null
+        },
+        maxFrames: maxFrames,
+        fps: fps,
+        boneKeyframes: copiedBoneKeyframes,
+        spriteKeyframes: copiedSpriteKeyframes
+      };
+    }
+
+    async function copyTimelineData() {
+      if (!selectedBone) {
+        alert("Selecione o osso cuja linha do tempo deseja copiar.");
+        return;
+      }
+
+      const data = buildTimelineClipboard(selectedBone);
+      if (!data) return;
+
+      // Guarda internamente para permitir copiar/colar mesmo quando
+      // o navegador bloquear o Clipboard API.
+      timelineClipboard = data;
+
+      const text = JSON.stringify(data);
+
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+        }
+      } catch (err) {
+        // A cópia interna continua funcionando.
+      }
+
+      const frameCount = Object.keys(data.boneKeyframes).length;
+      const imageCount = Object.values(data.spriteKeyframes)
+        .reduce((total, group) => total + (group.sprites ? group.sprites.length : 0), 0);
+
+      const info = document.getElementById("keyframe-info");
+      if (info) {
+        info.innerText =
+          `Linha copiada: ${selectedBone.id} • ${frameCount} KF • ${imageCount} imagem(ns)`;
+      }
+
+      alert(
+        `Linha do osso "${selectedBone.id}" copiada.\n\n` +
+        `${frameCount} keyframe(s), imagens e interpolações foram armazenados.`
+      );
+    }
+
+    function createCanvasFromDataUrl(dataUrl) {
+      return new Promise(resolve => {
+        const offCanvas = document.createElement("canvas");
+
+        if (!dataUrl) {
+          resolve(offCanvas);
+          return;
+        }
+
+        const img = new Image();
+
+        img.onload = () => {
+          offCanvas.width = img.width;
+          offCanvas.height = img.height;
+
+          const offCtx = offCanvas.getContext("2d");
+          applySmoothing(offCtx);
+          offCtx.drawImage(img, 0, 0);
+
+          resolve(offCanvas);
+        };
+
+        img.onerror = () => {
+          resolve(offCanvas);
+        };
+
+        img.src = dataUrl;
+      });
+    }
+
+    async function clipboardSpriteToRuntime(spriteData) {
+      if (!spriteData) return null;
+
+      return {
+        name: spriteData.name || "Imagem",
+        imageCanvas: await createCanvasFromDataUrl(spriteData.dataUrl),
+        scale: spriteData.scale !== undefined ? spriteData.scale : 1,
+        rot: spriteData.rot !== undefined ? spriteData.rot : 0,
+        offX: spriteData.offX !== undefined ? spriteData.offX : 0,
+        offY: spriteData.offY !== undefined ? spriteData.offY : 0
+      };
+    }
+
+    async function convertTimelineClipboardToRuntime(data) {
+      const runtimeBoneKeyframes = {};
+
+      Object.keys(data.boneKeyframes || {}).forEach(frame => {
+        const kf = data.boneKeyframes[frame];
+
+        runtimeBoneKeyframes[frame] = {
+          angle: kf.angle,
+          posX: kf.posX,
+          posY: kf.posY,
+          length: kf.length,
+          interpolated: kf.interpolated !== false
+        };
+      });
+
+      const runtimeSpriteKeyframes = {};
+
+      for (const frame of Object.keys(data.spriteKeyframes || {})) {
+        const group = data.spriteKeyframes[frame] || {};
+
+        runtimeSpriteKeyframes[frame] = {
+          activeIndex: group.activeIndex || 0,
+          sprites: []
+        };
+
+        for (const spriteData of (group.sprites || [])) {
+          const sprite = await clipboardSpriteToRuntime(spriteData);
+          if (sprite) {
+            runtimeSpriteKeyframes[frame].sprites.push(sprite);
+          }
+        }
+
+        if (runtimeSpriteKeyframes[frame].sprites.length > 0) {
+          runtimeSpriteKeyframes[frame].activeIndex = Math.min(
+            runtimeSpriteKeyframes[frame].activeIndex,
+            runtimeSpriteKeyframes[frame].sprites.length - 1
+          );
+        } else {
+          runtimeSpriteKeyframes[frame].activeIndex = 0;
+        }
+      }
+
+      return {
+        boneKeyframes: runtimeBoneKeyframes,
+        spriteKeyframes: runtimeSpriteKeyframes
+      };
+    }
+
+    function getUniqueBoneCopyId(sourceId) {
+      const base = `${sourceId}_Copia`;
+      let id = base;
+      let n = 2;
+
+      while (bones.some(b => b.id === id)) {
+        id = `${base}_${n}`;
+        n++;
+      }
+
+      return id;
+    }
+
+    async function pasteTimelineData() {
+      let data = timelineClipboard;
+
+      // Se não houver cópia interna, tenta recuperar a linha
+      // copiada pelo Clipboard do navegador.
+      if (!data) {
+        try {
+          if (navigator.clipboard && navigator.clipboard.readText) {
+            const text = await navigator.clipboard.readText();
+            if (text) data = JSON.parse(text);
+          }
+        } catch (err) {
+          // Tratado abaixo com uma mensagem clara.
+        }
+      }
+
+      if (!data || data.type !== "NICKEMAN_TIMELINE_ROW") {
+        alert("Nenhuma linha da timeline válida foi copiada.");
+        return;
+      }
+
+      const sourceBone = bones.find(b => b.id === data.sourceBoneId);
+      const sourceInfo = data.bone || {};
+
+      // A cópia SEMPRE cria um novo osso, portanto uma nova linha
+      // independente na timeline. O osso original nunca é alterado.
+      let parentBone = null;
+      if (sourceInfo.parentId) {
+        parentBone = bones.find(b => b.id === sourceInfo.parentId) || null;
+      } else if (sourceBone) {
+        parentBone = sourceBone.parent || null;
+      }
+
+      saveState();
+
+      const newBoneId = getUniqueBoneCopyId(data.sourceBoneId || "Osso");
+      const newBone = new Bone(
+        newBoneId,
+        parentBone,
+        sourceInfo.length !== undefined
+          ? sourceInfo.length
+          : (sourceBone ? sourceBone.length : 100),
+        sourceInfo.localAngle !== undefined
+          ? sourceInfo.localAngle
+          : (sourceBone ? sourceBone.localAngle : 0),
+        {
+          x: sourceInfo.posX !== undefined
+            ? sourceInfo.posX
+            : (sourceBone ? sourceBone.posX : 0),
+          y: sourceInfo.posY !== undefined
+            ? sourceInfo.posY
+            : (sourceBone ? sourceBone.posY : 0)
+        }
+      );
+
+      newBone.meshStrokes = JSON.parse(
+        JSON.stringify(
+          sourceInfo.meshStrokes || (sourceBone ? sourceBone.meshStrokes : []) || []
+        )
+      );
+      newBone.visibleBone = sourceInfo.visibleBone !== false;
+      newBone.visibleImage = sourceInfo.visibleImage !== false;
+
+      // Converte as imagens para canvases independentes.
+      const runtime = await convertTimelineClipboardToRuntime(data);
+
+      bones.push(newBone);
+      boneKeyframes[newBone.id] = runtime.boneKeyframes;
+      spriteKeyframes[newBone.id] = runtime.spriteKeyframes;
+
+      // Copia também a imagem base do osso, quando existir.
+      if (sourceInfo.attachedSprite) {
+        newBone.attachedSprite = await clipboardSpriteToRuntime(sourceInfo.attachedSprite);
+      } else if (sourceBone && sourceBone.attachedSprite) {
+        const baseSprite = spriteToClipboardData(sourceBone.attachedSprite);
+        newBone.attachedSprite = await clipboardSpriteToRuntime(baseSprite);
+      }
+
+      // Se houver uma imagem no frame atual, torna-a a imagem ativa
+      // da nova linha.
+      const currentGroup = spriteKeyframes[newBone.id][currentFrame];
+
+      if (currentGroup && currentGroup.sprites.length > 0) {
+        const activeIndex = Math.min(
+          currentGroup.activeIndex,
+          currentGroup.sprites.length - 1
+        );
+
+        currentGroup.activeIndex = activeIndex;
+        newBone.attachedSprite = currentGroup.sprites[activeIndex];
+      } else {
+        // Procura a última imagem disponível até o frame atual.
+        const activeFrames = Object.keys(spriteKeyframes[newBone.id])
+          .map(Number)
+          .filter(f => f <= currentFrame)
+          .sort((a, b) => a - b);
+
+        if (activeFrames.length > 0) {
+          const lastFrame = activeFrames[activeFrames.length - 1];
+          const group = spriteKeyframes[newBone.id][lastFrame];
+
+          if (group && group.sprites.length > 0) {
+            const activeIndex = Math.min(
+              group.activeIndex,
+              group.sprites.length - 1
+            );
+            newBone.attachedSprite = group.sprites[activeIndex];
+          }
+        }
+      }
+
+      // Seleciona a nova linha, sem modificar a linha original.
+      selectedBone = newBone;
+      setTransformTarget('BONE');
+      applyKeyframeState(currentFrame);
+      updateUI();
+      drawTimelineCanvas();
+      render();
+
+      const frameCount = Object.keys(runtime.boneKeyframes).length;
+      const imageCount = Object.values(runtime.spriteKeyframes)
+        .reduce((total, group) => total + group.sprites.length, 0);
+
+      const info = document.getElementById("keyframe-info");
+      if (info) {
+        info.innerText =
+          `Nova linha: ${newBone.id} • ${frameCount} KF • ${imageCount} imagem(ns)`;
+      }
+
+      alert(
+        `Linha do tempo duplicada em uma NOVA linha: "${newBone.id}".\n\n` +
+        `✓ Nova linha do tempo criada\n` +
+        `✓ Keyframes copiados\n` +
+        `✓ Imagens copiadas\n` +
+        `✓ Interpolações copiadas\n` +
+        `✓ Transformações das imagens copiadas\n\n` +
+        `A linha original permanece intacta.`
+      );
+    }
+
+    // Atalhos: Ctrl+C copia a linha do osso selecionado e
+    // Ctrl+V cria uma NOVA linha do tempo duplicada.
+    window.addEventListener("keydown", async (e) => {
+      const activeEl = document.activeElement;
+
+      if (
+        activeEl &&
+        (
+          activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.tagName === "SELECT"
+        )
+      ) {
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c") {
+        e.preventDefault();
+        await copyTimelineData();
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "v") {
+        e.preventDefault();
+        await pasteTimelineData();
+      }
+    });
 
     function addKeyframeAuto() {
       if (!selectedBone) return;
