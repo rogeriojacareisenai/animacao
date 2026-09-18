@@ -1269,7 +1269,11 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
         <button id="paint-tool-pencil" class="active" type="button" onclick="setPaintTool('pencil')">✏️ Lápis</button>
         <button id="paint-tool-eraser" type="button" onclick="setPaintTool('eraser')">🧽 Borracha</button>
         <button id="paint-tool-picker" type="button" onclick="setPaintTool('picker')">💧 Conta-gotas</button>
-        <label title="Cor do lápis">Cor <input id="paint-color" class="paint-color" type="color" value="#ff0055"></label>
+        <button id="paint-tool-fill" type="button" onclick="setPaintTool('fill')">🪣 Balde de tinta</button>
+        <label title="Cor do lápis e do balde">Cor <input id="paint-color" class="paint-color" type="color" value="#ff0055"></label>
+        <label title="Tolerância do balde de tinta">Tol.</label>
+        <input id="paint-tolerance" class="paint-size" type="range" min="0" max="100" value="18">
+        <span id="paint-tolerance-value" class="paint-size-value">18</span>
         <label title="Tamanho do pincel">Tamanho</label>
         <input id="paint-size" class="paint-size" type="range" min="1" max="100" value="12">
         <span id="paint-size-value" class="paint-size-value">12 px</span>
@@ -1277,7 +1281,7 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
         <button type="button" onclick="paintRedo()">↷ Refazer</button>
         <button type="button" onclick="paintClear()">🗑️ Limpar</button>
         <button type="button" onclick="paintResetOriginal()">↺ Original</button>
-        <span class="paint-help">Arraste para desenhar • Shift = linha reta • duplo clique abre este editor</span>
+        <span class="paint-help">Arraste para desenhar • Shift = linha reta • 🪣 clique para preencher uma área • duplo clique abre este editor</span>
       </div>
       <div id="paint-canvas-wrap">
         <canvas id="paint-canvas"></canvas>
@@ -2922,6 +2926,7 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
       if (!sprite) return null;
 
       return {
+        assetId: ensureSpriteAssetId(sprite),
         name: sprite.name || "Imagem",
         dataUrl: sprite.imageCanvas ? sprite.imageCanvas.toDataURL("image/png") : null,
         scale: sprite.scale !== undefined ? sprite.scale : 1,
@@ -3058,6 +3063,7 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
       if (!spriteData) return null;
 
       return {
+        assetId: spriteData.assetId || legacySpriteAssetId(spriteData.name, spriteData.dataUrl),
         name: spriteData.name || "Imagem",
         imageCanvas: await createCanvasFromDataUrl(spriteData.dataUrl),
         scale: spriteData.scale !== undefined ? spriteData.scale : 1,
@@ -3496,7 +3502,13 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
               if (prevSprite) {
                 if (!bone._interpolatedSprite) {
                   bone._interpolatedSprite = { ...prevSprite };
+                  bone._interpolatedSprite.assetId = ensureSpriteAssetId(prevSprite);
                 } else {
+                  // A referência temporária precisa carregar o MESMO assetId
+                  // do sprite do keyframe. Sem isso, editar pelo Mini Paint
+                  // poderia procurar um asset diferente e não atualizar os
+                  // demais keyframes.
+                  bone._interpolatedSprite.assetId = ensureSpriteAssetId(prevSprite);
                   bone._interpolatedSprite.name = prevSprite.name;
                   bone._interpolatedSprite.imageCanvas = prevSprite.imageCanvas;
                   bone._interpolatedSprite.offX = prevSprite.offX;
@@ -3711,6 +3723,7 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
       }
 
       const imgObj = {
+        assetId: createSpriteAssetId(),
         name: `Recorte_${trayImages.length + 1}`,
         imageCanvas: offCanvas,
         scale: 1,
@@ -3841,6 +3854,7 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
         }
 
         trayImages.push({
+          assetId: createSpriteAssetId(),
           name: `Figura_${trayImages.length + 1}`,
           imageCanvas: shapeCanvas,
           scale: 1,
@@ -4083,6 +4097,7 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
         visibleBone: b.visibleBone,
         visibleImage: b.visibleImage,
         attachedSprite: b.attachedSprite ? {
+          assetId: ensureSpriteAssetId(b.attachedSprite),
           name: b.attachedSprite.name,
           dataUrl: b.attachedSprite.imageCanvas.toDataURL(),
           scale: b.attachedSprite.scale,
@@ -4093,6 +4108,7 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
       }));
 
       const dataUnattached = unattachedImages.map(img => ({
+        assetId: ensureSpriteAssetId(img),
         name: img.name,
         dataUrl: img.imageCanvas ? img.imageCanvas.toDataURL() : null,
         scale: img.scale,
@@ -4102,6 +4118,7 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
       }));
 
       const dataTray = trayImages.map(img => ({
+        assetId: ensureSpriteAssetId(img),
         name: img.name,
         dataUrl: img.imageCanvas ? img.imageCanvas.toDataURL() : null,
         scale: img.scale,
@@ -4118,6 +4135,7 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
           serializedSpriteKeyframes[bId][fIdx] = {
             activeIndex: group.activeIndex,
             sprites: group.sprites.map(s => ({
+              assetId: ensureSpriteAssetId(s),
               name: s.name,
               dataUrl: s.imageCanvas ? s.imageCanvas.toDataURL() : null,
               scale: s.scale,
@@ -4173,6 +4191,7 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
                   if (s.dataUrl) img.src = s.dataUrl;
 
                   return {
+                    assetId: s.assetId || legacySpriteAssetId(s.name, s.dataUrl),
                     name: s.name,
                     imageCanvas: offCanvas,
                     scale: s.scale,
@@ -4209,6 +4228,7 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
             img.src = bd.attachedSprite.dataUrl;
 
             newBone.attachedSprite = {
+              assetId: bd.attachedSprite.assetId || legacySpriteAssetId(bd.attachedSprite.name, bd.attachedSprite.dataUrl),
               name: bd.attachedSprite.name,
               imageCanvas: offCanvas,
               scale: bd.attachedSprite.scale,
@@ -4244,6 +4264,7 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
             if (imgData.dataUrl) img.src = imgData.dataUrl;
 
             unattachedImages.push({
+              assetId: imgData.assetId || legacySpriteAssetId(imgData.name, imgData.dataUrl),
               name: imgData.name,
               imageCanvas: offCanvas,
               scale: imgData.scale || 1,
@@ -4270,6 +4291,7 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
             if (imgData.dataUrl) img.src = imgData.dataUrl;
 
             trayImages.push({
+              assetId: imgData.assetId || legacySpriteAssetId(imgData.name, imgData.dataUrl),
               name: imgData.name,
               imageCanvas: offCanvas,
               scale: imgData.scale || 1,
@@ -4934,6 +4956,127 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
     }
 
     /* ============================================================
+       IDENTIDADE DAS IMAGENS / REFERÊNCIAS DOS KEYFRAMES
+       Uma mesma parte pode aparecer em vários keyframes. O assetId
+       permite editar a imagem uma única vez e propagar os pixels para
+       todas as referências, sem alterar escala/rotação/offset.
+       ============================================================ */
+    let nextSpriteAssetId = 1;
+
+    function createSpriteAssetId() {
+      return `asset_${Date.now()}_${nextSpriteAssetId++}`;
+    }
+
+    function hashSpriteString(value) {
+      let hash = 2166136261;
+      const str = String(value || '');
+      for (let i = 0; i < str.length; i++) {
+        hash ^= str.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+      }
+      return (hash >>> 0).toString(16);
+    }
+
+    function legacySpriteAssetId(name, dataUrl) {
+      return `legacy_${hashSpriteString(`${name || 'Imagem'}|${dataUrl || ''}`)}`;
+    }
+
+    function ensureSpriteAssetId(sprite, fallbackDataUrl = null) {
+      if (!sprite) return null;
+      if (!sprite.assetId) {
+        const dataUrl = fallbackDataUrl !== null
+          ? fallbackDataUrl
+          : (sprite.imageCanvas ? sprite.imageCanvas.toDataURL('image/png') : '');
+        sprite.assetId = legacySpriteAssetId(sprite.name, dataUrl);
+      }
+      return sprite.assetId;
+    }
+
+    function ensureNewSpriteAssetId(sprite) {
+      if (sprite && !sprite.assetId) sprite.assetId = createSpriteAssetId();
+      return sprite ? sprite.assetId : null;
+    }
+
+    function copySpritePixels(sourceCanvas, targetCanvas) {
+      if (!sourceCanvas || !targetCanvas || sourceCanvas === targetCanvas) return;
+      targetCanvas.width = sourceCanvas.width;
+      targetCanvas.height = sourceCanvas.height;
+      const targetCtx = targetCanvas.getContext('2d');
+      applySmoothing(targetCtx);
+      targetCtx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
+      targetCtx.drawImage(sourceCanvas, 0, 0);
+    }
+
+    // Cria uma cópia independente dos pixels. O canvas retornado passa a ser
+    // a referência visual comum de todos os keyframes daquele asset.
+    // Isso evita perder a imagem quando uma referência temporária do frame
+    // atual (_interpolatedSprite) é editada pelo Mini Paint.
+    function cloneSpriteCanvas(sourceCanvas) {
+      if (!sourceCanvas) return null;
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, sourceCanvas.width);
+      c.height = Math.max(1, sourceCanvas.height);
+      const cctx = c.getContext('2d');
+      applySmoothing(cctx);
+      cctx.clearRect(0, 0, c.width, c.height);
+      cctx.drawImage(sourceCanvas, 0, 0);
+      return c;
+    }
+
+    function forEachRuntimeSprite(callback) {
+      const seen = new Set();
+      const visit = sprite => {
+        if (!sprite || seen.has(sprite)) return;
+        seen.add(sprite);
+        callback(sprite);
+      };
+
+      trayImages.forEach(visit);
+      unattachedImages.forEach(visit);
+      bones.forEach(b => visit(b.attachedSprite));
+
+      Object.keys(spriteKeyframes || {}).forEach(boneId => {
+        const frames = spriteKeyframes[boneId] || {};
+        Object.keys(frames).forEach(frame => {
+          const group = frames[frame] || {};
+          (group.sprites || []).forEach(visit);
+        });
+      });
+    }
+
+    function propagateSpriteImageToAllReferences(sourceSprite) {
+      if (!sourceSprite || !sourceSprite.imageCanvas) return 0;
+
+      const assetId = ensureSpriteAssetId(sourceSprite);
+      if (!assetId) return 0;
+
+      // IMPORTANTE: não copiamos pixels canvas-a-canvas. Em alguns casos a
+      // imagem aberta no Mini Paint é a referência temporária do frame atual
+      // (_interpolatedSprite). Copiar dimensões/conteúdo entre canvases pode
+      // deixar uma referência sem imagem.
+      //
+      // Em vez disso, criamos UM canvas mestre e fazemos todas as referências
+      // do mesmo asset apontarem para ele. Assim, qualquer keyframe que tenha
+      // esse asset passa a usar exatamente os mesmos pixels. As propriedades
+      // de animação (scale/rot/offX/offY) continuam individuais.
+      const masterCanvas = cloneSpriteCanvas(sourceSprite.imageCanvas);
+      if (!masterCanvas) return 0;
+
+      let updated = 0;
+      forEachRuntimeSprite(sprite => {
+        if (ensureSpriteAssetId(sprite) !== assetId) return;
+        sprite.imageCanvas = masterCanvas;
+        updated++;
+      });
+
+      // A referência que foi aberta pelo Mini Paint também fica ligada ao
+      // mesmo canvas mestre, inclusive quando for _interpolatedSprite.
+      sourceSprite.imageCanvas = masterCanvas;
+
+      return updated;
+    }
+
+    /* ============================================================
        MINI PAINT — EDIÇÃO PIXEL A PIXEL DAS PARTES IMPORTADAS
        ============================================================ */
     let paintTarget = null;
@@ -4980,6 +5123,7 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
     function openSpritePaint(imgObj) {
       if (!imgObj || !imgObj.imageCanvas) return;
 
+      ensureSpriteAssetId(imgObj);
       paintTarget = imgObj;
       paintCanvas.width = Math.max(1, imgObj.imageCanvas.width);
       paintCanvas.height = Math.max(1, imgObj.imageCanvas.height);
@@ -5011,11 +5155,11 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
 
     function setPaintTool(tool) {
       paintTool = tool;
-      ['pencil', 'eraser', 'picker'].forEach(t => {
+      ['pencil', 'eraser', 'picker', 'fill'].forEach(t => {
         const el = document.getElementById(`paint-tool-${t}`);
         if (el) el.classList.toggle('active', t === tool);
       });
-      paintCanvas.style.cursor = tool === 'picker' ? 'copy' : 'crosshair';
+      paintCanvas.style.cursor = tool === 'picker' ? 'copy' : tool === 'fill' ? 'cell' : 'crosshair';
       paintUpdateStatus();
     }
 
@@ -5035,6 +5179,96 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
 
     function paintColor() {
       return document.getElementById('paint-color').value || '#ff0055';
+    }
+
+    function paintTolerance() {
+      return Math.max(0, Math.min(100, Number(document.getElementById('paint-tolerance')?.value) || 0));
+    }
+
+    function paintHexToRgba(hex) {
+      const h = String(hex || '#000000').replace('#', '');
+      const value = h.length === 3 ? h.split('').map(ch => ch + ch).join('') : h.padEnd(6, '0').slice(0, 6);
+      return [
+        parseInt(value.slice(0, 2), 16),
+        parseInt(value.slice(2, 4), 16),
+        parseInt(value.slice(4, 6), 16),
+        255
+      ];
+    }
+
+    // Preenche apenas a região contígua à qual o pixel clicado pertence.
+    // Funciona também em áreas transparentes e respeita a tolerância para
+    // absorver pequenas variações de cor/anti-aliasing.
+    function paintFloodFill(startX, startY) {
+      if (!paintTarget || !paintCanvas.width || !paintCanvas.height) return;
+
+      const w = paintCanvas.width;
+      const h = paintCanvas.height;
+      const image = paintCtx.getImageData(0, 0, w, h);
+      const data = image.data;
+      const startIndex = (startY * w + startX) * 4;
+      const sr = data[startIndex];
+      const sg = data[startIndex + 1];
+      const sb = data[startIndex + 2];
+      const sa = data[startIndex + 3];
+      const [tr, tg, tb, ta] = paintHexToRgba(paintColor());
+      const tolerance = paintTolerance() * 2.55;
+
+      function matches(index) {
+        const dr = data[index] - sr;
+        const dg = data[index + 1] - sg;
+        const db = data[index + 2] - sb;
+        const da = data[index + 3] - sa;
+        // Distância média simples RGBA.
+        return Math.sqrt((dr * dr + dg * dg + db * db + da * da) / 4) <= tolerance;
+      }
+
+      function sameTarget(index) {
+        return data[index] === tr && data[index + 1] === tg && data[index + 2] === tb && data[index + 3] === ta;
+      }
+
+      if (sameTarget(startIndex)) return;
+
+      const visited = new Uint8Array(w * h);
+      const stack = [startX + startY * w];
+      visited[startX + startY * w] = 1;
+      let changed = 0;
+
+      while (stack.length) {
+        const pos = stack.pop();
+        const x = pos % w;
+        const y = Math.floor(pos / w);
+        const index = pos * 4;
+
+        if (!matches(index)) continue;
+
+        data[index] = tr;
+        data[index + 1] = tg;
+        data[index + 2] = tb;
+        data[index + 3] = ta;
+        changed++;
+
+        if (x > 0) {
+          const n = pos - 1;
+          if (!visited[n]) { visited[n] = 1; stack.push(n); }
+        }
+        if (x < w - 1) {
+          const n = pos + 1;
+          if (!visited[n]) { visited[n] = 1; stack.push(n); }
+        }
+        if (y > 0) {
+          const n = pos - w;
+          if (!visited[n]) { visited[n] = 1; stack.push(n); }
+        }
+        if (y < h - 1) {
+          const n = pos + w;
+          if (!visited[n]) { visited[n] = 1; stack.push(n); }
+        }
+      }
+
+      if (changed > 0) {
+        paintCtx.putImageData(image, 0, 0);
+      }
     }
 
     function paintDrawSegment(a, b) {
@@ -5063,15 +5297,23 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
       e.preventDefault();
       const p = paintGetPoint(e);
 
+      const x = Math.max(0, Math.min(paintCanvas.width - 1, Math.floor(p.x)));
+      const y = Math.max(0, Math.min(paintCanvas.height - 1, Math.floor(p.y)));
+
       if (paintTool === 'picker') {
-        const x = Math.max(0, Math.min(paintCanvas.width - 1, Math.floor(p.x)));
-        const y = Math.max(0, Math.min(paintCanvas.height - 1, Math.floor(p.y)));
         const px = paintCtx.getImageData(x, y, 1, 1).data;
         if (px[3] > 0) {
           const hex = '#' + [px[0], px[1], px[2]].map(v => v.toString(16).padStart(2, '0')).join('');
           document.getElementById('paint-color').value = hex;
           setPaintTool('pencil');
         }
+        return;
+      }
+
+      if (paintTool === 'fill') {
+        paintPushUndo();
+        paintFloodFill(x, y);
+        paintUpdateStatus();
         return;
       }
 
@@ -5117,6 +5359,10 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
       document.getElementById('paint-size-value').textContent = `${e.target.value} px`;
     });
 
+    document.getElementById('paint-tolerance').addEventListener('input', (e) => {
+      document.getElementById('paint-tolerance-value').textContent = e.target.value;
+    });
+
     function paintUndo() {
       if (!paintUndoStack.length) return;
       const current = paintSnapshot();
@@ -5159,6 +5405,11 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
       targetCtx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
       targetCtx.drawImage(paintCanvas, 0, 0);
 
+      // Propaga a alteração para TODAS as referências do mesmo asset nos
+      // keyframes, no osso, na bandeja e nas imagens soltas.
+      // As transformações de cada referência permanecem independentes.
+      propagateSpriteImageToAllReferences(paintTarget);
+
       renderAssetTray();
       updateUI();
       render();
@@ -5182,6 +5433,8 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
         setPaintTool('eraser');
       } else if (e.key.toLowerCase() === 'p') {
         setPaintTool('pencil');
+      } else if (e.key.toLowerCase() === 'g') {
+        setPaintTool('fill');
       }
     });
 
