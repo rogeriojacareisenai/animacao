@@ -5,6 +5,280 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NickeMan - 2D Rigging Studio</title>
   <style>
+
+    /* ============================================================
+       CONFIGURAÇÃO VISUAL DO EDITOR
+       ============================================================ */
+    :root {
+      --ui-bg: #202027;
+      --ui-panel: #2b2b36;
+      --ui-panel-2: #18181f;
+      --ui-input: #121216;
+      --ui-border: #3f3f52;
+      --ui-text: #eeeeee;
+      --ui-muted: #a9a9b8;
+      --ui-accent: #00d2ff;
+      --ui-accent-2: #00a8cc;
+      --ui-button: #343442;
+      --ui-button-hover: #444458;
+      --ui-timeline-bg: #121216;
+      --ui-timeline-grid: #2d2d3a;
+      --ui-keyframe: #ffd54a;
+      --ui-keyframe-selected: #ff7b00;
+      --ui-selection: rgba(0,210,255,.16);
+      --ui-shadow: rgba(0,0,0,.60);
+      --win-project-bg: var(--ui-panel);
+      --win-rigging-bg: var(--ui-panel);
+      --win-images-bg: var(--ui-panel);
+      --win-tray-bg: var(--ui-panel);
+      --win-timeline-bg: var(--ui-panel);
+    }
+
+    body {
+      background: var(--ui-bg) !important;
+      color: var(--ui-text);
+    }
+
+    .floating-window {
+      background-color: var(--ui-panel);
+      border-color: var(--ui-accent);
+      box-shadow: 0 6px 20px var(--ui-shadow);
+    }
+
+    .floating-header {
+      background: var(--ui-panel-2);
+      color: var(--ui-text);
+    }
+
+    button, input, select, textarea {
+      color: var(--ui-text);
+      border-color: var(--ui-border);
+    }
+
+    button {
+      background: var(--ui-button);
+    }
+
+    button:hover {
+      background: var(--ui-button-hover);
+    }
+
+    .accent-btn {
+      border-color: var(--ui-accent);
+      color: var(--ui-accent);
+    }
+
+    #bone-layers-panel {
+      background: var(--ui-panel-2);
+      border-color: var(--ui-border);
+    }
+
+    .bone-layer-row {
+      border-color: var(--ui-border);
+      color: var(--ui-text);
+    }
+
+    .timeline-track-wrapper {
+      background: var(--ui-timeline-bg);
+      border-color: var(--ui-border);
+    }
+
+    /* Janela de configurações visuais */
+    #layout-settings-window {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      width: 330px;
+      max-height: calc(100vh - 110px);
+      z-index: 9999;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--ui-panel);
+      border: 1px solid var(--ui-accent);
+      border-radius: 8px;
+      box-shadow: 0 8px 28px var(--ui-shadow);
+    }
+
+    #layout-settings-window.open {
+      display: flex;
+    }
+
+    #layout-settings-window .layout-settings-body {
+      padding: 12px;
+      overflow-y: auto;
+    }
+
+    .layout-section {
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--ui-border);
+    }
+
+    .layout-section:last-child {
+      border-bottom: 0;
+      margin-bottom: 0;
+    }
+
+    .layout-section-title {
+      font-weight: 700;
+      color: var(--ui-accent);
+      margin-bottom: 9px;
+      font-size: 13px;
+    }
+
+    .layout-field {
+      display: grid;
+      grid-template-columns: 1fr 92px;
+      gap: 8px;
+      align-items: center;
+      margin: 7px 0;
+      font-size: 12px;
+    }
+
+    .layout-field input[type="color"] {
+      width: 92px;
+      height: 30px;
+      padding: 2px;
+      background: var(--ui-input);
+      border: 1px solid var(--ui-border);
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .layout-field input[type="range"] {
+      width: 92px;
+    }
+
+    .layout-field select,
+    .layout-field input[type="number"] {
+      width: 92px;
+      box-sizing: border-box;
+      background: var(--ui-input);
+      border: 1px solid var(--ui-border);
+      border-radius: 4px;
+      padding: 5px;
+    }
+
+    .layout-preset-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+    }
+
+    .layout-preset-row button,
+    .layout-actions button {
+      width: 100%;
+      padding: 7px 8px;
+      cursor: pointer;
+    }
+
+    .layout-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+      margin-top: 10px;
+    }
+
+    .layout-preview-help {
+  margin-top: 8px;
+  padding: 7px 8px;
+  border: 1px solid var(--ui-border);
+  border-radius: 4px;
+  background: var(--ui-input);
+  color: var(--ui-text);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.layout-preview-status {
+      margin-top: 10px;
+      padding: 7px 8px;
+      border: 1px solid var(--ui-border);
+      border-radius: 4px;
+      background: var(--ui-input);
+      color: var(--ui-accent);
+      font-size: 11px;
+      text-align: center;
+      line-height: 1.35;
+    }
+
+    .layout-actions button:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .layout-hint {
+      color: var(--ui-muted);
+      font-size: 11px;
+      line-height: 1.35;
+      margin-top: 5px;
+    }
+
+    /* Variáveis aplicadas também aos componentes existentes */
+    .toolbar, .panel, .sidebar, .controls {
+      color: var(--ui-text);
+    }
+
+    .layout-light {
+      --ui-bg: #eef1f5;
+      --ui-panel: #ffffff;
+      --ui-panel-2: #e5e9ef;
+      --ui-input: #ffffff;
+      --ui-border: #b9c0cb;
+      --ui-text: #20242b;
+      --ui-muted: #59616d;
+      --ui-accent: #0077aa;
+      --ui-accent-2: #005f88;
+      --ui-button: #dfe4ea;
+      --ui-button-hover: #cfd6de;
+      --ui-timeline-bg: #f8f9fb;
+      --ui-timeline-grid: #d5dbe3;
+      --ui-keyframe: #c58b00;
+      --ui-keyframe-selected: #d85d00;
+      --ui-selection: rgba(0,119,170,.13);
+      --ui-shadow: rgba(0,0,0,.22);
+    }
+
+    .layout-midnight {
+      --ui-bg: #0b1020;
+      --ui-panel: #11182b;
+      --ui-panel-2: #0a1020;
+      --ui-input: #070b15;
+      --ui-border: #293858;
+      --ui-text: #e9f0ff;
+      --ui-muted: #9aa9c4;
+      --ui-accent: #62d9ff;
+      --ui-accent-2: #369cc0;
+      --ui-button: #1a2740;
+      --ui-button-hover: #263756;
+      --ui-timeline-bg: #070b15;
+      --ui-timeline-grid: #1d2940;
+      --ui-keyframe: #f6d365;
+      --ui-keyframe-selected: #ff884d;
+      --ui-selection: rgba(98,217,255,.14);
+      --ui-shadow: rgba(0,0,0,.70);
+    }
+
+    .layout-contrast {
+      --ui-bg: #000000;
+      --ui-panel: #101010;
+      --ui-panel-2: #000000;
+      --ui-input: #000000;
+      --ui-border: #ffffff;
+      --ui-text: #ffffff;
+      --ui-muted: #dddddd;
+      --ui-accent: #ffff00;
+      --ui-accent-2: #ffff00;
+      --ui-button: #222222;
+      --ui-button-hover: #444444;
+      --ui-timeline-bg: #000000;
+      --ui-timeline-grid: #555555;
+      --ui-keyframe: #ffff00;
+      --ui-keyframe-selected: #ff6600;
+      --ui-selection: rgba(255,255,0,.18);
+      --ui-shadow: rgba(0,0,0,.90);
+    }
     * {
       box-sizing: border-box;
       margin: 0;
@@ -40,8 +314,8 @@
       width: 100vw;
       height: 100vh;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #121216;
-      color: #fff;
+      background-color: var(--ui-bg);
+      color: var(--ui-text);
       overflow: hidden;
       position: relative;
     }
@@ -131,22 +405,28 @@
       display: block;
       width: 100%;
       height: 100%;
-      background-color: #121216;
+      background-color: var(--ui-bg);
     }
 
     /* SISTEMA DE JANELAS FLUTUANTES */
     .floating-window {
       position: absolute;
-      background-color: #2b2b36;
-      border: 1px solid #00d2ff;
+      background-color: var(--ui-panel);
+      border: 1px solid var(--ui-accent);
       border-radius: 8px;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 6px 20px var(--ui-shadow);
       z-index: 10;
       display: flex;
       flex-direction: column;
       overflow: hidden;
       min-width: 220px;
     }
+
+    #win-project  { background-color: var(--win-project-bg); }
+    #win-rigging  { background-color: var(--win-rigging-bg); }
+    #win-images   { background-color: var(--win-images-bg); }
+    #win-tray     { background-color: var(--win-tray-bg); }
+    #win-timeline { background-color: var(--win-timeline-bg); }
 
     /* A janela da timeline pode ser redimensionada nos dois sentidos. */
     #win-timeline {
@@ -158,16 +438,16 @@
     }
 
     .floating-header {
-      background-color: #18181f;
+      background-color: var(--ui-panel-2);
       padding: 8px 12px;
       font-size: 0.85rem;
       font-weight: bold;
-      color: #00d2ff;
+      color: var(--ui-accent);
       cursor: move;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 1px solid #3f3f52;
+      border-bottom: 1px solid var(--ui-border);
     }
 
     .floating-header .window-controls {
@@ -219,7 +499,7 @@
     h2 {
       font-size: 0.85rem;
       color: #00d2ff;
-      border-bottom: 1px solid #3f3f52;
+      border-bottom: 1px solid var(--ui-border);
       padding-bottom: 4px;
       margin-top: 4px;
     }
@@ -230,9 +510,9 @@
     }
 
     select, input[type="number"] {
-      background-color: #18181f;
-      color: #fff;
-      border: 1px solid #575773;
+      background-color: var(--ui-input);
+      color: var(--ui-text);
+      border: 1px solid var(--ui-border);
       padding: 5px;
       border-radius: 4px;
       outline: none;
@@ -246,9 +526,9 @@
     }
 
     button {
-      background-color: #3f3f52;
-      color: #fff;
-      border: 1px solid #575773;
+      background-color: var(--ui-button);
+      color: var(--ui-text);
+      border: 1px solid var(--ui-border);
       padding: 6px 8px;
       border-radius: 4px;
       cursor: pointer;
@@ -256,7 +536,7 @@
       transition: all 0.2s;
     }
 
-    button:hover { background-color: #575773; }
+    button:hover { background-color: var(--ui-button-hover); }
     button.active {
       background-color: #00d2ff;
       color: #121216;
@@ -286,11 +566,11 @@
     }
 
     .info-box {
-      background-color: #18181f;
+      background-color: var(--ui-input);
       padding: 8px;
       border-radius: 4px;
       font-size: 0.75rem;
-      color: #aaa;
+      color: var(--ui-muted);
       line-height: 1.4;
     }
 
@@ -310,8 +590,8 @@
       flex: 0 0 auto;
       width: 65px;
       height: 65px;
-      background-color: #18181f;
-      border: 1px dashed #00d2ff;
+      background-color: var(--ui-input);
+      border: 1px dashed var(--ui-accent);
       border-radius: 6px;
       display: flex;
       align-items: center;
@@ -322,7 +602,7 @@
 
     .thumb-item:hover {
       border-style: solid;
-      background-color: #22222d;
+      background-color: var(--ui-button-hover);
     }
 
     .thumb-item img {
@@ -350,7 +630,7 @@
       overflow: hidden;
       border: 1px solid #3f3f52;
       border-radius: 4px;
-      background-color: #121216;
+      background-color: var(--ui-bg);
       margin-top: 6px;
     }
 
@@ -358,10 +638,10 @@
       width: 160px;
       flex: 0 0 160px;
       height: 100%;
-      background: #18181f;
-      border-right: 1px solid #3f3f52;
+      background: var(--ui-panel-2);
+      border-right: 1px solid var(--ui-border);
       margin-top: 0;
-      padding-top: 30px;
+      padding-top: var(--timeline-header-height, 30px);
       display: flex;
       flex-direction: column;
       z-index: 5;
@@ -369,14 +649,14 @@
     }
 
     .bone-layer-row {
-      height: 24px;
-      min-height: 24px;
-      flex: 0 0 24px;
+      height: var(--timeline-row-height, 24px);
+      min-height: var(--timeline-row-height, 24px);
+      flex: 0 0 var(--timeline-row-height, 24px);
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 0 4px;
-      border-bottom: 1px solid #2b2b36;
+      border-bottom: 1px solid var(--ui-panel);
       font-size: 0.72rem;
     }
 
@@ -411,13 +691,13 @@
     .btn-layer-order {
       padding: 1px 2px;
       font-size: 0.6rem;
-      background: #3f3f52;
-      border: 1px solid #575773;
+      background: var(--ui-button);
+      border: 1px solid var(--ui-border);
       border-radius: 2px;
       cursor: pointer;
     }
 
-    .btn-layer-order:hover { background: #00d2ff; color: #121216; }
+    .btn-layer-order:hover { background: var(--ui-accent); color: var(--ui-bg); }
 
     .timeline-canvas-container {
       flex: 1 1 auto;
@@ -440,8 +720,8 @@
       display: none;
       position: fixed;
       z-index: 25000;
-      background-color: #2b2b36;
-      border: 1px solid #00d2ff;
+      background-color: var(--ui-panel);
+      border: 1px solid var(--ui-accent);
       border-radius: 6px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.6);
       padding: 5px 0;
@@ -493,7 +773,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 1px solid #3f3f52;
+      border-bottom: 1px solid var(--ui-border);
       padding-bottom: 10px;
     }
 
@@ -508,8 +788,8 @@
       width: 100%;
       height: 400px;
       overflow: hidden;
-      background: #121216;
-      border: 1px solid #3f3f52;
+      background: var(--ui-input);
+      border: 1px solid var(--ui-border);
       position: relative;
     }
 
@@ -725,6 +1005,7 @@
                 <!-- Dentro do bloco de .timeline-controls da JANELA 5 -->
 <button class="accent-btn" onclick="copyTimelineData()">📋 Copiar Linha</button>
 <button class="accent-btn" onclick="pasteTimelineData()">📌 Colar Linha</button>
+    <button class="accent-btn" onclick="toggleLayoutSettings()">🎨 Layout</button>
 
 
         <div style="display:flex; align-items:center; gap:4px; margin-left:10px;">
@@ -786,6 +1067,142 @@
       <div class="btn-group">
         <button onclick="closeImageModal()">Cancelar</button>
         <button class="accent-btn" onclick="confirmCrop()">Confirmar e Importar</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ============================================================
+       PAINEL DE CONFIGURAÇÃO VISUAL
+       ============================================================ -->
+  <div id="layout-settings-window">
+    <div class="floating-header" style="padding:10px; display:flex; justify-content:space-between; align-items:center;">
+      <strong>🎨 Configuração do Layout</strong>
+      <button type="button" onclick="toggleLayoutSettings()" style="padding:3px 8px;">✕</button>
+    </div>
+
+    <div class="layout-settings-body">
+      <div class="layout-section">
+        <div class="layout-section-title">Tema</div>
+        <div class="layout-preset-row">
+          <button type="button" onclick="applyLayoutPreset('dark')">🌙 Dark</button>
+          <button type="button" onclick="applyLayoutPreset('light')">☀️ Light</button>
+          <button type="button" onclick="applyLayoutPreset('midnight')">🌌 Midnight</button>
+          <button type="button" onclick="applyLayoutPreset('contrast')">◐ Contraste</button>
+        </div>
+      </div>
+
+      <div class="layout-section">
+        <div class="layout-section-title">Cores principais</div>
+
+        <label class="layout-field">
+          <span>Fundo geral</span>
+          <input id="layout-bg" type="color" value="#202027" oninput="updateLayoutColor('--ui-bg', this.value)">
+        </label>
+
+        <label class="layout-field">
+          <span>Janelas / painéis</span>
+          <input id="layout-panel" type="color" value="#2b2b36" oninput="updateLayoutColor('--ui-panel', this.value)">
+        </label>
+
+        <div class="layout-section-title" style="margin-top:12px;">Fundo individual das janelas</div>
+        <label class="layout-field"><span>📁 Projeto & Palco</span><input id="layout-win-project" type="color" oninput="updateLayoutColor('--win-project-bg', this.value)"></label>
+        <label class="layout-field"><span>🦴 Ferramentas & Rigging</span><input id="layout-win-rigging" type="color" oninput="updateLayoutColor('--win-rigging-bg', this.value)"></label>
+        <label class="layout-field"><span>🎨 Imagens & Ajustes</span><input id="layout-win-images" type="color" oninput="updateLayoutColor('--win-images-bg', this.value)"></label>
+        <label class="layout-field"><span>📦 Figuras Recortadas</span><input id="layout-win-tray" type="color" oninput="updateLayoutColor('--win-tray-bg', this.value)"></label>
+        <label class="layout-field"><span>🎞️ Timeline & Animação</span><input id="layout-win-timeline" type="color" oninput="updateLayoutColor('--win-timeline-bg', this.value)"></label>
+
+        <label class="layout-field">
+          <span>Painel secundário</span>
+          <input id="layout-panel2" type="color" value="#18181f" oninput="updateLayoutColor('--ui-panel-2', this.value)">
+        </label>
+
+        <label class="layout-field">
+          <span>Campos / timeline</span>
+          <input id="layout-input" type="color" value="#121216" oninput="updateLayoutColor('--ui-input', this.value); updateLayoutColor('--ui-timeline-bg', this.value)">
+        </label>
+
+        <label class="layout-field">
+          <span>Texto</span>
+          <input id="layout-text" type="color" value="#eeeeee" oninput="updateLayoutColor('--ui-text', this.value)">
+        </label>
+
+        <label class="layout-field">
+          <span>Cor de destaque</span>
+          <input id="layout-accent" type="color" value="#00d2ff" oninput="updateLayoutColor('--ui-accent', this.value)">
+        </label>
+
+        <label class="layout-field">
+          <span>Bordas</span>
+          <input id="layout-border" type="color" value="#3f3f52" oninput="updateLayoutColor('--ui-border', this.value)">
+        </label>
+
+        <label class="layout-field">
+          <span>Grade da timeline</span>
+          <input id="layout-grid" type="color" value="#2d2d3a" oninput="updateLayoutColor('--ui-timeline-grid', this.value)">
+        </label>
+
+        <label class="layout-field">
+          <span>Keyframe</span>
+          <input id="layout-keyframe" type="color" value="#ffd54a" oninput="updateLayoutColor('--ui-keyframe', this.value)">
+        </label>
+
+        <label class="layout-field">
+          <span>Keyframe selecionado</span>
+          <input id="layout-keyframe-selected" type="color" value="#ff7b00" oninput="updateLayoutColor('--ui-keyframe-selected', this.value)">
+        </label>
+      </div>
+
+      <div class="layout-section">
+        <div class="layout-section-title">Timeline</div>
+
+        <label class="layout-field">
+          <span>Altura das linhas</span>
+          <input id="layout-row-height" type="number" min="18" max="60" value="24"
+                 oninput="setTimelineRowHeight(this.value)">
+        </label>
+
+        <label class="layout-field">
+          <span>Altura da régua</span>
+          <input id="layout-header-height" type="number" min="20" max="80" value="30"
+                 oninput="setTimelineHeaderHeight(this.value)">
+        </label>
+
+        <label class="layout-field">
+          <span>Largura do painel esquerdo</span>
+          <input id="layout-panel-width" type="number" min="120" max="350" value="160"
+                 oninput="setTimelinePanelWidth(this.value)">
+        </label>
+
+        <div class="layout-hint">
+          As alturas das linhas e da régua são aplicadas tanto aos controles
+          da esquerda quanto ao desenho da timeline, mantendo os elementos alinhados.
+        </div>
+      </div>
+
+      <div class="layout-section">
+        <div class="layout-section-title">Visualização</div>
+
+        <div class="layout-preset-row">
+          <button type="button" onclick="toggleCompactTimeline()">↕️ Compactar linhas</button>
+          <button type="button" onclick="resetLayout()">↺ Restaurar padrão</button>
+        </div>
+      </div>
+
+      
+<div class="layout-preview-help">
+Visualização em tempo real — as alterações aparecem imediatamente. 
+Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layout confirmado.
+</div>
+<div id="layout-preview-status" class="layout-preview-status">
+        ✓ Layout confirmado
+      </div>
+
+      <div class="layout-actions">
+        <button id="layout-confirm-btn" type="button" class="accent-btn" onclick="confirmLayoutChanges()">✓ Confirmar</button>
+        <button id="layout-cancel-btn" type="button" onclick="cancelLayoutChanges()">✕ Cancelar</button>
+        <button type="button" class="warning-btn" onclick="restoreDefaultLayoutPreview()">↺ Restaurar padrão</button>
+        <button type="button" onclick="toggleLayoutSettings()">Fechar</button>
       </div>
     </div>
   </div>
@@ -3325,6 +3742,16 @@
       const h = targetCtx.canvas.height;
       targetCtx.clearRect(0, 0, w, h);
 
+      // O palco acompanha a cor de fundo configurada e é redesenhado
+      // imediatamente durante a pré-visualização.
+      if (!isExporting) {
+        targetCtx.save();
+        targetCtx.fillStyle = getComputedStyle(document.documentElement)
+          .getPropertyValue('--ui-bg').trim() || '#121216';
+        targetCtx.fillRect(0, 0, w, h);
+        targetCtx.restore();
+      }
+
       bones.forEach(b => b.updateTransform());
 
       targetCtx.save();
@@ -3828,6 +4255,573 @@
 
     resizeCanvas();
     setMode('ADD_BONE_ROOT');
+
+    /* ============================================================
+       CONFIGURAÇÃO VISUAL DO LAYOUT
+       ============================================================ */
+    const START_LAYOUT_PRESET = 'dark';
+
+    const DEFAULT_LAYOUT_CONFIG = {
+      preset: START_LAYOUT_PRESET,
+      colors: {
+        '--ui-bg': '#202027',
+        '--ui-panel': '#2b2b36',
+        '--ui-panel-2': '#18181f',
+        '--ui-input': '#121216',
+        '--ui-border': '#3f3f52',
+        '--ui-text': '#eeeeee',
+        '--ui-accent': '#00d2ff',
+        '--ui-timeline-grid': '#2d2d3a',
+        '--ui-keyframe': '#ffd54a',
+        '--ui-keyframe-selected': '#ff7b00'
+      },
+      rowHeight: 24,
+      headerHeight: 30,
+      panelWidth: 160,
+      compact: false
+    };
+
+    let layoutConfig = JSON.parse(JSON.stringify(DEFAULT_LAYOUT_CONFIG));
+    let layoutCommittedConfig = JSON.parse(JSON.stringify(DEFAULT_LAYOUT_CONFIG));
+    let layoutEditing = false;
+
+    function getLayoutRoot() {
+      return document.documentElement;
+    }
+
+    function markLayoutEditing() {
+      layoutEditing = true;
+      updateLayoutActionState();
+    }
+
+    function updateLayoutColor(variable, value) {
+      const root = getLayoutRoot();
+      root.style.setProperty(variable, value);
+      layoutConfig.colors[variable] = value;
+      markLayoutEditing();
+
+      if (
+        variable === '--ui-keyframe' ||
+        variable === '--ui-keyframe-selected' ||
+        variable === '--ui-timeline-grid'
+      ) drawTimelineCanvas();
+
+      // O palco é redesenhado imediatamente e a cor CSS da aplicação/janelas
+      // é atualizada sem precisar fechar/reabrir a janela de configuração.
+      if (
+        variable === '--ui-bg' ||
+        variable === '--ui-panel' ||
+        variable === '--ui-panel-2' ||
+        variable === '--ui-input' ||
+        variable.startsWith('--win-')
+      ) render();
+
+      syncLayoutControls();
+    }
+
+    const LAYOUT_PRESETS = {
+      dark: {
+        '--ui-bg':'#202027','--ui-panel':'#2b2b36','--ui-panel-2':'#18181f',
+        '--ui-input':'#121216','--ui-border':'#3f3f52','--ui-text':'#eeeeee',
+        '--ui-accent':'#00d2ff','--ui-timeline-grid':'#2d2d3a',
+        '--ui-keyframe':'#ffd54a','--ui-keyframe-selected':'#ff7b00',
+        '--win-project-bg':'#2b2b36',
+        '--win-rigging-bg':'#2b2b36',
+        '--win-images-bg':'#2b2b36',
+        '--win-tray-bg':'#2b2b36',
+        '--win-timeline-bg':'#2b2b36'
+      },
+      light: {
+        '--ui-bg':'#eef1f5','--ui-panel':'#ffffff','--ui-panel-2':'#e5e9ef',
+        '--ui-input':'#ffffff','--ui-border':'#b9c0cb','--ui-text':'#20242b',
+        '--ui-accent':'#0077aa','--ui-timeline-grid':'#d5dbe3',
+        '--ui-keyframe':'#c58b00','--ui-keyframe-selected':'#d85d00'
+      },
+      midnight: {
+        '--ui-bg':'#0b1020','--ui-panel':'#11182b','--ui-panel-2':'#0a1020',
+        '--ui-input':'#070b15','--ui-border':'#293858','--ui-text':'#e9f0ff',
+        '--ui-accent':'#62d9ff','--ui-timeline-grid':'#1d2940',
+        '--ui-keyframe':'#f6d365','--ui-keyframe-selected':'#ff884d'
+      },
+      contrast: {
+        '--ui-bg':'#000000','--ui-panel':'#101010','--ui-panel-2':'#000000',
+        '--ui-input':'#000000','--ui-border':'#ffffff','--ui-text':'#ffffff',
+        '--ui-accent':'#ffff00','--ui-timeline-grid':'#555555',
+        '--ui-keyframe':'#ffff00','--ui-keyframe-selected':'#ff6600'
+      }
+    };
+
+    function applyLayoutPreset(name) {
+      const root = getLayoutRoot();
+      const values = LAYOUT_PRESETS[name] || LAYOUT_PRESETS.dark;
+
+      root.classList.remove('layout-light', 'layout-midnight', 'layout-contrast');
+      if (name === 'light') root.classList.add('layout-light');
+      if (name === 'midnight') root.classList.add('layout-midnight');
+      if (name === 'contrast') root.classList.add('layout-contrast');
+
+      layoutConfig.preset = name;
+      layoutConfig.colors = {
+        ...DEFAULT_LAYOUT_CONFIG.colors,
+        ...values,
+        '--win-project-bg': values['--ui-panel'],
+        '--win-rigging-bg': values['--ui-panel'],
+        '--win-images-bg': values['--ui-panel'],
+        '--win-tray-bg': values['--ui-panel'],
+        '--win-timeline-bg': values['--ui-panel']
+      };
+
+      Object.entries(layoutConfig.colors).forEach(([key, value]) => {
+        root.style.setProperty(key, value);
+      });
+
+      markLayoutEditing();
+      syncLayoutControls();
+      drawTimelineCanvas();
+      render();
+    }
+
+    function applyLayoutConfig(config) {
+      const root = getLayoutRoot();
+      root.classList.remove('layout-light', 'layout-midnight', 'layout-contrast');
+
+      if (config.preset === 'light') root.classList.add('layout-light');
+      if (config.preset === 'midnight') root.classList.add('layout-midnight');
+      if (config.preset === 'contrast') root.classList.add('layout-contrast');
+
+      Object.entries(config.colors || {}).forEach(([key, value]) => {
+        root.style.setProperty(key, value);
+      });
+
+      setTimelineRowHeight(config.rowHeight);
+      setTimelineHeaderHeight(config.headerHeight);
+      setTimelinePanelWidth(config.panelWidth);
+
+      syncLayoutControls();
+      drawTimelineCanvas();
+      render();
+    }
+
+    function cancelLayoutChanges() {
+      if (!layoutEditing) {
+        document.getElementById('layout-settings-window')?.classList.remove('open');
+        return;
+      }
+
+      layoutConfig = JSON.parse(JSON.stringify(layoutCommittedConfig));
+      applyLayoutConfig(layoutConfig);
+      layoutEditing = false;
+
+      document.getElementById('layout-settings-window')?.classList.remove('open');
+      updateLayoutActionState();
+    }
+
+    function confirmLayoutChanges() {
+      try {
+        layoutCommittedConfig = JSON.parse(JSON.stringify(layoutConfig));
+        localStorage.setItem('bonesEditorLayoutConfig', JSON.stringify(layoutCommittedConfig));
+        layoutEditing = false;
+
+        document.getElementById('layout-settings-window')?.classList.remove('open');
+        updateLayoutActionState();
+      } catch (e) {
+        alert('Não foi possível confirmar o layout.');
+      }
+    }
+
+    function restoreDefaultLayoutPreview() {
+      // Padrão é apenas uma prévia até o usuário clicar em Confirmar.
+      layoutConfig = JSON.parse(JSON.stringify(DEFAULT_LAYOUT_CONFIG));
+      applyLayoutConfig(layoutConfig);
+      layoutEditing = true;
+      updateLayoutActionState();
+    }
+
+    function updateLayoutActionState() {
+      const status = document.getElementById('layout-preview-status');
+      const confirmBtn = document.getElementById('layout-confirm-btn');
+      const cancelBtn = document.getElementById('layout-cancel-btn');
+
+      if (status) {
+        status.textContent = layoutEditing
+          ? '● Pré-visualização ao vivo — alterações ainda não confirmadas'
+          : '✓ Layout confirmado';
+      }
+      if (confirmBtn) confirmBtn.disabled = !layoutEditing;
+      if (cancelBtn) cancelBtn.disabled = !layoutEditing;
+    }
+
+    function setTimelineRowHeight(value) {
+      const h = Math.max(18, Math.min(60, parseInt(value, 10) || 24));
+      layoutConfig.rowHeight = h;
+      document.documentElement.style.setProperty('--timeline-row-height', h + 'px');
+
+      document.querySelectorAll('.bone-layer-row').forEach(row => {
+        row.style.height = h + 'px';
+        row.style.minHeight = h + 'px';
+        row.style.flexBasis = h + 'px';
+      });
+
+      resizeTimelineCanvas();
+      drawTimelineCanvas();
+      markLayoutEditing();
+    }
+
+    function setTimelineHeaderHeight(value) {
+      const h = Math.max(20, Math.min(80, parseInt(value, 10) || 30));
+      layoutConfig.headerHeight = h;
+      document.documentElement.style.setProperty('--timeline-header-height', h + 'px');
+
+      const panel = document.getElementById('bone-layers-panel');
+      if (panel) panel.style.paddingTop = h + 'px';
+
+      resizeTimelineCanvas();
+      drawTimelineCanvas();
+      markLayoutEditing();
+    }
+
+    function setTimelinePanelWidth(value) {
+      const w = Math.max(120, Math.min(350, parseInt(value, 10) || 160));
+      layoutConfig.panelWidth = w;
+
+      const panel = document.getElementById('bone-layers-panel');
+      if (panel) {
+        panel.style.width = w + 'px';
+        panel.style.flexBasis = w + 'px';
+      }
+      markLayoutEditing();
+    }
+
+    function toggleCompactTimeline() {
+      layoutConfig.compact = !layoutConfig.compact;
+      setTimelineRowHeight(layoutConfig.compact ? 20 : 24);
+
+      const input = document.getElementById('layout-row-height');
+      if (input) input.value = layoutConfig.rowHeight;
+    }
+
+    function syncLayoutControls() {
+      const map = {
+        '--ui-bg':'layout-bg',
+        '--ui-panel':'layout-panel',
+        '--ui-panel-2':'layout-panel2',
+        '--ui-input':'layout-input',
+        '--ui-text':'layout-text',
+        '--ui-accent':'layout-accent',
+        '--ui-border':'layout-border',
+        '--ui-timeline-grid':'layout-grid',
+        '--ui-keyframe':'layout-keyframe',
+        '--ui-keyframe-selected':'layout-keyframe-selected',
+        '--win-project-bg':'layout-win-project',
+        '--win-rigging-bg':'layout-win-rigging',
+        '--win-images-bg':'layout-win-images',
+        '--win-tray-bg':'layout-win-tray',
+        '--win-timeline-bg':'layout-win-timeline'
+      };
+
+      const styles = getComputedStyle(document.documentElement);
+      Object.entries(map).forEach(([variable, id]) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        let value = (layoutConfig.colors?.[variable] || styles.getPropertyValue(variable).trim()).trim();
+        // Resolve defaults that are expressed as var(--ui-panel).
+        if (!/^#[0-9a-fA-F]{6}$/.test(value)) {
+          value = styles.getPropertyValue(variable).trim();
+        }
+        if (/^#[0-9a-fA-F]{6}$/.test(value)) el.value = value;
+      });
+
+      const row = document.getElementById('layout-row-height');
+      const header = document.getElementById('layout-header-height');
+      const width = document.getElementById('layout-panel-width');
+      if (row) row.value = layoutConfig.rowHeight;
+      if (header) header.value = layoutConfig.headerHeight;
+      if (width) width.value = layoutConfig.panelWidth;
+    }
+
+    function saveLayoutPreferences() {
+      confirmLayoutChanges();
+    }
+
+    function loadLayoutPreferences() {
+      try {
+        const raw = localStorage.getItem('bonesEditorLayoutConfig');
+
+        if (!raw) {
+          layoutConfig = JSON.parse(JSON.stringify(DEFAULT_LAYOUT_CONFIG));
+          layoutConfig.preset = START_LAYOUT_PRESET;
+          layoutCommittedConfig = JSON.parse(JSON.stringify(layoutConfig));
+          applyLayoutConfig(layoutConfig);
+          layoutEditing = false;
+          return;
+        }
+
+        const saved = JSON.parse(raw);
+        layoutConfig = {
+          ...JSON.parse(JSON.stringify(DEFAULT_LAYOUT_CONFIG)),
+          ...saved,
+          colors: {
+            ...DEFAULT_LAYOUT_CONFIG.colors,
+            ...(saved.colors || {})
+          }
+        };
+
+        // Compatibilidade com versões anteriores que não tinham cores individuais.
+        const panelColor = layoutConfig.colors['--ui-panel'] || DEFAULT_LAYOUT_CONFIG.colors['--ui-panel'];
+        ['project','rigging','images','tray','timeline'].forEach(name => {
+          const key = `--win-${name}-bg`;
+          if (!layoutConfig.colors[key]) layoutConfig.colors[key] = panelColor;
+        });
+
+        applyLayoutConfig(layoutConfig);
+        layoutCommittedConfig = JSON.parse(JSON.stringify(layoutConfig));
+        layoutEditing = false;
+      } catch (e) {
+        layoutConfig = JSON.parse(JSON.stringify(DEFAULT_LAYOUT_CONFIG));
+        layoutCommittedConfig = JSON.parse(JSON.stringify(DEFAULT_LAYOUT_CONFIG));
+        applyLayoutConfig(layoutConfig);
+        layoutEditing = false;
+      }
+    }
+
+    function toggleLayoutSettings() {
+      const panel = document.getElementById('layout-settings-window');
+      if (!panel) return;
+
+      if (!panel.classList.contains('open')) {
+        layoutCommittedConfig = JSON.parse(JSON.stringify(layoutConfig));
+        layoutEditing = true;
+        panel.classList.add('open');
+        syncLayoutControls();
+        updateLayoutActionState();
+      } else {
+        cancelLayoutChanges();
+      }
+    }
+
+    function closeLayoutSettings() {
+      cancelLayoutChanges();
+    }
+
+    function applyLayoutConfig(config) {
+      const root = getLayoutRoot();
+      root.classList.remove('layout-light', 'layout-midnight', 'layout-contrast');
+
+      if (config.preset === 'light') root.classList.add('layout-light');
+      if (config.preset === 'midnight') root.classList.add('layout-midnight');
+      if (config.preset === 'contrast') root.classList.add('layout-contrast');
+
+      Object.entries(config.colors || {}).forEach(([key, value]) => {
+        root.style.setProperty(key, value);
+      });
+
+      setTimelineRowHeight(config.rowHeight);
+      setTimelineHeaderHeight(config.headerHeight);
+      setTimelinePanelWidth(config.panelWidth);
+
+      syncLayoutControls();
+      drawTimelineCanvas();
+      render();
+    }
+
+    function cancelLayoutChanges() {
+      if (!layoutEditing) {
+        const panel = document.getElementById('layout-settings-window');
+        if (panel) panel.classList.remove('open');
+        return;
+      }
+
+      layoutConfig = JSON.parse(JSON.stringify(layoutCommittedConfig));
+      applyLayoutConfig(layoutConfig);
+      layoutEditing = false;
+
+      const panel = document.getElementById('layout-settings-window');
+      if (panel) panel.classList.remove('open');
+
+      updateLayoutActionState();
+    }
+
+    function confirmLayoutChanges() {
+      try {
+        layoutCommittedConfig = JSON.parse(JSON.stringify(layoutConfig));
+        localStorage.setItem('bonesEditorLayoutConfig', JSON.stringify(layoutCommittedConfig));
+        layoutEditing = false;
+
+        const panel = document.getElementById('layout-settings-window');
+        if (panel) panel.classList.remove('open');
+
+        updateLayoutActionState();
+        alert('Layout confirmado e salvo neste navegador.');
+      } catch (e) {
+        alert('Não foi possível confirmar o layout.');
+      }
+    }
+
+    function restoreDefaultLayoutPreview() {
+      // Restaura apenas a prévia. O layout só será salvo após Confirmar.
+      layoutConfig = JSON.parse(JSON.stringify(DEFAULT_LAYOUT_CONFIG));
+      applyLayoutConfig(layoutConfig);
+      layoutEditing = true;
+      updateLayoutActionState();
+    }
+
+    function updateLayoutActionState() {
+      const status = document.getElementById('layout-preview-status');
+      const confirmBtn = document.getElementById('layout-confirm-btn');
+      const cancelBtn = document.getElementById('layout-cancel-btn');
+
+      if (status) {
+        status.textContent = layoutEditing
+          ? '● Pré-visualização ao vivo — alterações ainda não confirmadas'
+          : '✓ Layout confirmado';
+      }
+      if (confirmBtn) confirmBtn.disabled = !layoutEditing;
+      if (cancelBtn) cancelBtn.disabled = !layoutEditing;
+    }
+
+    function setTimelineRowHeight(value) {
+      const h = Math.max(18, Math.min(60, parseInt(value, 10) || 24));
+      layoutConfig.rowHeight = h;
+
+      document.documentElement.style.setProperty('--timeline-row-height', h + 'px');
+
+      document.querySelectorAll('.bone-layer-row').forEach(row => {
+        row.style.height = h + 'px';
+        row.style.minHeight = h + 'px';
+        row.style.flexBasis = h + 'px';
+      });
+
+      resizeTimelineCanvas();
+      drawTimelineCanvas();
+    }
+
+    function setTimelineHeaderHeight(value) {
+      const h = Math.max(20, Math.min(80, parseInt(value, 10) || 30));
+      layoutConfig.headerHeight = h;
+
+      document.documentElement.style.setProperty('--timeline-header-height', h + 'px');
+
+      const panel = document.getElementById('bone-layers-panel');
+      if (panel) panel.style.paddingTop = h + 'px';
+
+      resizeTimelineCanvas();
+      drawTimelineCanvas();
+    }
+
+    function setTimelinePanelWidth(value) {
+      const w = Math.max(120, Math.min(350, parseInt(value, 10) || 160));
+      layoutConfig.panelWidth = w;
+
+      const panel = document.getElementById('bone-layers-panel');
+      if (panel) {
+        panel.style.width = w + 'px';
+        panel.style.flexBasis = w + 'px';
+      }
+    }
+
+    function toggleCompactTimeline() {
+      layoutConfig.compact = !layoutConfig.compact;
+      setTimelineRowHeight(layoutConfig.compact ? 20 : 24);
+
+      const input = document.getElementById('layout-row-height');
+      if (input) input.value = layoutConfig.rowHeight;
+    }
+
+    function syncLayoutControls() {
+  const bgPicker = document.getElementById('layout-bg-color');
+  if (bgPicker) {
+    const bg = layoutConfig.colors['--ui-bg'];
+    if (/^#[0-9a-fA-F]{6}$/.test(bg)) bgPicker.value = bg;
+  }
+      const map = {
+        '--ui-bg':'layout-bg',
+        '--ui-panel':'layout-panel',
+        '--ui-panel-2':'layout-panel2',
+        '--ui-input':'layout-input',
+        '--ui-text':'layout-text',
+        '--ui-accent':'layout-accent',
+        '--ui-border':'layout-border',
+        '--ui-timeline-grid':'layout-grid',
+        '--ui-keyframe':'layout-keyframe',
+        '--ui-keyframe-selected':'layout-keyframe-selected'
+      };
+
+      const styles = getComputedStyle(document.documentElement);
+
+      Object.entries(map).forEach(([variable, id]) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const value = styles.getPropertyValue(variable).trim();
+        if (/^#[0-9a-fA-F]{6}$/.test(value)) el.value = value;
+      });
+
+      const row = document.getElementById('layout-row-height');
+      const header = document.getElementById('layout-header-height');
+      const width = document.getElementById('layout-panel-width');
+
+      if (row) row.value = layoutConfig.rowHeight;
+      if (header) header.value = layoutConfig.headerHeight;
+      if (width) width.value = layoutConfig.panelWidth;
+    }
+
+    function saveLayoutPreferences() {
+      confirmLayoutChanges();
+    }
+
+    function loadLayoutPreferences() {
+      try {
+        const raw = localStorage.getItem('bonesEditorLayoutConfig');
+        if (!raw) {
+          applyLayoutPreset('dark');
+          return;
+        }
+
+        const saved = JSON.parse(raw);
+        layoutConfig = {
+          ...JSON.parse(JSON.stringify(DEFAULT_LAYOUT_CONFIG)),
+          ...saved,
+          colors: {
+            ...DEFAULT_LAYOUT_CONFIG.colors,
+            ...(saved.colors || {})
+          }
+        };
+
+        const root = getLayoutRoot();
+        root.classList.remove('layout-light', 'layout-midnight', 'layout-contrast');
+
+        if (layoutConfig.preset === 'light') root.classList.add('layout-light');
+        if (layoutConfig.preset === 'midnight') root.classList.add('layout-midnight');
+        if (layoutConfig.preset === 'contrast') root.classList.add('layout-contrast');
+
+        Object.entries(layoutConfig.colors).forEach(([key, value]) => {
+          root.style.setProperty(key, value);
+        });
+
+        setTimelineRowHeight(layoutConfig.rowHeight);
+        setTimelineHeaderHeight(layoutConfig.headerHeight);
+        setTimelinePanelWidth(layoutConfig.panelWidth);
+        layoutCommittedConfig = JSON.parse(JSON.stringify(layoutConfig));
+        layoutEditing = false;
+        syncLayoutControls();
+        updateLayoutActionState();
+      } catch (e) {
+        applyLayoutPreset('dark');
+        layoutCommittedConfig = JSON.parse(JSON.stringify(layoutConfig));
+        layoutEditing = false;
+      }
+    }
+
+    function resetLayout() {
+      restoreDefaultLayoutPreview();
+    }
+
+    /* Carrega a configuração depois que o DOM já foi criado. */
+    setTimeout(() => {
+      loadLayoutPreferences();
+      syncLayoutControls();
+    }, 0);
+
+     
   </script>
 </body>
 </html>
