@@ -806,6 +806,55 @@
       align-items: center;
       justify-content: space-between;
     }
+
+    /* ============================================================
+       MINI PAINT PARA CORREÇÃO DE PARTES IMPORTADAS
+       ============================================================ */
+    #paint-modal {
+      position: fixed; inset: 0; z-index: 40000;
+      display: none; align-items: center; justify-content: center;
+      background: rgba(0,0,0,.86);
+    }
+    #paint-modal.open { display: flex; }
+    #paint-modal .paint-dialog {
+      width: min(1100px, 96vw); height: min(780px, 94vh);
+      background: var(--ui-panel); border: 1px solid var(--ui-accent);
+      border-radius: 10px; box-shadow: 0 12px 40px rgba(0,0,0,.7);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .paint-header {
+      display:flex; align-items:center; justify-content:space-between;
+      padding: 9px 12px; background: var(--ui-panel-2);
+      border-bottom: 1px solid var(--ui-border);
+    }
+    .paint-header strong { color: var(--ui-accent); }
+    .paint-toolbar {
+      display:flex; align-items:center; gap:7px; flex-wrap:wrap;
+      padding:8px; background:var(--ui-input); border-bottom:1px solid var(--ui-border);
+    }
+    .paint-toolbar button { min-width: 34px; }
+    .paint-toolbar button.active { background:#00d2ff; color:#121216; }
+    .paint-color { width:38px; height:30px; padding:2px; cursor:pointer; }
+    .paint-size { width:100px; }
+    .paint-size-value { min-width:42px; text-align:center; color:var(--ui-muted); font-size:.75rem; }
+    #paint-canvas-wrap {
+      flex:1; min-height:0; padding:12px; display:flex; align-items:center; justify-content:center;
+      background-color:#202027;
+      background-image: linear-gradient(45deg,#303038 25%,transparent 25%), linear-gradient(-45deg,#303038 25%,transparent 25%), linear-gradient(45deg,transparent 75%,#303038 75%), linear-gradient(-45deg,transparent 75%,#303038 75%);
+      background-size:20px 20px; background-position:0 0,0 10px,10px -10px,-10px 0;
+      overflow:auto;
+    }
+    #paint-canvas {
+      display:block; max-width:none; image-rendering:auto; cursor:crosshair;
+      box-shadow:0 0 0 1px rgba(255,255,255,.18), 0 8px 24px rgba(0,0,0,.45);
+    }
+    .paint-footer {
+      display:flex; align-items:center; justify-content:space-between; gap:8px;
+      padding:8px 10px; background:var(--ui-panel-2); border-top:1px solid var(--ui-border);
+    }
+    #paint-status { color:var(--ui-muted); font-size:.75rem; }
+    .paint-help { color:var(--ui-muted); font-size:.7rem; margin-left:auto; }
+
   </style>
 </head>
 <body>
@@ -1207,6 +1256,42 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
     </div>
   </div>
 
+
+
+  <!-- MINI PAINT: abre com duplo clique em uma parte importada -->
+  <div id="paint-modal" aria-hidden="true">
+    <div class="paint-dialog">
+      <div class="paint-header">
+        <strong>🖌️ Mini Paint — Corrigir Parte</strong>
+        <button type="button" onclick="closeSpritePaint()">✕</button>
+      </div>
+      <div class="paint-toolbar">
+        <button id="paint-tool-pencil" class="active" type="button" onclick="setPaintTool('pencil')">✏️ Lápis</button>
+        <button id="paint-tool-eraser" type="button" onclick="setPaintTool('eraser')">🧽 Borracha</button>
+        <button id="paint-tool-picker" type="button" onclick="setPaintTool('picker')">💧 Conta-gotas</button>
+        <label title="Cor do lápis">Cor <input id="paint-color" class="paint-color" type="color" value="#ff0055"></label>
+        <label title="Tamanho do pincel">Tamanho</label>
+        <input id="paint-size" class="paint-size" type="range" min="1" max="100" value="12">
+        <span id="paint-size-value" class="paint-size-value">12 px</span>
+        <button type="button" onclick="paintUndo()">↶ Desfazer</button>
+        <button type="button" onclick="paintRedo()">↷ Refazer</button>
+        <button type="button" onclick="paintClear()">🗑️ Limpar</button>
+        <button type="button" onclick="paintResetOriginal()">↺ Original</button>
+        <span class="paint-help">Arraste para desenhar • Shift = linha reta • duplo clique abre este editor</span>
+      </div>
+      <div id="paint-canvas-wrap">
+        <canvas id="paint-canvas"></canvas>
+      </div>
+      <div class="paint-footer">
+        <span id="paint-status">Nenhuma imagem em edição.</span>
+        <div style="display:flex;gap:7px;">
+          <button type="button" onclick="closeSpritePaint()">Cancelar</button>
+          <button type="button" class="accent-btn" onclick="applySpritePaint()">✓ Aplicar Correções</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     let topZIndex = 100;
 
@@ -1503,7 +1588,14 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
         const thumb = document.createElement('div');
         thumb.className = 'thumb-item';
         thumb.draggable = true;
-        thumb.title = `${imgObj.name}`;
+        thumb.title = `${imgObj.name} — duplo clique para editar`;
+
+        // Duplo clique abre o Mini Paint diretamente sobre esta parte.
+        thumb.addEventListener('dblclick', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          openSpritePaint(imgObj);
+        });
 
         const imgEl = document.createElement('img');
         if (imgObj.imageCanvas) {
@@ -1826,6 +1918,32 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
         menu.style.top = `${e.clientY}px`;
       } else {
         document.getElementById('image-context-menu').style.display = 'none';
+      }
+    });
+
+    // Duplo clique no palco: permite editar tanto uma imagem solta quanto a
+    // imagem associada ao osso/keyframe que estiver visível.
+    canvas.addEventListener('dblclick', (e) => {
+      if (e.button !== 0) return;
+      const rect = canvas.getBoundingClientRect();
+      const screenPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      const worldPos = screenToWorld(screenPos);
+
+      for (let i = unattachedImages.length - 1; i >= 0; i--) {
+        if (isPointInUnattachedImage(worldPos, unattachedImages[i])) {
+          openSpritePaint(unattachedImages[i]);
+          return;
+        }
+      }
+
+      for (let i = bones.length - 1; i >= 0; i--) {
+        const bone = bones[i];
+        if (bone.visibleImage && isPointInSprite(worldPos, bone)) {
+          selectBone(bone);
+          setTransformTarget('IMAGE');
+          if (bone.attachedSprite) openSpritePaint(bone.attachedSprite);
+          return;
+        }
       }
     });
 
@@ -4814,6 +4932,258 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
     function resetLayout() {
       restoreDefaultLayoutPreview();
     }
+
+    /* ============================================================
+       MINI PAINT — EDIÇÃO PIXEL A PIXEL DAS PARTES IMPORTADAS
+       ============================================================ */
+    let paintTarget = null;
+    let paintOriginalData = null;
+    let paintUndoStack = [];
+    let paintRedoStack = [];
+    let paintTool = 'pencil';
+    let paintDrawing = false;
+    let paintLast = null;
+    let paintStart = null;
+
+    const paintCanvas = document.getElementById('paint-canvas');
+    const paintCtx = paintCanvas.getContext('2d', { willReadFrequently: true });
+    applySmoothing(paintCtx);
+
+    function paintSnapshot() {
+      if (!paintCanvas.width || !paintCanvas.height) return null;
+      return paintCtx.getImageData(0, 0, paintCanvas.width, paintCanvas.height);
+    }
+
+    function paintPushUndo() {
+      const snap = paintSnapshot();
+      if (!snap) return;
+      paintUndoStack.push(snap);
+      if (paintUndoStack.length > 40) paintUndoStack.shift();
+      paintRedoStack = [];
+    }
+
+    function paintRestoreSnapshot(snap) {
+      if (!snap) return;
+      paintCtx.putImageData(snap, 0, 0);
+      paintUpdateStatus();
+    }
+
+    function paintUpdateStatus() {
+      const el = document.getElementById('paint-status');
+      if (!el) return;
+      const name = paintTarget ? (paintTarget.name || 'Imagem') : 'Nenhuma imagem';
+      el.textContent = paintTarget
+        ? `${name} • ${paintCanvas.width} × ${paintCanvas.height}px • ${paintTool === 'eraser' ? 'Borracha' : paintTool === 'picker' ? 'Conta-gotas' : 'Lápis'}`
+        : 'Nenhuma imagem em edição.';
+    }
+
+    function openSpritePaint(imgObj) {
+      if (!imgObj || !imgObj.imageCanvas) return;
+
+      paintTarget = imgObj;
+      paintCanvas.width = Math.max(1, imgObj.imageCanvas.width);
+      paintCanvas.height = Math.max(1, imgObj.imageCanvas.height);
+      paintCtx.clearRect(0, 0, paintCanvas.width, paintCanvas.height);
+      paintCtx.drawImage(imgObj.imageCanvas, 0, 0);
+      paintOriginalData = paintSnapshot();
+      paintUndoStack = [];
+      paintRedoStack = [];
+      paintDrawing = false;
+      paintLast = null;
+      paintStart = null;
+
+      const modal = document.getElementById('paint-modal');
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      paintUpdateStatus();
+    }
+
+    function closeSpritePaint() {
+      const modal = document.getElementById('paint-modal');
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      paintDrawing = false;
+      paintTarget = null;
+      paintOriginalData = null;
+      paintUndoStack = [];
+      paintRedoStack = [];
+    }
+
+    function setPaintTool(tool) {
+      paintTool = tool;
+      ['pencil', 'eraser', 'picker'].forEach(t => {
+        const el = document.getElementById(`paint-tool-${t}`);
+        if (el) el.classList.toggle('active', t === tool);
+      });
+      paintCanvas.style.cursor = tool === 'picker' ? 'copy' : 'crosshair';
+      paintUpdateStatus();
+    }
+
+    function paintGetPoint(e) {
+      const rect = paintCanvas.getBoundingClientRect();
+      const scaleX = paintCanvas.width / rect.width;
+      const scaleY = paintCanvas.height / rect.height;
+      return {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY
+      };
+    }
+
+    function paintBrushSize() {
+      return Math.max(1, Number(document.getElementById('paint-size').value) || 12);
+    }
+
+    function paintColor() {
+      return document.getElementById('paint-color').value || '#ff0055';
+    }
+
+    function paintDrawSegment(a, b) {
+      paintCtx.save();
+      paintCtx.lineCap = 'round';
+      paintCtx.lineJoin = 'round';
+      paintCtx.lineWidth = paintBrushSize();
+
+      if (paintTool === 'eraser') {
+        paintCtx.globalCompositeOperation = 'destination-out';
+        paintCtx.strokeStyle = 'rgba(0,0,0,1)';
+      } else {
+        paintCtx.globalCompositeOperation = 'source-over';
+        paintCtx.strokeStyle = paintColor();
+      }
+
+      paintCtx.beginPath();
+      paintCtx.moveTo(a.x, a.y);
+      paintCtx.lineTo(b.x, b.y);
+      paintCtx.stroke();
+      paintCtx.restore();
+    }
+
+    paintCanvas.addEventListener('pointerdown', (e) => {
+      if (!paintTarget || e.button !== 0) return;
+      e.preventDefault();
+      const p = paintGetPoint(e);
+
+      if (paintTool === 'picker') {
+        const x = Math.max(0, Math.min(paintCanvas.width - 1, Math.floor(p.x)));
+        const y = Math.max(0, Math.min(paintCanvas.height - 1, Math.floor(p.y)));
+        const px = paintCtx.getImageData(x, y, 1, 1).data;
+        if (px[3] > 0) {
+          const hex = '#' + [px[0], px[1], px[2]].map(v => v.toString(16).padStart(2, '0')).join('');
+          document.getElementById('paint-color').value = hex;
+          setPaintTool('pencil');
+        }
+        return;
+      }
+
+      paintPushUndo();
+      paintDrawing = true;
+      paintLast = p;
+      paintStart = p;
+      paintCanvas.setPointerCapture?.(e.pointerId);
+    });
+
+    paintCanvas.addEventListener('pointermove', (e) => {
+      if (!paintDrawing) return;
+      e.preventDefault();
+      const p = paintGetPoint(e);
+
+      if (e.shiftKey && paintStart) {
+        // Prévia simples: restaura o último snapshot e desenha uma linha reta.
+        const base = paintUndoStack[paintUndoStack.length - 1];
+        if (base) paintCtx.putImageData(base, 0, 0);
+        paintDrawSegment(paintStart, p);
+      } else if (paintLast) {
+        paintDrawSegment(paintLast, p);
+      }
+      paintLast = p;
+    });
+
+    paintCanvas.addEventListener('pointerup', (e) => {
+      if (!paintDrawing) return;
+      paintDrawing = false;
+      paintLast = null;
+      paintStart = null;
+      try { paintCanvas.releasePointerCapture?.(e.pointerId); } catch (_) {}
+      paintUpdateStatus();
+    });
+
+    paintCanvas.addEventListener('pointercancel', () => {
+      paintDrawing = false;
+      paintLast = null;
+      paintStart = null;
+    });
+
+    document.getElementById('paint-size').addEventListener('input', (e) => {
+      document.getElementById('paint-size-value').textContent = `${e.target.value} px`;
+    });
+
+    function paintUndo() {
+      if (!paintUndoStack.length) return;
+      const current = paintSnapshot();
+      if (current) paintRedoStack.push(current);
+      paintRestoreSnapshot(paintUndoStack.pop());
+    }
+
+    function paintRedo() {
+      if (!paintRedoStack.length) return;
+      const current = paintSnapshot();
+      if (current) paintUndoStack.push(current);
+      paintRestoreSnapshot(paintRedoStack.pop());
+    }
+
+    function paintClear() {
+      if (!paintTarget) return;
+      paintPushUndo();
+      paintCtx.clearRect(0, 0, paintCanvas.width, paintCanvas.height);
+      paintUpdateStatus();
+    }
+
+    function paintResetOriginal() {
+      if (!paintTarget || !paintOriginalData) return;
+      paintPushUndo();
+      paintRestoreSnapshot(paintOriginalData);
+    }
+
+    function applySpritePaint() {
+      if (!paintTarget) return;
+
+      // Uma edição deve poder ser desfeita pelo Ctrl+Z do editor principal.
+      saveState();
+
+      const targetCanvas = paintTarget.imageCanvas;
+      if (!targetCanvas) return;
+      targetCanvas.width = paintCanvas.width;
+      targetCanvas.height = paintCanvas.height;
+      const targetCtx = targetCanvas.getContext('2d', { willReadFrequently: true });
+      applySmoothing(targetCtx);
+      targetCtx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
+      targetCtx.drawImage(paintCanvas, 0, 0);
+
+      renderAssetTray();
+      updateUI();
+      render();
+      closeSpritePaint();
+    }
+
+    document.getElementById('paint-modal').addEventListener('mousedown', (e) => {
+      if (e.target.id === 'paint-modal') closeSpritePaint();
+    });
+
+    window.addEventListener('keydown', (e) => {
+      const modal = document.getElementById('paint-modal');
+      if (!modal.classList.contains('open')) return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault(); paintUndo();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault(); paintRedo();
+      } else if (e.key === 'Escape') {
+        closeSpritePaint();
+      } else if (e.key.toLowerCase() === 'e') {
+        setPaintTool('eraser');
+      } else if (e.key.toLowerCase() === 'p') {
+        setPaintTool('pencil');
+      }
+    });
 
     /* Carrega a configuração depois que o DOM já foi criado. */
     setTimeout(() => {
