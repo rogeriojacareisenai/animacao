@@ -834,6 +834,9 @@
     }
     .paint-toolbar button { min-width: 34px; }
     .paint-toolbar button.active { background:#00d2ff; color:#121216; }
+    .paint-brush-select-wrap { display:flex; align-items:center; gap:6px; font-weight:600; }
+    .paint-brush-select { min-width:220px; height:34px; padding:5px 8px; border-radius:6px; border:1px solid var(--ui-border); background:var(--ui-panel-2); color:var(--ui-text); cursor:pointer; font-size:.82rem; }
+    .paint-brush-select:focus { outline:2px solid var(--ui-accent); }
     .paint-color { width:38px; height:30px; padding:2px; cursor:pointer; }
     .paint-size { width:100px; }
     .paint-size-value { min-width:42px; text-align:center; color:var(--ui-muted); font-size:.75rem; }
@@ -1363,7 +1366,13 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
         <button type="button" onclick="closeSpritePaint()">✕</button>
       </div>
       <div class="paint-toolbar">
-        <button id="paint-tool-pencil" class="active" type="button" onclick="setPaintTool('pencil')">✏️ Lápis</button>
+        <label class="paint-brush-select-wrap" title="Escolha o tipo de pincel para desenho e line art cartoon">🖌️ Pincel
+          <select id="paint-brush-select" class="paint-brush-select" onchange="setPaintTool(this.value)">
+            <optgroup label="Lápis / Esboço"><option value="pencil" selected>✏️ Lápis Cartoon</option><option value="pencil-soft">✏️ Grafite macio</option><option value="pencil-hard">✏️ Grafite duro</option><option value="pencil-real">✏️ Lápis sensível</option><option value="mechanical">🖊️ Lapiseira</option></optgroup>
+            <optgroup label="Line Art / Tinta"><option value="fineliner">🖋️ Caneta técnica</option><option value="ink">🖊️ Nanquim</option><option value="brush-pen">🖌️ Caneta Brush</option><option value="marker">🖍️ Marcador</option></optgroup>
+            <optgroup label="Pincéis"><option value="hard-brush">● Pincel duro</option><option value="soft-brush">◉ Pincel suave</option><option value="watercolor">💧 Aquarela</option><option value="chalk">▰ Giz</option></optgroup>
+          </select>
+        </label>
         <button id="paint-tool-eraser" type="button" onclick="setPaintTool('eraser')">🧽 Borracha</button>
         <button id="paint-tool-picker" type="button" onclick="setPaintTool('picker')">💧 Conta-gotas</button>
         <button id="paint-tool-fill" type="button" onclick="setPaintTool('fill')">🪣 Balde de tinta</button>
@@ -1374,6 +1383,10 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
         <label title="Tamanho do pincel">Tamanho</label>
         <input id="paint-size" class="paint-size" type="range" min="1" max="100" value="12">
         <span id="paint-size-value" class="paint-size-value">12 px</span>
+        <label title="Influência da pressão da caneta">Pressão</label>
+        <input id="paint-pressure" class="paint-size" type="range" min="0" max="100" value="85">
+        <span id="paint-pressure-value" class="paint-size-value">85%</span>
+        <span id="paint-pressure-status" class="paint-size-value">Pressão: toque</span>
         <button type="button" onclick="paintUndo()">↶ Desfazer</button>
         <button type="button" onclick="paintRedo()">↷ Refazer</button>
         <button type="button" onclick="paintClear()">🗑️ Limpar</button>
@@ -5187,6 +5200,8 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
     let paintUndoStack = [];
     let paintRedoStack = [];
     let paintTool = 'pencil';
+    let paintPressure = 0.5;
+    let paintPointerType = 'touch';
     let paintDrawing = false;
     let paintLast = null;
     let paintStart = null;
@@ -5221,8 +5236,9 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
       const el = document.getElementById('paint-status');
       if (!el) return;
       const name = paintTarget ? (paintTarget.name || 'Imagem') : 'Nenhuma imagem';
+      const toolName = { pencil:'Lápis', 'pencil-soft':'Grafite suave', 'pencil-hard':'Grafite duro', 'pencil-real':'Lápis sensível', eraser:'Borracha', picker:'Conta-gotas', fill:'Balde de tinta' }[paintTool] || 'Lápis';
       el.textContent = paintTarget
-        ? `${name} • ${paintCanvas.width} × ${paintCanvas.height}px • ${paintTool === 'eraser' ? 'Borracha' : paintTool === 'picker' ? 'Conta-gotas' : 'Lápis'}`
+        ? `${name} • ${paintCanvas.width} × ${paintCanvas.height}px • ${toolName}`
         : 'Nenhuma imagem em edição.';
     }
 
@@ -5301,10 +5317,9 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
 
     function setPaintTool(tool) {
       paintTool = tool;
-      ['pencil', 'eraser', 'picker', 'fill'].forEach(t => {
-        const el = document.getElementById(`paint-tool-${t}`);
-        if (el) el.classList.toggle('active', t === tool);
-      });
+      const select = document.getElementById('paint-brush-select');
+      if (select && Array.from(select.options).some(o => o.value === tool)) select.value = tool;
+      ['eraser','picker','fill'].forEach(t => { const el=document.getElementById(`paint-tool-${t}`); if(el) el.classList.toggle('active',t===tool); });
       paintCanvas.style.cursor = tool === 'picker' ? 'copy' : tool === 'fill' ? 'cell' : 'crosshair';
       paintUpdateStatus();
     }
@@ -5417,30 +5432,51 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
       }
     }
 
-    function paintDrawSegment(a, b) {
-      paintCtx.save();
-      paintCtx.lineCap = 'round';
-      paintCtx.lineJoin = 'round';
-      paintCtx.lineWidth = paintBrushSize();
-
-      if (paintTool === 'eraser') {
-        paintCtx.globalCompositeOperation = 'destination-out';
-        paintCtx.strokeStyle = 'rgba(0,0,0,1)';
-      } else {
-        paintCtx.globalCompositeOperation = 'source-over';
-        paintCtx.strokeStyle = paintColor();
+    function paintPressureFromEvent(e) {
+      let pressure = Number.isFinite(e.pressure) ? e.pressure : 0.5;
+      if (e.pointerType !== 'pen' && pressure <= 0) pressure = 0.5;
+      pressure = Math.max(0.05, Math.min(1, pressure));
+      paintPointerType = e.pointerType || 'mouse';
+      paintPressure = pressure;
+      const status = document.getElementById('paint-pressure-status');
+      if (status) status.textContent = paintPointerType === 'pen' ? `Pressão: ${Math.round(pressure*100)}%` : `Pressão: ${paintPointerType === 'touch' ? 'toque' : 'mouse'}`;
+      return pressure;
+    }
+    function paintPressureFactor() {
+      const control = document.getElementById('paint-pressure');
+      const influence = control ? Number(control.value)/100 : 0.85;
+      return 1 - influence + paintPressure*influence;
+    }
+    function paintBrushSettings() {
+      const base=paintBrushSize(), f=paintPressureFactor();
+      switch(paintTool) {
+        case 'pencil-soft': return {size:base*(.38+f*1.00),alpha:.14+f*.48,blur:Math.max(.45,base*.075)};
+        case 'pencil-hard': return {size:base*(.34+f*.78),alpha:.38+f*.56,blur:0};
+        case 'pencil-real': return {size:base*(.18+f*1.10),alpha:.08+f*.86,blur:Math.max(0,base*.018)};
+        case 'mechanical': return {size:base*(.22+f*.55),alpha:.72+f*.28,blur:0};
+        case 'fineliner': return {size:base*(.28+f*.34),alpha:.82+f*.18,blur:0};
+        case 'ink': return {size:base*(.18+f*1.02),alpha:.78+f*.22,blur:0};
+        case 'brush-pen': return {size:base*(.20+f*1.45),alpha:.62+f*.38,blur:0};
+        case 'marker': return {size:base*(.72+f*.70),alpha:.20+f*.34,blur:.2};
+        case 'hard-brush': return {size:base*(.40+f*1.00),alpha:.72+f*.28,blur:0};
+        case 'soft-brush': return {size:base*(.65+f*.90),alpha:.10+f*.48,blur:Math.max(1,base*.16)};
+        case 'watercolor': return {size:base*(.75+f*.85),alpha:.06+f*.24,blur:Math.max(.7,base*.10)};
+        case 'chalk': return {size:base*(.55+f*.95),alpha:.22+f*.42,blur:.35};
+        default: return {size:base*(.28+f*.92),alpha:.30+f*.62,blur:Math.max(0,base*.012)};
       }
-
-      paintCtx.beginPath();
-      paintCtx.moveTo(a.x, a.y);
-      paintCtx.lineTo(b.x, b.y);
-      paintCtx.stroke();
-      paintCtx.restore();
+    }
+    function paintDrawSegment(a, b) {
+      const settings = paintTool === 'eraser' ? {size:paintBrushSize(),alpha:1,blur:0} : paintBrushSettings();
+      paintCtx.save(); paintCtx.lineCap='round'; paintCtx.lineJoin='round'; paintCtx.lineWidth=settings.size;
+      if (paintTool === 'eraser') { paintCtx.globalCompositeOperation='destination-out'; paintCtx.strokeStyle='rgba(0,0,0,1)'; }
+      else { paintCtx.globalCompositeOperation='source-over'; paintCtx.strokeStyle=paintColor(); paintCtx.globalAlpha=settings.alpha; if(settings.blur>0) paintCtx.filter=`blur(${settings.blur}px)`; }
+      paintCtx.beginPath(); paintCtx.moveTo(a.x,a.y); paintCtx.lineTo(b.x,b.y); paintCtx.stroke(); paintCtx.restore();
     }
 
     paintCanvas.addEventListener('pointerdown', (e) => {
       if (!paintTarget || e.button !== 0) return;
       e.preventDefault();
+      paintPressureFromEvent(e);
       const p = paintGetPoint(e);
 
       const x = Math.max(0, Math.min(paintCanvas.width - 1, Math.floor(p.x)));
@@ -5473,6 +5509,7 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
     paintCanvas.addEventListener('pointermove', (e) => {
       if (!paintDrawing) return;
       e.preventDefault();
+      paintPressureFromEvent(e);
       const p = paintGetPoint(e);
 
       if (e.shiftKey && paintStart) {
@@ -5608,6 +5645,10 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
         setPaintTool('fill');
       }
     });
+
+    const paintPressureControl = document.getElementById('paint-pressure');
+    const paintPressureValue = document.getElementById('paint-pressure-value');
+    if (paintPressureControl) paintPressureControl.addEventListener('input', () => { if (paintPressureValue) paintPressureValue.textContent = `${paintPressureControl.value}%`; });
 
     /* Carrega a configuração depois que o DOM já foi criado. */
     setTimeout(() => {
