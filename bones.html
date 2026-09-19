@@ -1281,7 +1281,13 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
         <button type="button" onclick="paintRedo()">↷ Refazer</button>
         <button type="button" onclick="paintClear()">🗑️ Limpar</button>
         <button type="button" onclick="paintResetOriginal()">↺ Original</button>
-        <span class="paint-help">Arraste para desenhar • Shift = linha reta • 🪣 clique para preencher uma área • duplo clique abre este editor</span>
+        <span style="display:flex;align-items:center;gap:4px;margin-left:4px;">
+          <button type="button" title="Diminuir zoom" onclick="setPaintZoom(paintZoom - 0.25)">−</button>
+          <span id="paint-zoom-value" class="paint-size-value" style="min-width:48px;">100%</span>
+          <button type="button" title="Aumentar zoom" onclick="setPaintZoom(paintZoom + 0.25)">+</button>
+          <button type="button" title="Resetar zoom" onclick="resetPaintZoom()">🔍 100%</button>
+        </span>
+        <span class="paint-help">Arraste para desenhar • Shift = linha reta • 🪣 clique para preencher • roda do mouse = zoom • duplo clique abre este editor</span>
       </div>
       <div id="paint-canvas-wrap">
         <canvas id="paint-canvas"></canvas>
@@ -5087,6 +5093,9 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
     let paintDrawing = false;
     let paintLast = null;
     let paintStart = null;
+    let paintZoom = 1;
+    const PAINT_MIN_ZOOM = 0.25;
+    const PAINT_MAX_ZOOM = 8;
 
     const paintCanvas = document.getElementById('paint-canvas');
     const paintCtx = paintCanvas.getContext('2d', { willReadFrequently: true });
@@ -5135,6 +5144,8 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
       paintDrawing = false;
       paintLast = null;
       paintStart = null;
+      paintZoom = 1;
+      applyPaintZoom();
 
       const modal = document.getElementById('paint-modal');
       modal.classList.add('open');
@@ -5151,6 +5162,44 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
       paintOriginalData = null;
       paintUndoStack = [];
       paintRedoStack = [];
+    }
+
+    function setPaintZoom(value) {
+      if (!paintCanvas.width || !paintCanvas.height) return;
+      const oldZoom = paintZoom;
+      paintZoom = Math.max(PAINT_MIN_ZOOM, Math.min(PAINT_MAX_ZOOM, Number(value) || 1));
+      applyPaintZoom(oldZoom);
+    }
+
+    function applyPaintZoom(oldZoom = paintZoom) {
+      const wrap = document.getElementById('paint-canvas-wrap');
+      const label = document.getElementById('paint-zoom-value');
+      if (!wrap || !paintCanvas.width || !paintCanvas.height) return;
+
+      const oldW = paintCanvas.getBoundingClientRect().width;
+      const oldH = paintCanvas.getBoundingClientRect().height;
+      paintCanvas.style.width = `${Math.max(1, paintCanvas.width * paintZoom)}px`;
+      paintCanvas.style.height = `${Math.max(1, paintCanvas.height * paintZoom)}px`;
+
+      if (label) label.textContent = `${Math.round(paintZoom * 100)}%`;
+
+      // Mantém aproximadamente o ponto central visível ao alterar o zoom.
+      if (oldZoom !== paintZoom && oldW > 0 && oldH > 0) {
+        const centerX = wrap.scrollLeft + wrap.clientWidth / 2;
+        const centerY = wrap.scrollTop + wrap.clientHeight / 2;
+        const ratio = paintZoom / oldZoom;
+        wrap.scrollLeft = Math.max(0, centerX * ratio - wrap.clientWidth / 2);
+        wrap.scrollTop = Math.max(0, centerY * ratio - wrap.clientHeight / 2);
+      }
+    }
+
+    function resetPaintZoom() {
+      setPaintZoom(1);
+      const wrap = document.getElementById('paint-canvas-wrap');
+      if (wrap) {
+        wrap.scrollLeft = Math.max(0, (wrap.scrollWidth - wrap.clientWidth) / 2);
+        wrap.scrollTop = Math.max(0, (wrap.scrollHeight - wrap.clientHeight) / 2);
+      }
     }
 
     function setPaintTool(tool) {
@@ -5354,6 +5403,31 @@ Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layou
       paintLast = null;
       paintStart = null;
     });
+
+    // Zoom do Mini Paint com a roda do mouse. O desenho continua sendo
+    // editado nas dimensões reais do canvas; somente a visualização é ampliada.
+    paintCanvas.addEventListener('wheel', (e) => {
+      if (!paintTarget) return;
+      e.preventDefault();
+      const oldZoom = paintZoom;
+      const direction = e.deltaY < 0 ? 1 : -1;
+      const factor = direction > 0 ? 1.15 : 1 / 1.15;
+
+      const wrap = document.getElementById('paint-canvas-wrap');
+      const rect = paintCanvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const contentX = wrap.scrollLeft + mouseX;
+      const contentY = wrap.scrollTop + mouseY;
+
+      paintZoom = Math.max(PAINT_MIN_ZOOM, Math.min(PAINT_MAX_ZOOM, paintZoom * factor));
+      applyPaintZoom(oldZoom);
+
+      // Mantém o pixel sob o cursor na mesma posição da tela.
+      const ratio = paintZoom / oldZoom;
+      wrap.scrollLeft = Math.max(0, contentX * ratio - mouseX);
+      wrap.scrollTop = Math.max(0, contentY * ratio - mouseY);
+    }, { passive: false });
 
     document.getElementById('paint-size').addEventListener('input', (e) => {
       document.getElementById('paint-size-value').textContent = `${e.target.value} px`;
