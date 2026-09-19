@@ -1,0 +1,5736 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NickeMan - 2D Rigging Studio</title>
+  <style>
+
+    /* ============================================================
+       CONFIGURAÇÃO VISUAL DO EDITOR
+       ============================================================ */
+    :root {
+      --ui-bg: #202027;
+      --ui-panel: #2b2b36;
+      --ui-panel-2: #18181f;
+      --ui-input: #121216;
+      --ui-border: #3f3f52;
+      --ui-text: #eeeeee;
+      --ui-muted: #a9a9b8;
+      --ui-accent: #00d2ff;
+      --ui-accent-2: #00a8cc;
+      --ui-button: #343442;
+      --ui-button-hover: #444458;
+      --ui-timeline-bg: #121216;
+      --ui-timeline-grid: #2d2d3a;
+      --ui-keyframe: #ffd54a;
+      --ui-keyframe-selected: #ff7b00;
+      --ui-selection: rgba(0,210,255,.16);
+      --ui-shadow: rgba(0,0,0,.60);
+      --win-project-bg: var(--ui-panel);
+      --win-rigging-bg: var(--ui-panel);
+      --win-images-bg: var(--ui-panel);
+      --win-tray-bg: var(--ui-panel);
+      --win-timeline-bg: var(--ui-panel);
+    }
+
+    body {
+      background: var(--ui-bg) !important;
+      color: var(--ui-text);
+    }
+
+    .floating-window {
+      background-color: var(--ui-panel);
+      border-color: var(--ui-accent);
+      box-shadow: 0 6px 20px var(--ui-shadow);
+    }
+
+    .floating-header {
+      background: var(--ui-panel-2);
+      color: var(--ui-text);
+    }
+
+    button, input, select, textarea {
+      color: var(--ui-text);
+      border-color: var(--ui-border);
+    }
+
+    button {
+      background: var(--ui-button);
+    }
+
+    button:hover {
+      background: var(--ui-button-hover);
+    }
+
+    .accent-btn {
+      border-color: var(--ui-accent);
+      color: var(--ui-accent);
+    }
+
+    #bone-layers-panel {
+      background: var(--ui-panel-2);
+      border-color: var(--ui-border);
+    }
+
+    .bone-layer-row {
+      border-color: var(--ui-border);
+      color: var(--ui-text);
+    }
+
+    .timeline-track-wrapper {
+      background: var(--ui-timeline-bg);
+      border-color: var(--ui-border);
+    }
+
+    /* Janela de configurações visuais */
+    #layout-settings-window {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      width: 330px;
+      max-height: calc(100vh - 110px);
+      z-index: 9999;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--ui-panel);
+      border: 1px solid var(--ui-accent);
+      border-radius: 8px;
+      box-shadow: 0 8px 28px var(--ui-shadow);
+    }
+
+    #layout-settings-window.open {
+      display: flex;
+    }
+
+    #layout-settings-window .layout-settings-body {
+      padding: 12px;
+      overflow-y: auto;
+    }
+
+    .layout-section {
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--ui-border);
+    }
+
+    .layout-section:last-child {
+      border-bottom: 0;
+      margin-bottom: 0;
+    }
+
+    .layout-section-title {
+      font-weight: 700;
+      color: var(--ui-accent);
+      margin-bottom: 9px;
+      font-size: 13px;
+    }
+
+    .layout-field {
+      display: grid;
+      grid-template-columns: 1fr 92px;
+      gap: 8px;
+      align-items: center;
+      margin: 7px 0;
+      font-size: 12px;
+    }
+
+    .layout-field input[type="color"] {
+      width: 92px;
+      height: 30px;
+      padding: 2px;
+      background: var(--ui-input);
+      border: 1px solid var(--ui-border);
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .layout-field input[type="range"] {
+      width: 92px;
+    }
+
+    .layout-field select,
+    .layout-field input[type="number"] {
+      width: 92px;
+      box-sizing: border-box;
+      background: var(--ui-input);
+      border: 1px solid var(--ui-border);
+      border-radius: 4px;
+      padding: 5px;
+    }
+
+    .layout-preset-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+    }
+
+    .layout-preset-row button,
+    .layout-actions button {
+      width: 100%;
+      padding: 7px 8px;
+      cursor: pointer;
+    }
+
+    .layout-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+      margin-top: 10px;
+    }
+
+    .layout-preview-help {
+  margin-top: 8px;
+  padding: 7px 8px;
+  border: 1px solid var(--ui-border);
+  border-radius: 4px;
+  background: var(--ui-input);
+  color: var(--ui-text);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.layout-preview-status {
+      margin-top: 10px;
+      padding: 7px 8px;
+      border: 1px solid var(--ui-border);
+      border-radius: 4px;
+      background: var(--ui-input);
+      color: var(--ui-accent);
+      font-size: 11px;
+      text-align: center;
+      line-height: 1.35;
+    }
+
+    .layout-actions button:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .layout-hint {
+      color: var(--ui-muted);
+      font-size: 11px;
+      line-height: 1.35;
+      margin-top: 5px;
+    }
+
+    /* Variáveis aplicadas também aos componentes existentes */
+    .toolbar, .panel, .sidebar, .controls {
+      color: var(--ui-text);
+    }
+
+    .layout-light {
+      --ui-bg: #eef1f5;
+      --ui-panel: #ffffff;
+      --ui-panel-2: #e5e9ef;
+      --ui-input: #ffffff;
+      --ui-border: #b9c0cb;
+      --ui-text: #20242b;
+      --ui-muted: #59616d;
+      --ui-accent: #0077aa;
+      --ui-accent-2: #005f88;
+      --ui-button: #dfe4ea;
+      --ui-button-hover: #cfd6de;
+      --ui-timeline-bg: #f8f9fb;
+      --ui-timeline-grid: #d5dbe3;
+      --ui-keyframe: #c58b00;
+      --ui-keyframe-selected: #d85d00;
+      --ui-selection: rgba(0,119,170,.13);
+      --ui-shadow: rgba(0,0,0,.22);
+    }
+
+    .layout-midnight {
+      --ui-bg: #0b1020;
+      --ui-panel: #11182b;
+      --ui-panel-2: #0a1020;
+      --ui-input: #070b15;
+      --ui-border: #293858;
+      --ui-text: #e9f0ff;
+      --ui-muted: #9aa9c4;
+      --ui-accent: #62d9ff;
+      --ui-accent-2: #369cc0;
+      --ui-button: #1a2740;
+      --ui-button-hover: #263756;
+      --ui-timeline-bg: #070b15;
+      --ui-timeline-grid: #1d2940;
+      --ui-keyframe: #f6d365;
+      --ui-keyframe-selected: #ff884d;
+      --ui-selection: rgba(98,217,255,.14);
+      --ui-shadow: rgba(0,0,0,.70);
+    }
+
+    .layout-contrast {
+      --ui-bg: #000000;
+      --ui-panel: #101010;
+      --ui-panel-2: #000000;
+      --ui-input: #000000;
+      --ui-border: #ffffff;
+      --ui-text: #ffffff;
+      --ui-muted: #dddddd;
+      --ui-accent: #ffff00;
+      --ui-accent-2: #ffff00;
+      --ui-button: #222222;
+      --ui-button-hover: #444444;
+      --ui-timeline-bg: #000000;
+      --ui-timeline-grid: #555555;
+      --ui-keyframe: #ffff00;
+      --ui-keyframe-selected: #ff6600;
+      --ui-selection: rgba(255,255,0,.18);
+      --ui-shadow: rgba(0,0,0,.90);
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #18181f;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #3f3f52;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #575773;
+    }
+
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: #3f3f52 #18181f;
+    }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--ui-bg);
+      color: var(--ui-text);
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* LOGO E VINHETA */
+    #persistent-logo {
+      position: fixed;
+      top: 12px;
+      left: 15px;
+      z-index: 10000;
+      font-family: 'Impact', 'Arial Black', sans-serif;
+      font-size: 1.8rem;
+      color: #ffeb3b;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      -webkit-text-stroke: 1.5px #000;
+      text-shadow: 
+        2px 2px 0px #000,
+        4px 4px 0px #ff0055,
+        6px 6px 0px #000;
+      pointer-events: none;
+    }
+
+    #intro-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(18, 18, 22, 0.95);
+      pointer-events: none;
+      z-index: 20000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      transition: opacity 0.6s ease-out;
+    }
+
+    .intro-title {
+      font-size: 5.5rem;
+      color: #ffeb3b;
+      text-transform: uppercase;
+      letter-spacing: 4px;
+      -webkit-text-stroke: 3px #000;
+      text-shadow: 
+        5px 5px 0px #000,
+        10px 10px 0px #ff0055,
+        15px 15px 0px #000;
+      animation: nickemanIntro 3.8s ease-in-out forwards;
+    }
+
+    @keyframes nickemanIntro {
+      0% { transform: scale(0.01); opacity: 0; }
+      30% { transform: scale(0.8, 1.4); opacity: 1; }
+      45% { transform: scale(1.25, 0.75); }
+      60% { transform: scale(0.92, 1.08); }
+      72% { transform: scale(1.03, 0.97); }
+      80% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(1.15); opacity: 0; }
+    }
+
+    .sub-title {
+      font-weight: 900;
+      font-size: 1.5rem;
+      color: #fff;
+      text-shadow: 3px 3px 0 #000;
+      margin-top: 15px;
+      opacity: 0;
+      animation: fadeInSub 1s ease 1.2s forwards;
+    }
+
+    @keyframes fadeInSub { to { opacity: 1; } }
+
+    /* PALCO PRINCIPAL DE FUNDO */
+    #canvas-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+      cursor: crosshair;
+    }
+
+    canvas#stage {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background-color: var(--ui-bg);
+    }
+
+    /* SISTEMA DE JANELAS FLUTUANTES */
+    .floating-window {
+      position: absolute;
+      background-color: var(--ui-panel);
+      border: 1px solid var(--ui-accent);
+      border-radius: 8px;
+      box-shadow: 0 6px 20px var(--ui-shadow);
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 220px;
+    }
+
+    #win-project  { background-color: var(--win-project-bg); }
+    #win-rigging  { background-color: var(--win-rigging-bg); }
+    #win-images   { background-color: var(--win-images-bg); }
+    #win-tray     { background-color: var(--win-tray-bg); }
+    #win-timeline { background-color: var(--win-timeline-bg); }
+
+    /* A janela da timeline pode ser redimensionada nos dois sentidos. */
+    #win-timeline {
+      resize: both;
+      min-width: 620px;
+      min-height: 230px;
+      max-width: 95vw;
+      max-height: 90vh;
+    }
+
+    .floating-header {
+      background-color: var(--ui-panel-2);
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      color: var(--ui-accent);
+      cursor: move;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--ui-border);
+    }
+
+    .floating-header .window-controls {
+      display: flex;
+      gap: 6px;
+    }
+
+    .floating-header button {
+      background: transparent;
+      border: none;
+      color: #aaa;
+      cursor: pointer;
+      font-size: 0.8rem;
+      padding: 0 4px;
+    }
+
+    .floating-header button:hover {
+      color: #fff;
+    }
+
+    .floating-body {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 75vh;
+      overflow-y: auto;
+    }
+
+    .floating-body.collapsed {
+      display: none;
+    }
+
+    /* Na janela da timeline, o corpo acompanha o tamanho da janela. */
+    #win-timeline .floating-body {
+      flex: 1 1 auto;
+      min-height: 0;
+      max-height: none;
+      overflow: hidden;
+    }
+
+    /* COMPONENTES DE UI DA LATERAL E CONTROLES */
+    .section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    h2 {
+      font-size: 0.85rem;
+      color: #00d2ff;
+      border-bottom: 1px solid var(--ui-border);
+      padding-bottom: 4px;
+      margin-top: 4px;
+    }
+
+    label {
+      font-size: 0.75rem;
+      color: #aaa;
+    }
+
+    select, input[type="number"] {
+      background-color: var(--ui-input);
+      color: var(--ui-text);
+      border: 1px solid var(--ui-border);
+      padding: 5px;
+      border-radius: 4px;
+      outline: none;
+      font-size: 0.8rem;
+    }
+
+    .btn-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    button {
+      background-color: var(--ui-button);
+      color: var(--ui-text);
+      border: 1px solid var(--ui-border);
+      padding: 6px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.78rem;
+      transition: all 0.2s;
+    }
+
+    button:hover { background-color: var(--ui-button-hover); }
+    button.active {
+      background-color: #00d2ff;
+      color: #121216;
+      font-weight: bold;
+      border-color: #00d2ff;
+    }
+
+    .accent-btn { background-color: #0088cc; border-color: #00aaff; }
+    .accent-btn:hover { background-color: #00aaff; }
+    .warning-btn { background-color: #d97706; border-color: #f59e0b; color: #fff; }
+    .warning-btn:hover { background-color: #f59e0b; }
+    .danger-btn { background-color: #8b0000; border-color: #a00000; color: #fff; }
+    .danger-btn:hover { background-color: #a00000; }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #00d2ff;
+    }
+
+    .checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.78rem;
+      color: #ddd;
+      cursor: pointer;
+    }
+
+    .info-box {
+      background-color: var(--ui-input);
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      color: var(--ui-muted);
+      line-height: 1.4;
+    }
+
+    .info-box b { color: #00d2ff; }
+
+    /* BANDEJA DE IMAGENS */
+    #asset-tray {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      align-items: center;
+      min-height: 75px;
+      padding: 4px 0;
+    }
+
+    .thumb-item {
+      flex: 0 0 auto;
+      width: 65px;
+      height: 65px;
+      background-color: var(--ui-input);
+      border: 1px dashed var(--ui-accent);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: grab;
+      position: relative;
+    }
+
+    .thumb-item:hover {
+      border-style: solid;
+      background-color: var(--ui-button-hover);
+    }
+
+    .thumb-item img {
+      max-width: 90%;
+      max-height: 90%;
+      object-fit: contain;
+      pointer-events: none;
+    }
+
+    /* TIMELINE */
+    .timeline-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .timeline-track-wrapper {
+      display: flex;
+      width: 100%;
+      flex: 1 1 auto;
+      min-height: 90px;
+      height: auto;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid #3f3f52;
+      border-radius: 4px;
+      background-color: var(--ui-bg);
+      margin-top: 6px;
+    }
+
+    #bone-layers-panel {
+      width: 160px;
+      flex: 0 0 160px;
+      height: 100%;
+      background: var(--ui-panel-2);
+      border-right: 1px solid var(--ui-border);
+      margin-top: 0;
+      padding-top: var(--timeline-header-height, 30px);
+      display: flex;
+      flex-direction: column;
+      z-index: 5;
+      overflow-y: auto;
+    }
+
+    .bone-layer-row {
+      height: var(--timeline-row-height, 24px);
+      min-height: var(--timeline-row-height, 24px);
+      flex: 0 0 var(--timeline-row-height, 24px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 4px;
+      border-bottom: 1px solid var(--ui-panel);
+      font-size: 0.72rem;
+    }
+
+    .bone-layer-row.active { background-color: #2a2a3a; }
+
+    .bone-layer-label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: pointer;
+      flex: 1;
+      padding: 0 4px;
+    }
+
+    .layer-btn-group {
+      display: flex;
+      gap: 2px;
+      align-items: center;
+    }
+
+    .btn-layer-toggle {
+      padding: 0 2px;
+      font-size: 0.68rem;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      opacity: 0.8;
+    }
+
+    .btn-layer-toggle.hidden-item { opacity: 0.3; filter: grayscale(100%); }
+
+    .btn-layer-order {
+      padding: 1px 2px;
+      font-size: 0.6rem;
+      background: var(--ui-button);
+      border: 1px solid var(--ui-border);
+      border-radius: 2px;
+      cursor: pointer;
+    }
+
+    .btn-layer-order:hover { background: var(--ui-accent); color: var(--ui-bg); }
+
+    .timeline-canvas-container {
+      flex: 1 1 auto;
+      min-width: 0;
+      min-height: 0;
+      overflow-x: auto;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    canvas#timeline-canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      cursor: pointer;
+    }
+
+    /* MENUS DE CONTEXTO E MODAL */
+    #image-context-menu {
+      display: none;
+      position: fixed;
+      z-index: 25000;
+      background-color: var(--ui-panel);
+      border: 1px solid var(--ui-accent);
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+      padding: 5px 0;
+      min-width: 180px;
+    }
+
+    #image-context-menu button {
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      border: none;
+      padding: 8px 12px;
+      color: #fff;
+      font-size: 0.8rem;
+      cursor: pointer;
+      border-radius: 0;
+    }
+
+    #image-context-menu button:hover {
+      background-color: #00d2ff;
+      color: #121216;
+      font-weight: bold;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.85);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 30000;
+    }
+
+    .modal {
+      background: #2b2b36;
+      border: 1px solid #3f3f52;
+      border-radius: 8px;
+      padding: 20px;
+      width: 820px;
+      max-width: 95vw;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--ui-border);
+      padding-bottom: 10px;
+    }
+
+    .modal-body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #crop-canvas-container {
+      width: 100%;
+      height: 400px;
+      overflow: hidden;
+      background: var(--ui-input);
+      border: 1px solid var(--ui-border);
+      position: relative;
+    }
+
+    #crop-canvas {
+      cursor: crosshair;
+      width: 100%;
+      height: 100%;
+    }
+
+    .modal-toolbar {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* ============================================================
+       MINI PAINT PARA CORREÇÃO DE PARTES IMPORTADAS
+       ============================================================ */
+    #paint-modal {
+      position: fixed; inset: 0; z-index: 40000;
+      display: none; align-items: center; justify-content: center;
+      background: rgba(0,0,0,.86);
+    }
+    #paint-modal.open { display: flex; }
+    #paint-modal .paint-dialog {
+      width: min(1100px, 96vw); height: min(780px, 94vh);
+      background: var(--ui-panel); border: 1px solid var(--ui-accent);
+      border-radius: 10px; box-shadow: 0 12px 40px rgba(0,0,0,.7);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .paint-header {
+      display:flex; align-items:center; justify-content:space-between;
+      padding: 9px 12px; background: var(--ui-panel-2);
+      border-bottom: 1px solid var(--ui-border);
+    }
+    .paint-header strong { color: var(--ui-accent); }
+    .paint-toolbar {
+      display:flex; align-items:center; gap:7px; flex-wrap:wrap;
+      padding:8px; background:var(--ui-input); border-bottom:1px solid var(--ui-border);
+    }
+    .paint-toolbar button { min-width: 34px; }
+    .paint-toolbar button.active { background:#00d2ff; color:#121216; }
+    .paint-color { width:38px; height:30px; padding:2px; cursor:pointer; }
+    .paint-size { width:100px; }
+    .paint-size-value { min-width:42px; text-align:center; color:var(--ui-muted); font-size:.75rem; }
+    #paint-canvas-wrap {
+      flex:1; min-height:0; padding:12px; display:flex; align-items:center; justify-content:center;
+      background-color:#202027;
+      background-image: linear-gradient(45deg,#303038 25%,transparent 25%), linear-gradient(-45deg,#303038 25%,transparent 25%), linear-gradient(45deg,transparent 75%,#303038 75%), linear-gradient(-45deg,transparent 75%,#303038 75%);
+      background-size:20px 20px; background-position:0 0,0 10px,10px -10px,-10px 0;
+      overflow:auto;
+    }
+    #paint-canvas {
+      display:block; max-width:none; image-rendering:auto; cursor:crosshair;
+      box-shadow:0 0 0 1px rgba(255,255,255,.18), 0 8px 24px rgba(0,0,0,.45);
+    }
+    .paint-footer {
+      display:flex; align-items:center; justify-content:space-between; gap:8px;
+      padding:8px 10px; background:var(--ui-panel-2); border-top:1px solid var(--ui-border);
+    }
+    #paint-status { color:var(--ui-muted); font-size:.75rem; }
+    .paint-help { color:var(--ui-muted); font-size:.7rem; margin-left:auto; }
+
+
+
+    /* ============================================================
+       COMPATIBILIDADE COM TABLETS / TOUCH
+       ============================================================ */
+    html, body {
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+    }
+
+    button, input, select, textarea, label {
+      touch-action: manipulation;
+    }
+
+    .floating-header {
+      touch-action: none;
+    }
+
+    #canvas-container,
+    #stage,
+    #timeline-canvas,
+    #crop-canvas,
+    #paint-canvas {
+      touch-action: none;
+    }
+
+    #paint-canvas-wrap,
+    .timeline-canvas-container,
+    .floating-body,
+    .layout-settings-body {
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Alvos maiores para toque */
+    @media (pointer: coarse), (max-width: 900px) {
+      button {
+        min-height: 38px;
+        padding: 8px 10px;
+        font-size: 0.84rem;
+      }
+
+      .floating-header {
+        min-height: 44px;
+        padding: 10px 12px;
+      }
+
+      .floating-header button {
+        min-height: 34px;
+      }
+
+      input[type="range"] {
+        min-height: 30px;
+      }
+
+      .floating-window {
+        max-width: calc(100vw - 20px);
+      }
+
+      #win-project,
+      #win-rigging,
+      #win-images,
+      #win-tray {
+        max-width: calc(100vw - 20px) !important;
+      }
+
+      #win-timeline {
+        min-width: 0 !important;
+        width: calc(100vw - 20px) !important;
+        max-width: calc(100vw - 20px) !important;
+      }
+
+      #layout-settings-window {
+        top: 10px;
+        right: 10px;
+        width: min(420px, calc(100vw - 20px));
+        max-height: calc(100vh - 20px);
+      }
+
+      #paint-modal .paint-dialog {
+        width: 98vw;
+        height: 96vh;
+      }
+
+      .paint-toolbar {
+        gap: 6px;
+      }
+
+      .paint-help {
+        width: 100%;
+        margin-left: 0;
+      }
+
+      #crop-canvas-container {
+        height: min(55vh, 500px);
+      }
+    }
+
+  </style>
+</head>
+<body>
+
+  <div id="persistent-logo">NickeMan</div>
+
+  <div id="intro-overlay">
+    <div class="intro-title">NickeMan</div>
+    <div class="sub-title">2D RIGGING STUDIO</div>
+    <font color="yellow"> Rogério Benedito de Andrade, com uso de I.A. 2026</font>
+  </div>
+
+  <div id="canvas-container">
+    <canvas id="stage"></canvas>
+  </div>
+
+  <!-- JANELA 1: PROJETO E PALCO -->
+  <div class="floating-window" id="win-project" style="top: 60px; left: 15px; width: 280px;">
+    <div class="floating-header">
+      <span>📁 Projeto & Palco</span>
+      <div class="window-controls">
+        <button onclick="toggleWindowBody('win-project')">─</button>
+      </div>
+    </div>
+    <div class="floating-body">
+      <h2>Ações & Histórico</h2>
+      <div class="section">
+        <button onclick="undo()">↶ Desfazer (Ctrl+Z)</button>
+        <button class="danger-btn" onclick="deleteSelectedElement()">🗑️ Remover Selecionado (Del)</button>
+        <button onclick="resetStageZoom()">🔍 Resetar Zoom / Pan</button>
+      </div>
+
+      <h2>Arquivo & Armazenamento</h2>
+      <div class="section">
+        <button class="accent-btn" onclick="saveToLocalStorage()">💾 Salvar Projeto (Local)</button>
+        <button class="accent-btn" onclick="loadFromLocalStorage()">📂 Carregar Salvo (Local)</button>
+        <div class="btn-group">
+          <button onclick="exportJSON()">💾 Exportar JSON</button>
+          <button onclick="document.getElementById('file-input-json').click()">📥 Importar JSON</button>
+        </div>
+        <input type="file" id="file-input-json" accept=".json" style="display: none;" onchange="importJSON(event)">
+        <button class="danger-btn" onclick="clearAll()">Limpar Tudo</button>
+      </div>
+
+      <h2>Visualização</h2>
+      <div class="section">
+        <label id="lbl-unselected-opacity">Opacidade Não Selecionados: 75%</label>
+        <input type="range" id="unselected-opacity-slider" min="0" max="1" step="0.05" value="0.75" oninput="updateUnselectedOpacity(this.value)">
+
+        <div style="background: #18181f; padding: 8px; border-radius: 4px;" class="section">
+          <label class="checkbox-container">
+            <input type="checkbox" id="chk-onion-skin" onchange="toggleOnionSkin(this.checked)">
+            👻 Exibir Fantasmas (Onion Skin)
+          </label>
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">
+            <label style="font-size: 0.75rem;">Frames Anteriores:</label>
+            <input type="number" id="onion-count-input" value="3" min="1" max="10" style="width: 50px;" onchange="updateOnionCount(this.value)">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JANELA 2: RIGGING & FERRAMENTAS -->
+  <div class="floating-window" id="win-rigging" style="top: 60px; left: 310px; width: 260px;">
+    <div class="floating-header">
+      <span>🦴 Ferramentas & Rigging</span>
+      <div class="window-controls">
+        <button onclick="toggleWindowBody('win-rigging')">─</button>
+      </div>
+    </div>
+    <div class="floating-body">
+      <h2>Modo de Interação</h2>
+      <div class="section">
+        <button id="btn-mode-bone-child" onclick="setMode('ADD_BONE_CHILD')">+ Osso Filho</button>
+        <div class="btn-group">
+          <button id="btn-mode-draw" onclick="setMode('DRAW_MESH')">Desenhar</button>
+          <button id="btn-mode-pose" onclick="setMode('POSE')">Posicionar</button>
+        </div>
+      </div>
+
+      <h2>Estrutura & Hierarquia</h2>
+      <div class="section">
+        <div class="info-box" id="hierarchy-info">
+          Nenhum osso selecionado.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JANELA 3: IMAGENS & TRANSFORMADAS -->
+  <div class="floating-window" id="win-images" style="top: 60px; right: 15px; width: 300px;">
+    <div class="floating-header">
+      <span>🎨 Imagens & Ajustes</span>
+      <div class="window-controls">
+        <button onclick="toggleWindowBody('win-images')">─</button>
+      </div>
+    </div>
+    <div class="floating-body">
+      <h2>Gerenciador de Imagens</h2>
+      <div class="section">
+        <button class="accent-btn" onclick="openImageModal()">📥 Importar / Recortar Nova Imagem</button>
+
+        <div id="unattached-images-box" class="section" style="background: #18181f; padding: 8px; border-radius: 4px;">
+          <label style="color:#00d2ff; font-weight: bold;">Imagens Soltas (No Palco):</label>
+          <select id="unattached-select" onchange="render()"></select>
+          <button class="accent-btn" onclick="attachUnattachedImageToSelectedBone()" style="margin-top: 4px;">🔗 Associar ao Osso Selecionado</button>
+        </div>
+      </div>
+
+      <div id="pose-controls" class="section" style="display: none;">
+        <h2>Transformação / Ajustes</h2>
+
+        <label>Alvo da Operação:</label>
+        <div class="btn-group">
+          <button id="btn-target-bone" class="active" onclick="setTransformTarget('BONE')">Osso</button>
+          <button id="btn-target-image" onclick="setTransformTarget('IMAGE')">Imagem</button>
+        </div>
+
+        <div id="bone-transform-box" class="section">
+          <label id="lbl-bone-name">Rotacionar Osso (°)</label>
+          <input type="range" id="angle-slider" min="-180" max="180" value="0">
+
+          <label>Comprimento (Osso):</label>
+          <input type="range" id="bone-len-slider" min="10" max="500" value="100">
+
+          <label>Translação X:</label>
+          <input type="range" id="bone-posx-slider" min="-1000" max="1000" value="0">
+
+          <label>Translação Y:</label>
+          <input type="range" id="bone-posy-slider" min="-1000" max="1000" value="0">
+        </div>
+
+        <div id="image-transform-box" class="section" style="display: none;">
+          <div id="attached-image-info" style="font-size:0.8rem; color:#ffcc00; font-weight:bold;">
+            Nenhuma imagem associada
+          </div>
+
+          <div id="sprite-history-selector-box" class="section">
+            <label>Alternar Imagem Histórica:</label>
+            <select id="sprite-history-select" onchange="switchActiveSpriteFromHistory(this.value)"></select>
+          </div>
+
+          <div id="sprite-editor-controls" class="section">
+            <button class="warning-btn" onclick="detachSelectedSprite()">🔓 Desassociar e Mover para Soltas</button>
+
+            <label>Rotação Própria (°):</label>
+            <input type="range" id="sprite-rot" min="-180" max="180" value="0">
+
+            <label>Offset X:</label>
+            <input type="range" id="sprite-offx" min="-1000" max="1000" value="0">
+
+            <label>Offset Y:</label>
+            <input type="range" id="sprite-offy" min="-1000" max="1000" value="0">
+
+            <label>Escala Imagem:</label>
+            <input type="range" id="sprite-scale" min="0.05" max="5" step="0.05" value="1">
+
+            <button class="danger-btn" onclick="removeSelectedSprite()">Excluir Imagem Definitivamente</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JANELA 4: BANDEJA DE FIGURAS RECORTADAS -->
+  <div class="floating-window" id="win-tray" style="bottom: 270px; left: 15px; width: 555px;">
+    <div class="floating-header">
+      <span>📦 Bandeja de Figuras Recortadas</span>
+      <div class="window-controls">
+        <span id="asset-tray-count" style="color: #aaa; font-weight: normal; margin-right: 8px; font-size: 0.75rem;">0 itens</span>
+        <button onclick="toggleWindowBody('win-tray')">─</button>
+      </div>
+    </div>
+    <div class="floating-body">
+      <div id="asset-tray"></div>
+    </div>
+  </div>
+
+  <!-- JANELA 5: TIMELINE & ANIMATOR -->
+  <div class="floating-window" id="win-timeline" style="bottom: 15px; left: 15px; width: 95vw; height: 330px;">
+    <div class="floating-header">
+      <span>🎞️ Linha do Tempo & Animação</span>
+      <div class="window-controls">
+        <span id="frame-counter" style="font-weight: bold; color: #00d2ff; font-size:0.75rem; margin-right: 12px;">Frame: 0 / 60</span>
+        <button onclick="toggleWindowBody('win-timeline')">─</button>
+      </div>
+    </div>
+    <div class="floating-body">
+      <div class="timeline-controls">
+        <button id="btn-play" class="accent-btn" onclick="togglePlay()">▶ Play</button>
+        <button onclick="jumpToKeyframe(-1)">&lt; KF</button>
+        <button onclick="jumpToKeyframe(1)">KF &gt;</button>
+        <button id="btn-toggle-interp" onclick="toggleKeyframeInterpolation()">⚡ Interpolação</button>
+        <button class="accent-btn" onclick="addKeyframe()">+ Gravar KF</button>
+        <button class="danger-btn" onclick="removeKeyframe()">- Remover KF</button>
+                <!-- Dentro do bloco de .timeline-controls da JANELA 5 -->
+<button class="accent-btn" onclick="copyTimelineData()">📋 Copiar Linha</button>
+<button class="accent-btn" onclick="pasteTimelineData()">📌 Colar Linha</button>
+    <button class="accent-btn" onclick="toggleLayoutSettings()">🎨 Layout</button>
+
+
+        <div style="display:flex; align-items:center; gap:4px; margin-left:10px;">
+          <label>Frames:</label>
+          <input type="number" id="max-frames-input" value="60" min="5" max="1000" style="width: 55px;" onchange="updateMaxFrames(this.value)">
+        </div>
+
+        <div style="display:flex; align-items:center; gap:4px;">
+          <label>FPS:</label>
+          <input type="number" id="fps-input" value="24" min="1" max="120" style="width: 50px;" onchange="updateFPS(this.value)">
+        </div>
+
+        <button class="accent-btn" style="margin-left:auto;" onclick="exportImageSequence()">🎞️ Exportar Sequência</button>
+        <span id="keyframe-info" style="font-size:0.75rem; color:#ffcc00; font-weight:bold;"></span>
+      </div>
+
+      <div class="timeline-track-wrapper">
+        <div id="bone-layers-panel"></div>
+        <div class="timeline-canvas-container" id="timeline-drop-container">
+          <canvas id="timeline-canvas"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="image-context-menu">
+    <button onclick="addBoneFromContextMenu('ROOT')">➕ Adicionar Osso Raiz (90°)</button>
+    <button onclick="addBoneFromContextMenu('CHILD')">➕ Adicionar Osso Filho (90°)</button>
+  </div>
+
+  <div class="modal-overlay" id="image-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Importar & Recortar Imagem Solta</h3>
+        <button onclick="closeImageModal()">X</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-toolbar">
+          <input type="file" id="image-loader" accept="image/*">
+          <div>
+            <button onclick="resetCropZoom()">Resetar Zoom</button>
+            <button onclick="undoCropPoint()">Desfazer Ponto</button>
+            <button class="accent-btn" onclick="finishPolygon()">Fechar Polígono</button>
+            <button class="warning-btn" onclick="autoCropSeparateShapes()">✂️ Recorte Automático</button>
+          </div>
+        </div>
+
+        <div id="crop-canvas-container">
+          <canvas id="crop-canvas"></canvas>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+          <label class="checkbox-container">
+            <input type="checkbox" id="chk-remove-white" checked>
+            Remover Fundo Branco (Tornar Transparente)
+          </label>
+        </div>
+      </div>
+      <div class="btn-group">
+        <button onclick="closeImageModal()">Cancelar</button>
+        <button class="accent-btn" onclick="confirmCrop()">Confirmar e Importar</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ============================================================
+       PAINEL DE CONFIGURAÇÃO VISUAL
+       ============================================================ -->
+  <div id="layout-settings-window">
+    <div class="floating-header" style="padding:10px; display:flex; justify-content:space-between; align-items:center;">
+      <strong>🎨 Configuração do Layout</strong>
+      <button type="button" onclick="toggleLayoutSettings()" style="padding:3px 8px;">✕</button>
+    </div>
+
+    <div class="layout-settings-body">
+      <div class="layout-section">
+        <div class="layout-section-title">Tema</div>
+        <div class="layout-preset-row">
+          <button type="button" onclick="applyLayoutPreset('dark')">🌙 Dark</button>
+          <button type="button" onclick="applyLayoutPreset('light')">☀️ Light</button>
+          <button type="button" onclick="applyLayoutPreset('midnight')">🌌 Midnight</button>
+          <button type="button" onclick="applyLayoutPreset('contrast')">◐ Contraste</button>
+        </div>
+      </div>
+
+      <div class="layout-section">
+        <div class="layout-section-title">Cores principais</div>
+
+        <label class="layout-field">
+          <span>Fundo geral</span>
+          <input id="layout-bg" type="color" value="#202027" oninput="updateLayoutColor('--ui-bg', this.value)">
+        </label>
+
+        <label class="layout-field">
+          <span>Janelas / painéis</span>
+          <input id="layout-panel" type="color" value="#2b2b36" oninput="updateLayoutColor('--ui-panel', this.value)">
+        </label>
+
+        <div class="layout-section-title" style="margin-top:12px;">Fundo individual das janelas</div>
+        <label class="layout-field"><span>📁 Projeto & Palco</span><input id="layout-win-project" type="color" oninput="updateLayoutColor('--win-project-bg', this.value)"></label>
+        <label class="layout-field"><span>🦴 Ferramentas & Rigging</span><input id="layout-win-rigging" type="color" oninput="updateLayoutColor('--win-rigging-bg', this.value)"></label>
+        <label class="layout-field"><span>🎨 Imagens & Ajustes</span><input id="layout-win-images" type="color" oninput="updateLayoutColor('--win-images-bg', this.value)"></label>
+        <label class="layout-field"><span>📦 Figuras Recortadas</span><input id="layout-win-tray" type="color" oninput="updateLayoutColor('--win-tray-bg', this.value)"></label>
+        <label class="layout-field"><span>🎞️ Timeline & Animação</span><input id="layout-win-timeline" type="color" oninput="updateLayoutColor('--win-timeline-bg', this.value)"></label>
+
+        <label class="layout-field">
+          <span>Painel secundário</span>
+          <input id="layout-panel2" type="color" value="#18181f" oninput="updateLayoutColor('--ui-panel-2', this.value)">
+        </label>
+
+        <label class="layout-field">
+          <span>Campos / timeline</span>
+          <input id="layout-input" type="color" value="#121216" oninput="updateLayoutColor('--ui-input', this.value); updateLayoutColor('--ui-timeline-bg', this.value)">
+        </label>
+
+        <label class="layout-field">
+          <span>Texto</span>
+          <input id="layout-text" type="color" value="#eeeeee" oninput="updateLayoutColor('--ui-text', this.value)">
+        </label>
+
+        <label class="layout-field">
+          <span>Cor de destaque</span>
+          <input id="layout-accent" type="color" value="#00d2ff" oninput="updateLayoutColor('--ui-accent', this.value)">
+        </label>
+
+        <label class="layout-field">
+          <span>Bordas</span>
+          <input id="layout-border" type="color" value="#3f3f52" oninput="updateLayoutColor('--ui-border', this.value)">
+        </label>
+
+        <label class="layout-field">
+          <span>Grade da timeline</span>
+          <input id="layout-grid" type="color" value="#2d2d3a" oninput="updateLayoutColor('--ui-timeline-grid', this.value)">
+        </label>
+
+        <label class="layout-field">
+          <span>Keyframe</span>
+          <input id="layout-keyframe" type="color" value="#ffd54a" oninput="updateLayoutColor('--ui-keyframe', this.value)">
+        </label>
+
+        <label class="layout-field">
+          <span>Keyframe selecionado</span>
+          <input id="layout-keyframe-selected" type="color" value="#ff7b00" oninput="updateLayoutColor('--ui-keyframe-selected', this.value)">
+        </label>
+      </div>
+
+      <div class="layout-section">
+        <div class="layout-section-title">Timeline</div>
+
+        <label class="layout-field">
+          <span>Altura das linhas</span>
+          <input id="layout-row-height" type="number" min="18" max="60" value="24"
+                 oninput="setTimelineRowHeight(this.value)">
+        </label>
+
+        <label class="layout-field">
+          <span>Altura da régua</span>
+          <input id="layout-header-height" type="number" min="20" max="80" value="30"
+                 oninput="setTimelineHeaderHeight(this.value)">
+        </label>
+
+        <label class="layout-field">
+          <span>Largura do painel esquerdo</span>
+          <input id="layout-panel-width" type="number" min="120" max="350" value="160"
+                 oninput="setTimelinePanelWidth(this.value)">
+        </label>
+
+        <div class="layout-hint">
+          As alturas das linhas e da régua são aplicadas tanto aos controles
+          da esquerda quanto ao desenho da timeline, mantendo os elementos alinhados.
+        </div>
+      </div>
+
+      <div class="layout-section">
+        <div class="layout-section-title">Visualização</div>
+
+        <div class="layout-preset-row">
+          <button type="button" onclick="toggleCompactTimeline()">↕️ Compactar linhas</button>
+          <button type="button" onclick="resetLayout()">↺ Restaurar padrão</button>
+        </div>
+      </div>
+
+      
+<div class="layout-preview-help">
+Visualização em tempo real — as alterações aparecem imediatamente. 
+Use <b>Confirmar</b> para salvar ou <b>Cancelar</b> para voltar ao último layout confirmado.
+</div>
+<div id="layout-preview-status" class="layout-preview-status">
+        ✓ Layout confirmado
+      </div>
+
+      <div class="layout-actions">
+        <button id="layout-confirm-btn" type="button" class="accent-btn" onclick="confirmLayoutChanges()">✓ Confirmar</button>
+        <button id="layout-cancel-btn" type="button" onclick="cancelLayoutChanges()">✕ Cancelar</button>
+        <button type="button" class="warning-btn" onclick="restoreDefaultLayoutPreview()">↺ Restaurar padrão</button>
+        <button type="button" onclick="toggleLayoutSettings()">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- MINI PAINT: abre com duplo clique em uma parte importada -->
+  <div id="paint-modal" aria-hidden="true">
+    <div class="paint-dialog">
+      <div class="paint-header">
+        <strong>🖌️ Mini Paint — Corrigir Parte</strong>
+        <button type="button" onclick="closeSpritePaint()">✕</button>
+      </div>
+      <div class="paint-toolbar">
+        <button id="paint-tool-pencil" class="active" type="button" onclick="setPaintTool('pencil')">✏️ Lápis</button>
+        <button id="paint-tool-eraser" type="button" onclick="setPaintTool('eraser')">🧽 Borracha</button>
+        <button id="paint-tool-picker" type="button" onclick="setPaintTool('picker')">💧 Conta-gotas</button>
+        <button id="paint-tool-fill" type="button" onclick="setPaintTool('fill')">🪣 Balde de tinta</button>
+        <label title="Cor do lápis e do balde">Cor <input id="paint-color" class="paint-color" type="color" value="#ff0055"></label>
+        <label title="Tolerância do balde de tinta">Tol.</label>
+        <input id="paint-tolerance" class="paint-size" type="range" min="0" max="100" value="18">
+        <span id="paint-tolerance-value" class="paint-size-value">18</span>
+        <label title="Tamanho do pincel">Tamanho</label>
+        <input id="paint-size" class="paint-size" type="range" min="1" max="100" value="12">
+        <span id="paint-size-value" class="paint-size-value">12 px</span>
+        <button type="button" onclick="paintUndo()">↶ Desfazer</button>
+        <button type="button" onclick="paintRedo()">↷ Refazer</button>
+        <button type="button" onclick="paintClear()">🗑️ Limpar</button>
+        <button type="button" onclick="paintResetOriginal()">↺ Original</button>
+        <span style="display:flex;align-items:center;gap:4px;margin-left:4px;">
+          <button type="button" title="Diminuir zoom" onclick="setPaintZoom(paintZoom - 0.25)">−</button>
+          <span id="paint-zoom-value" class="paint-size-value" style="min-width:48px;">100%</span>
+          <button type="button" title="Aumentar zoom" onclick="setPaintZoom(paintZoom + 0.25)">+</button>
+          <button type="button" title="Resetar zoom" onclick="resetPaintZoom()">🔍 100%</button>
+        </span>
+        <span class="paint-help">Arraste para desenhar • Shift = linha reta • 🪣 clique para preencher • roda do mouse = zoom • duplo clique abre este editor</span>
+      </div>
+      <div id="paint-canvas-wrap">
+        <canvas id="paint-canvas"></canvas>
+      </div>
+      <div class="paint-footer">
+        <span id="paint-status">Nenhuma imagem em edição.</span>
+        <div style="display:flex;gap:7px;">
+          <button type="button" onclick="closeSpritePaint()">Cancelar</button>
+          <button type="button" class="accent-btn" onclick="applySpritePaint()">✓ Aplicar Correções</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let topZIndex = 100;
+
+
+
+    
+    function makeWindowDraggableAndFocusable(win) {
+      const header = win.querySelector('.floating-header');
+      let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+
+      win.addEventListener('mousedown', () => {
+        topZIndex++;
+        win.style.zIndex = topZIndex;
+      });
+
+      if (header) {
+        header.onmousedown = dragMouseDown;
+      }
+
+      function dragMouseDown(e) {
+        e = e || window.event;
+        if (e.target.tagName === 'BUTTON') return;
+        e.preventDefault();
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        document.onmouseup = closeDragElement;
+        document.onmousemove = elementDrag;
+      }
+
+      function elementDrag(e) {
+        e = e || window.event;
+        e.preventDefault();
+        pos1 = pos3 - e.clientX;
+        pos2 = pos4 - e.clientY;
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+
+        win.style.top = (win.offsetTop - pos2) + "px";
+        win.style.left = (win.offsetLeft - pos1) + "px";
+        win.style.right = "auto";
+        win.style.bottom = "auto";
+      }
+
+      function closeDragElement() {
+        document.onmouseup = null;
+        document.onmousemove = null;
+      }
+    }
+
+    function toggleWindowBody(winId) {
+      const win = document.getElementById(winId);
+      if (win) {
+        const body = win.querySelector('.floating-body');
+        if (body) {
+          body.classList.toggle('collapsed');
+        }
+      }
+    }
+
+    document.querySelectorAll('.floating-window').forEach(win => {
+      makeWindowDraggableAndFocusable(win);
+    });
+
+    const jszipScript = document.createElement('script');
+    jszipScript.src = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+    document.head.appendChild(jszipScript);
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const overlay = document.getElementById('intro-overlay');
+      setTimeout(() => {
+        overlay.style.opacity = '0';
+        setTimeout(() => {
+          overlay.style.display = 'none';
+        }, 600);
+      }, 3800);
+    });
+
+    function applySmoothing(context) {
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = 'high';
+    }
+
+    const canvas = document.getElementById('stage');
+    const ctx = canvas.getContext('2d');
+    applySmoothing(ctx);
+
+    const timelineCanvas = document.getElementById('timeline-canvas');
+    const tCtx = timelineCanvas.getContext('2d');
+    applySmoothing(tCtx);
+
+    let stageZoom = 1;
+    let stagePan = { x: 0, y: 0 };
+    let isStagePanning = false;
+    let stagePanStart = { x: 0, y: 0 };
+    let unselectedOpacity = 0.75;
+
+    let onionSkinEnabled = false;
+    let onionSkinCount = 3;
+
+    let mode = 'ADD_BONE_ROOT'; 
+    let transformTarget = 'BONE';
+    let bones = [];
+    let unattachedImages = []; 
+    let trayImages = [];
+    let selectedBone = null;
+    let contextMenuImageIndex = -1;
+    let isMouseDown = false;
+
+    let dragMode = null;
+    let dragStartPos = null;
+    let dragInitialState = {};
+    let currentDrawingStroke = [];
+
+    let undoStack = [];
+
+    let isResizingTimeline = false;
+    let isScrubbingTimeline = false;
+
+    let currentFrame = 0;
+    let maxFrames = 60;
+    let fps = 24;
+    let boneKeyframes = {};
+    let spriteKeyframes = {}; 
+    let isPlaying = false;
+    let animationInterval = null;
+
+    let loadedImage = null;
+    let polyPoints = [];
+    let isPolyClosed = false;
+    let cropZoom = 1;
+    let cropPan = { x: 0, y: 0 };
+    let isPanning = false;
+    let panStart = { x: 0, y: 0 };
+
+    const cropCanvas = document.getElementById('crop-canvas');
+    const cropCtx = cropCanvas.getContext('2d');
+    applySmoothing(cropCtx);
+
+    const canvasContainer = document.getElementById('canvas-container');
+
+    canvasContainer.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    });
+
+    canvasContainer.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const trayIndexStr = e.dataTransfer.getData('text/plain');
+      if (trayIndexStr !== "") {
+        const trayIdx = parseInt(trayIndexStr);
+        if (!isNaN(trayIdx) && trayImages[trayIdx]) {
+          saveState();
+
+          const item = trayImages.splice(trayIdx, 1)[0];
+
+          const rect = canvas.getBoundingClientRect();
+          const screenPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+          const worldPos = screenToWorld(screenPos);
+
+          let interceptedBone = null;
+          for (let i = bones.length - 1; i >= 0; i--) {
+            const b = bones[i];
+            if (!b.visibleBone || b.attachedSprite) continue;
+
+            const A = worldPos.x - b.startX;
+            const B = worldPos.y - b.startY;
+            const C = b.endX - b.startX;
+            const D = b.endY - b.startY;
+
+            const dot = A * C + B * D;
+            const lenSq = C * C + D * D;
+            let param = -1;
+            if (lenSq !== 0) param = dot / lenSq;
+
+            let xx, yy;
+            if (param < 0) {
+              xx = b.startX;
+              yy = b.startY;
+            } else if (param > 1) {
+              xx = b.endX;
+              yy = b.endY;
+            } else {
+              xx = b.startX + param * C;
+              yy = b.startY + param * D;
+            }
+
+            const dist = Math.hypot(worldPos.x - xx, worldPos.y - yy);
+            if (dist <= 25 / stageZoom) {
+              interceptedBone = b;
+              break;
+            }
+          }
+
+          if (interceptedBone && confirm(`Deseja associar esta imagem ao osso identificado "${interceptedBone.id}"?`)) {
+            interceptedBone.attachedSprite = item;
+            item.offX = 0;
+            item.offY = 0;
+            selectBone(interceptedBone);
+            setTransformTarget('IMAGE');
+          } else {
+            const canvasCenterX = canvas.width / (2 * stageZoom);
+            const canvasCenterY = canvas.height / (2 * stageZoom);
+
+            item.offX = worldPos.x - canvasCenterX;
+            item.offY = worldPos.y - canvasCenterY;
+
+            unattachedImages.push(item);
+          }
+
+          renderAssetTray();
+          updateUI();
+          render();
+        }
+      }
+    });
+
+    const timelineDropContainer = document.getElementById('timeline-drop-container');
+    timelineDropContainer.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    });
+
+    timelineDropContainer.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const trayIndexStr = e.dataTransfer.getData('text/plain');
+      if (trayIndexStr === "") return;
+
+      const trayIdx = parseInt(trayIndexStr);
+      if (isNaN(trayIdx) || !trayImages[trayIdx]) return;
+
+      const rect = timelineCanvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      const headerHeight = 30;
+      const trackHeight = 24;
+      const paddingRight = 20;
+      const trackWidth = timelineCanvas.width - paddingRight;
+      const step = trackWidth / maxFrames;
+
+      if (clickY <= headerHeight) return;
+
+      const boneIndex = Math.floor((clickY - headerHeight) / trackHeight);
+      if (boneIndex < 0 || boneIndex >= bones.length) return;
+
+      const targetBone = bones[boneIndex];
+      const targetFrame = Math.round(clickX / step);
+      const clampedFrame = Math.max(0, Math.min(maxFrames, targetFrame));
+
+      const hasKeyframe = boneKeyframes[targetBone.id] && boneKeyframes[targetBone.id][clampedFrame] !== undefined;
+
+      if (hasKeyframe) {
+        if (confirm(`Deseja adicionar/substituir a imagem no osso "${targetBone.id}" no frame ${clampedFrame}?`)) {
+          saveState();
+
+          const newItem = trayImages.splice(trayIdx, 1)[0];
+          newItem.offX = 0;
+          newItem.offY = 0;
+          newItem.scale = 1.0;
+          newItem.rot = 0;
+
+          if (!spriteKeyframes[targetBone.id]) {
+            spriteKeyframes[targetBone.id] = {};
+          }
+          if (!spriteKeyframes[targetBone.id][clampedFrame]) {
+            spriteKeyframes[targetBone.id][clampedFrame] = { activeIndex: 0, sprites: [] };
+          }
+
+          const spriteGroup = spriteKeyframes[targetBone.id][clampedFrame];
+          spriteGroup.sprites.push(newItem);
+          spriteGroup.activeIndex = spriteGroup.sprites.length - 1;
+
+          boneKeyframes[targetBone.id][clampedFrame].interpolated = false;
+
+          currentFrame = clampedFrame;
+          applyKeyframeState(currentFrame);
+
+          renderAssetTray();
+          updateUI();
+          render();
+        }
+      } else {
+        alert(`Solte a imagem sobre um keyframe existente do osso "${targetBone.id}" no frame ${clampedFrame}.`);
+      }
+    });
+
+    function renderAssetTray() {
+      const tray = document.getElementById('asset-tray');
+      const countLabel = document.getElementById('asset-tray-count');
+      tray.innerHTML = '';
+      countLabel.innerText = `${trayImages.length} itens`;
+
+      trayImages.forEach((imgObj, idx) => {
+        const thumb = document.createElement('div');
+        thumb.className = 'thumb-item';
+        thumb.draggable = true;
+        thumb.title = `${imgObj.name} — duplo clique para editar`;
+
+        // Duplo clique abre o Mini Paint diretamente sobre esta parte.
+        thumb.addEventListener('dblclick', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          openSpritePaint(imgObj);
+        });
+
+        const imgEl = document.createElement('img');
+        if (imgObj.imageCanvas) {
+          imgEl.src = imgObj.imageCanvas.toDataURL();
+        }
+
+        thumb.appendChild(imgEl);
+
+        thumb.addEventListener('dragstart', (e) => {
+          e.dataTransfer.setData('text/plain', idx.toString());
+        });
+
+        tray.appendChild(thumb);
+      });
+    }
+
+    function updateUnselectedOpacity(val) {
+      unselectedOpacity = parseFloat(val);
+      document.getElementById('lbl-unselected-opacity').innerText = `Opacidade Não Selecionados: ${Math.round(unselectedOpacity * 100)}%`;
+      render();
+    }
+
+    function toggleOnionSkin(val) {
+      onionSkinEnabled = val;
+      render();
+    }
+
+    function updateOnionCount(val) {
+      onionSkinCount = Math.max(1, Math.min(10, parseInt(val) || 3));
+      if (onionSkinEnabled) render();
+    }
+
+    function saveState() {
+      undoStack.push(serializeProject());
+      if (undoStack.length > 30) undoStack.shift();
+    }
+
+    function undo() {
+      if (undoStack.length > 0) {
+        const previousState = undoStack.pop();
+        deserializeProject(previousState, false);
+      }
+    }
+
+    window.addEventListener('keydown', (e) => {
+      const activeEl = document.activeElement;
+      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT')) {
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        undo();
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        deleteSelectedElement();
+      }
+    });
+
+    function deleteSelectedElement() {
+      if (transformTarget === 'BONE' && selectedBone) {
+        saveState();
+        deleteBone(selectedBone);
+        updateUI();
+        render();
+      } else if (transformTarget === 'IMAGE' && selectedBone && selectedBone.attachedSprite) {
+        removeSelectedSprite();
+      } else {
+        const select = document.getElementById('unattached-select');
+        const idx = parseInt(select ? select.value : -1);
+        if (idx >= 0 && unattachedImages[idx]) {
+          saveState();
+          unattachedImages.splice(idx, 1);
+          updateUI();
+          render();
+        }
+      }
+    }
+
+    function deleteBone(boneToDelete) {
+      if (!boneToDelete) return;
+
+      const children = bones.filter(b => b.parent === boneToDelete);
+      children.forEach(child => {
+        child.parent = boneToDelete.parent;
+      });
+
+      if (boneToDelete.attachedSprite) {
+        unattachedImages.push(boneToDelete.attachedSprite);
+      }
+
+      delete boneKeyframes[boneToDelete.id];
+      delete spriteKeyframes[boneToDelete.id];
+      bones = bones.filter(b => b !== boneToDelete);
+
+      if (selectedBone === boneToDelete) {
+        selectedBone = bones.length > 0 ? bones[0] : null;
+      }
+    }
+
+    function resizeTimelineCanvas() {
+      const container = document.getElementById('timeline-drop-container');
+      if (!container) return;
+
+      /*
+       * A régua continua com a mesma altura do cabeçalho (30 px)
+       * e cada osso ocupa exatamente 24 px.
+       * O painel da esquerda usa a mesma estrutura através do
+       * padding-top: 30px + .bone-layer-row de 24px.
+       */
+      const requiredHeight = Math.max(
+        100,
+        30 + (bones.length * 24)
+      );
+
+      timelineCanvas.width = Math.max(1, container.clientWidth);
+      timelineCanvas.height = requiredHeight;
+
+      applySmoothing(tCtx);
+      drawTimelineCanvas();
+    }
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      resizeTimelineCanvas();
+
+      applySmoothing(ctx);
+      applySmoothing(tCtx);
+
+      render();
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+
+    /*
+     * O resize nativo da janela .floating-window não dispara
+     * window.resize. O ResizeObserver atualiza a timeline sempre
+     * que o usuário arrastar o canto inferior direito da janela.
+     */
+    const timelineWindow = document.getElementById('win-timeline');
+    if (timelineWindow && typeof ResizeObserver !== 'undefined') {
+      const timelineResizeObserver = new ResizeObserver(() => {
+        requestAnimationFrame(resizeTimelineCanvas);
+      });
+      timelineResizeObserver.observe(timelineWindow);
+    }
+
+    function screenToWorld(sp) {
+      return {
+        x: (sp.x - stagePan.x) / stageZoom,
+        y: (sp.y - stagePan.y) / stageZoom
+      };
+    }
+
+    function worldToScreen(wp) {
+      return {
+        x: wp.x * stageZoom + stagePan.x,
+        y: wp.y * stageZoom + stagePan.y
+      };
+    }
+
+    function resetStageZoom() {
+      stageZoom = 1;
+      stagePan = { x: 0, y: 0 };
+      render();
+    }
+
+    class Bone {
+      constructor(id, parent, length, angle, basePos = {x: 0, y: 0}) {
+        this.id = id;
+        this.parent = parent;
+        this.length = length;
+        this.localAngle = angle;
+        this.posX = basePos.x;
+        this.posY = basePos.y;
+        this.meshStrokes = [];
+        this.attachedSprite = null; 
+
+        this.visibleBone = true;
+        this.visibleImage = true;
+
+        this.startX = 0;
+        this.startY = 0;
+        this.endX = 0;
+        this.endY = 0;
+        this.worldAngle = 0;
+      }
+
+      updateTransform() {
+        if (this.parent) {
+          this.startX = this.parent.endX + this.posX;
+          this.startY = this.parent.endY + this.posY;
+          this.worldAngle = this.parent.worldAngle + this.localAngle;
+        } else {
+          this.startX = this.posX;
+          this.startY = this.posY;
+          this.worldAngle = this.localAngle;
+        }
+
+        this.endX = this.startX + Math.cos(this.worldAngle) * this.length;
+        this.endY = this.startY + Math.sin(this.worldAngle) * this.length;
+      }
+
+      worldToLocal(point) {
+        const dx = point.x - this.startX;
+        const dy = point.y - this.startY;
+        const cos = Math.cos(-this.worldAngle);
+        const sin = Math.sin(-this.worldAngle);
+        return { x: dx * cos - dy * sin, y: dx * sin + dy * cos };
+      }
+
+      localToWorld(point) {
+        const cos = Math.cos(this.worldAngle);
+        const sin = Math.sin(this.worldAngle);
+        return {
+          x: this.startX + (point.x * cos - point.y * sin),
+          y: this.startY + (point.x * sin + point.y * cos)
+        };
+      }
+    }
+
+    function setMode(newMode) {
+      mode = newMode;
+      document.querySelectorAll('#win-rigging button').forEach(b => b.classList.remove('active'));
+
+      if (mode === 'ADD_BONE_CHILD') document.getElementById('btn-mode-bone-child').classList.add('active');
+      if (mode === 'DRAW_MESH') document.getElementById('btn-mode-draw').classList.add('active');
+      if (mode === 'POSE') document.getElementById('btn-mode-pose').classList.add('active');
+
+      document.getElementById('pose-controls').style.display = (mode === 'POSE') ? 'flex' : 'none';
+      render();
+    }
+
+    function setTransformTarget(target) {
+      transformTarget = target;
+      document.getElementById('btn-target-bone').classList.toggle('active', target === 'BONE');
+      document.getElementById('btn-target-image').classList.toggle('active', target === 'IMAGE');
+
+      document.getElementById('bone-transform-box').style.display = (target === 'BONE') ? 'flex' : 'none';
+      document.getElementById('image-transform-box').style.display = (target === 'IMAGE') ? 'flex' : 'none';
+
+      if (target === 'IMAGE') updateSpritePanel();
+      render();
+    }
+
+    function getSpriteBoundingBox(bone) {
+      if (!bone || !bone.attachedSprite || !bone.visibleImage) return null;
+      const sprite = bone.attachedSprite;
+      if (!sprite.imageCanvas) return null;
+      const w = sprite.imageCanvas.width * sprite.scale;
+      const h = sprite.imageCanvas.height * sprite.scale;
+
+      const spriteWorldAngle = bone.worldAngle + sprite.rot;
+      const cos = Math.cos(bone.worldAngle);
+      const sin = Math.sin(bone.worldAngle);
+
+      const centerWorld = {
+        x: bone.startX + (sprite.offX * cos - sprite.offY * sin),
+        y: bone.startY + (sprite.offX * sin + sprite.offY * cos)
+      };
+
+      return { sprite, w, h, centerWorld, spriteWorldAngle };
+    }
+
+    function getSelectedSpriteBoundingBox() {
+      return getSpriteBoundingBox(selectedBone);
+    }
+
+    function isPointInSprite(worldPos, bone) {
+      const bbox = getSpriteBoundingBox(bone);
+      if (!bbox) return false;
+
+      const dx = worldPos.x - bbox.centerWorld.x;
+      const dy = worldPos.y - bbox.centerWorld.y;
+
+      const cos = Math.cos(-bbox.spriteWorldAngle);
+      const sin = Math.sin(-bbox.spriteWorldAngle);
+
+      const localX = dx * cos - dy * sin;
+      const localY = dx * sin + dy * cos;
+
+      return Math.abs(localX) <= bbox.w / 2 && Math.abs(localY) <= bbox.h / 2;
+    }
+
+    function isPointInUnattachedImage(worldPos, imgObj) {
+      if (!imgObj.imageCanvas) return false;
+      const centerX = (canvas.width / (2 * stageZoom)) + (imgObj.offX || 0);
+      const centerY = (canvas.height / (2 * stageZoom)) + (imgObj.offY || 0);
+      const w = imgObj.imageCanvas.width;
+      const h = imgObj.imageCanvas.height;
+
+      return Math.abs(worldPos.x - centerX) <= w / 2 && Math.abs(worldPos.y - centerY) <= h / 2;
+    }
+
+    window.addEventListener('click', () => {
+      document.getElementById('image-context-menu').style.display = 'none';
+    });
+
+    canvas.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const screenPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      const worldPos = screenToWorld(screenPos);
+
+      let hitUnattachedIndex = -1;
+      for (let i = unattachedImages.length - 1; i >= 0; i--) {
+        if (isPointInUnattachedImage(worldPos, unattachedImages[i])) {
+          hitUnattachedIndex = i;
+          break;
+        }
+      }
+
+      if (hitUnattachedIndex !== -1) {
+        contextMenuImageIndex = hitUnattachedIndex;
+        const menu = document.getElementById('image-context-menu');
+        menu.style.display = 'block';
+        menu.style.left = `${e.clientX}px`;
+        menu.style.top = `${e.clientY}px`;
+      } else {
+        document.getElementById('image-context-menu').style.display = 'none';
+      }
+    });
+
+    // Duplo clique no palco: permite editar tanto uma imagem solta quanto a
+    // imagem associada ao osso/keyframe que estiver visível.
+    canvas.addEventListener('dblclick', (e) => {
+      if (e.button !== 0) return;
+      const rect = canvas.getBoundingClientRect();
+      const screenPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      const worldPos = screenToWorld(screenPos);
+
+      for (let i = unattachedImages.length - 1; i >= 0; i--) {
+        if (isPointInUnattachedImage(worldPos, unattachedImages[i])) {
+          openSpritePaint(unattachedImages[i]);
+          return;
+        }
+      }
+
+      for (let i = bones.length - 1; i >= 0; i--) {
+        const bone = bones[i];
+        if (bone.visibleImage && isPointInSprite(worldPos, bone)) {
+          selectBone(bone);
+          setTransformTarget('IMAGE');
+          if (bone.attachedSprite) openSpritePaint(bone.attachedSprite);
+          return;
+        }
+      }
+    });
+
+    function addBoneFromContextMenu(type) {
+      if (contextMenuImageIndex < 0 || !unattachedImages[contextMenuImageIndex]) return;
+
+      saveState();
+      const imgObj = unattachedImages.splice(contextMenuImageIndex, 1)[0];
+      
+      const centerX = (canvas.width / (2 * stageZoom)) + (imgObj.offX || 0);
+      const centerY = (canvas.height / (2 * stageZoom)) + (imgObj.offY || 0);
+
+      const boneLength = Math.max(60, Math.min(imgObj.imageCanvas.width, imgObj.imageCanvas.height));
+      const targetAngle = Math.PI / 2;
+
+      let parentBone = (type === 'CHILD') ? selectedBone : null;
+      let basePos = { x: centerX, y: centerY };
+      let localAngle = targetAngle;
+
+      if (parentBone) {
+        basePos = { x: centerX - parentBone.endX, y: centerY - parentBone.endY };
+        localAngle = targetAngle - parentBone.worldAngle;
+      }
+
+      const newBone = new Bone(`Osso_${bones.length + 1}`, parentBone, boneLength, localAngle, basePos);
+      newBone.attachedSprite = imgObj;
+      imgObj.offX = 0;
+      imgObj.offY = 0;
+
+      bones.push(newBone);
+      boneKeyframes[newBone.id] = {};
+      spriteKeyframes[newBone.id] = {};
+      selectBone(newBone);
+      setTransformTarget('BONE');
+      
+      document.getElementById('image-context-menu').style.display = 'none';
+      contextMenuImageIndex = -1;
+      resizeCanvas();
+    }
+
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const screenPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+
+      const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
+      const newZoom = Math.max(0.1, Math.min(10, stageZoom * zoomFactor));
+
+      stagePan.x = screenPos.x - (screenPos.x - stagePan.x) * (newZoom / stageZoom);
+      stagePan.y = screenPos.y - (screenPos.y - stagePan.y) * (newZoom / stageZoom);
+      stageZoom = newZoom;
+
+      render();
+    });
+
+    canvas.addEventListener('mousedown', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const screenPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      const worldPos = screenToWorld(screenPos);
+      isMouseDown = true;
+      dragMode = null;
+
+      if (e.button === 2) {
+        isStagePanning = true;
+        stagePanStart = { x: screenPos.x - stagePan.x, y: screenPos.y - stagePan.y };
+        return;
+      }
+
+      if (mode === 'ADD_BONE_ROOT') {
+        dragStartPos = worldPos;
+      }
+      else if (mode === 'ADD_BONE_CHILD') {
+        if (!selectedBone && bones.length > 0) {
+          selectedBone = bones[bones.length - 1];
+        }
+        dragStartPos = selectedBone ? { x: selectedBone.endX, y: selectedBone.endY } : worldPos;
+      } 
+      else if (mode === 'DRAW_MESH') {
+        if (!selectedBone && bones.length > 0) selectedBone = bones[0];
+        if (selectedBone) {
+          currentDrawingStroke = [selectedBone.worldToLocal(worldPos)];
+        }
+      } 
+      else if (mode === 'POSE') {
+        if (selectedBone) {
+          if (transformTarget === 'IMAGE' && selectedBone.attachedSprite && selectedBone.visibleImage) {
+            const bbox = getSelectedSpriteBoundingBox();
+            if (bbox) {
+              const rotHandleX = bbox.centerWorld.x + Math.sin(bbox.spriteWorldAngle) * (bbox.h / 2 + 25 / stageZoom);
+              const rotHandleY = bbox.centerWorld.y - Math.cos(bbox.spriteWorldAngle) * (bbox.h / 2 + 25 / stageZoom);
+              const distRot = Math.hypot(rotHandleX - worldPos.x, rotHandleY - worldPos.y);
+
+              if (distRot < 15 / stageZoom) {
+                dragMode = 'SPRITE_ROTATE';
+                dragStartPos = worldPos;
+                dragInitialState = { rot: bbox.sprite.rot };
+                saveState();
+                return;
+              }
+
+              const distTrans = Math.hypot(bbox.centerWorld.x - worldPos.x, bbox.centerWorld.y - worldPos.y);
+              if (distTrans < 18 / stageZoom) {
+                dragMode = 'SPRITE_TRANSLATE';
+                dragStartPos = worldPos;
+                dragInitialState = { offX: bbox.sprite.offX, offY: bbox.sprite.offY };
+                saveState();
+                return;
+              }
+            }
+          } 
+          else if (transformTarget === 'BONE' && selectedBone.visibleBone) {
+            const rotHandleX = selectedBone.endX + Math.cos(selectedBone.worldAngle) * (20 / stageZoom);
+            const rotHandleY = selectedBone.endY + Math.sin(selectedBone.worldAngle) * (20 / stageZoom);
+            const distRot = Math.hypot(rotHandleX - worldPos.x, rotHandleY - worldPos.y);
+
+            if (distRot < 15 / stageZoom) {
+              dragMode = 'BONE_ROTATE';
+              dragStartPos = worldPos;
+              saveState();
+              return;
+            }
+          }
+        }
+
+        let hitSpriteBone = null;
+        for (let i = bones.length - 1; i >= 0; i--) {
+          if (bones[i].visibleImage && isPointInSprite(worldPos, bones[i])) {
+            hitSpriteBone = bones[i];
+            break;
+          }
+        }
+
+        let closestBone = null;
+        let minDist = 25 / stageZoom;
+        let activeAnchorType = null;
+
+        bones.forEach(b => {
+          if (!b.visibleBone) return;
+          const rootDist = Math.hypot(b.startX - worldPos.x, b.startY - worldPos.y);
+          const tipDist = Math.hypot(b.endX - worldPos.x, b.endY - worldPos.y);
+
+          const midX = (b.startX + b.endX) / 2;
+          const midY = (b.startY + b.endY) / 2;
+          const scaleDist = Math.hypot(midX - worldPos.x, midY - worldPos.y);
+
+          if (rootDist < minDist) {
+            minDist = rootDist; closestBone = b; activeAnchorType = 'ROOT';
+          }
+          if (scaleDist < minDist) {
+            minDist = scaleDist; closestBone = b; activeAnchorType = 'SCALE';
+          }
+          if (tipDist < minDist) {
+            minDist = tipDist; closestBone = b; activeAnchorType = 'TIP';
+          }
+        });
+
+        if (closestBone) {
+          selectBone(closestBone);
+          setTransformTarget('BONE');
+          dragStartPos = worldPos;
+          saveState();
+
+          if (activeAnchorType === 'ROOT') dragMode = 'BONE_TRANSLATE';
+          else if (activeAnchorType === 'SCALE') {
+            dragMode = 'BONE_SCALE';
+            dragInitialState = { length: closestBone.length };
+          }
+          else if (activeAnchorType === 'TIP') dragMode = 'BONE_ROTATE';
+        } else if (hitSpriteBone) {
+          selectBone(hitSpriteBone);
+          setTransformTarget('IMAGE');
+          const bbox = getSelectedSpriteBoundingBox();
+          if (bbox) {
+            const rotHandleX = bbox.centerWorld.x + Math.sin(bbox.spriteWorldAngle) * (bbox.h / 2 + 25 / stageZoom);
+            const rotHandleY = bbox.centerWorld.y - Math.cos(bbox.spriteWorldAngle) * (bbox.h / 2 + 25 / stageZoom);
+            const rotHandleDist = Math.hypot(worldPos.x - rotHandleX, worldPos.y - rotHandleY);
+
+            if (rotHandleDist < 18 / stageZoom) {
+              dragMode = 'SPRITE_ROTATE';
+              dragStartPos = worldPos;
+              dragInitialState = { rot: bbox.sprite.rot };
+              saveState();
+              return;
+            }
+
+            const scaleHandleDist = Math.hypot(worldPos.x - (bbox.centerWorld.x + Math.cos(bbox.spriteWorldAngle) * bbox.w/2 + Math.sin(bbox.spriteWorldAngle) * bbox.h/2), worldPos.y - (bbox.centerWorld.y + Math.sin(bbox.spriteWorldAngle) * bbox.w/2 - Math.cos(bbox.spriteWorldAngle) * bbox.h/2));
+            if (scaleHandleDist < 18 / stageZoom) {
+              dragMode = 'SPRITE_SCALE';
+              dragStartPos = worldPos;
+              dragInitialState = { scale: bbox.sprite.scale, dist: Math.hypot(worldPos.x - bbox.centerWorld.x, worldPos.y - bbox.centerWorld.y) };
+              saveState();
+              return;
+            }
+
+            dragMode = 'SPRITE_TRANSLATE';
+            dragStartPos = worldPos;
+            dragInitialState = { offX: bbox.sprite.offX, offY: bbox.sprite.offY };
+            saveState();
+          }
+        }
+      }
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const screenPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      const worldPos = screenToWorld(screenPos);
+
+      if (isStagePanning) {
+        stagePan.x = screenPos.x - stagePanStart.x;
+        stagePan.y = screenPos.y - stagePanStart.y;
+        render();
+        return;
+      }
+
+      if (!isMouseDown) return;
+
+      if ((mode === 'ADD_BONE_ROOT' || mode === 'ADD_BONE_CHILD') && dragStartPos) {
+        render();
+        const startScreen = worldToScreen(dragStartPos);
+        ctx.beginPath();
+        ctx.moveTo(startScreen.x, startScreen.y);
+        ctx.lineTo(screenPos.x, screenPos.y);
+        ctx.strokeStyle = '#00d2ff';
+        ctx.setLineDash([5, 5]);
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.setLineDash([]);
+      } 
+      else if (mode === 'DRAW_MESH' && selectedBone) {
+        currentDrawingStroke.push(selectedBone.worldToLocal(worldPos));
+        render();
+
+        ctx.save();
+        ctx.translate(stagePan.x, stagePan.y);
+        ctx.scale(stageZoom, stageZoom);
+        ctx.beginPath();
+        ctx.strokeStyle = '#ff0055';
+        ctx.lineWidth = 3 / stageZoom;
+        for (let i = 0; i < currentDrawingStroke.length - 1; i++) {
+          const pt1 = selectedBone.localToWorld(currentDrawingStroke[i]);
+          const pt2 = selectedBone.localToWorld(currentDrawingStroke[i + 1]);
+          ctx.moveTo(pt1.x, pt1.y);
+          ctx.lineTo(pt2.x, pt2.y);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+      else if (mode === 'POSE' && selectedBone) {
+        if (dragMode === 'BONE_TRANSLATE') {
+          const dx = worldPos.x - dragStartPos.x;
+          const dy = worldPos.y - dragStartPos.y;
+          selectedBone.posX += dx;
+          selectedBone.posY += dy;
+          dragStartPos = worldPos;
+          addKeyframeAuto();
+          updateUI();
+          render();
+        } 
+        else if (dragMode === 'BONE_SCALE') {
+          const dx = worldPos.x - selectedBone.startX;
+          const dy = worldPos.y - selectedBone.startY;
+          const projLen = dx * Math.cos(selectedBone.worldAngle) + dy * Math.sin(selectedBone.worldAngle);
+          selectedBone.length = Math.max(10, projLen);
+          addKeyframeAuto();
+          updateUI();
+          render();
+        }
+        else if (dragMode === 'BONE_ROTATE') {
+          const baseAngle = selectedBone.parent ? selectedBone.parent.worldAngle : 0;
+          const newWorldAngle = Math.atan2(worldPos.y - selectedBone.startY, worldPos.x - selectedBone.startX);
+          selectedBone.localAngle = newWorldAngle - baseAngle;
+          addKeyframeAuto();
+          updateUI();
+          render();
+        }
+        else if (dragMode === 'SPRITE_TRANSLATE' && selectedBone.attachedSprite) {
+          const sprite = selectedBone.attachedSprite;
+          const dx = worldPos.x - dragStartPos.x;
+          const dy = worldPos.y - dragStartPos.y;
+          const cos = Math.cos(-selectedBone.worldAngle);
+          const sin = Math.sin(-selectedBone.worldAngle);
+
+          sprite.offX += dx * cos - dy * sin;
+          sprite.offY += dx * sin + dy * cos;
+          dragStartPos = worldPos;
+          
+          if (spriteKeyframes[selectedBone.id] && spriteKeyframes[selectedBone.id][currentFrame]) {
+            const group = spriteKeyframes[selectedBone.id][currentFrame];
+            if (group.sprites[group.activeIndex]) {
+              group.sprites[group.activeIndex].offX = sprite.offX;
+              group.sprites[group.activeIndex].offY = sprite.offY;
+            }
+          }
+
+          updateUI();
+          render();
+        }
+        else if (dragMode === 'SPRITE_ROTATE' && selectedBone.attachedSprite) {
+          const bbox = getSelectedSpriteBoundingBox();
+          if (bbox) {
+            const angle = Math.atan2(worldPos.y - bbox.centerWorld.y, worldPos.x - bbox.centerWorld.x);
+            bbox.sprite.rot = angle - selectedBone.worldAngle + Math.PI/2;
+            
+            if (spriteKeyframes[selectedBone.id] && spriteKeyframes[selectedBone.id][currentFrame]) {
+              const group = spriteKeyframes[selectedBone.id][currentFrame];
+              if (group.sprites[group.activeIndex]) {
+                group.sprites[group.activeIndex].rot = bbox.sprite.rot;
+              }
+            }
+
+            updateUI();
+            render();
+          }
+        }
+        else if (dragMode === 'SPRITE_SCALE' && selectedBone.attachedSprite) {
+          const bbox = getSelectedSpriteBoundingBox();
+          if (bbox && dragInitialState.dist > 0) {
+            const currentDist = Math.hypot(worldPos.x - bbox.centerWorld.x, worldPos.y - bbox.centerWorld.y);
+            bbox.sprite.scale = Math.max(0.05, dragInitialState.scale * (currentDist / dragInitialState.dist));
+            
+            if (spriteKeyframes[selectedBone.id] && spriteKeyframes[selectedBone.id][currentFrame]) {
+              const group = spriteKeyframes[selectedBone.id][currentFrame];
+              if (group.sprites[group.activeIndex]) {
+                group.sprites[group.activeIndex].scale = bbox.sprite.scale;
+              }
+            }
+
+            updateUI();
+            render();
+          }
+        }
+      }
+    });
+
+    canvas.addEventListener('mouseup', (e) => {
+      if (e.button === 2) {
+        isStagePanning = false;
+      }
+
+      const rect = canvas.getBoundingClientRect();
+      const screenPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      const worldPos = screenToWorld(screenPos);
+
+      if ((mode === 'ADD_BONE_ROOT' || mode === 'ADD_BONE_CHILD') && isMouseDown && dragStartPos && e.button === 0) {
+        const dx = worldPos.x - dragStartPos.x;
+        const dy = worldPos.y - dragStartPos.y;
+        const length = Math.hypot(dx, dy);
+
+        if (length > 15) {
+          saveState();
+          let parentBone = (mode === 'ADD_BONE_CHILD') ? selectedBone : null;
+          let worldAngle = Math.atan2(dy, dx);
+          let localAngle = parentBone ? worldAngle - parentBone.worldAngle : worldAngle;
+
+          let basePos = { x: dragStartPos.x, y: dragStartPos.y };
+          if (parentBone) {
+            basePos = { x: dragStartPos.x - parentBone.endX, y: dragStartPos.y - parentBone.endY };
+          }
+
+          const newBone = new Bone(`Osso_${bones.length + 1}`, parentBone, length, localAngle, basePos);
+          bones.push(newBone);
+          boneKeyframes[newBone.id] = {};
+          spriteKeyframes[newBone.id] = {};
+          selectBone(newBone);
+          setTransformTarget('BONE');
+          resizeCanvas();
+        }
+      } 
+      else if (mode === 'DRAW_MESH' && isMouseDown && selectedBone && e.button === 0) {
+        if (currentDrawingStroke.length > 1) {
+          saveState();
+          selectedBone.meshStrokes.push([...currentDrawingStroke]);
+        }
+        currentDrawingStroke = [];
+      }
+
+      isMouseDown = false;
+      dragMode = null;
+      dragStartPos = null;
+      render();
+    });
+
+    const angleSlider = document.getElementById('angle-slider');
+    const boneLenSlider = document.getElementById('bone-len-slider');
+    const bonePosXSlider = document.getElementById('bone-posx-slider');
+    const bonePosYSlider = document.getElementById('bone-posy-slider');
+
+    angleSlider.addEventListener('input', (e) => {
+      if (selectedBone && mode === 'POSE' && transformTarget === 'BONE') {
+        selectedBone.localAngle = (e.target.value * Math.PI) / 180;
+        addKeyframeAuto();
+        render();
+      }
+    });
+
+    boneLenSlider.addEventListener('input', (e) => {
+      if (selectedBone && mode === 'POSE' && transformTarget === 'BONE') {
+        selectedBone.length = parseFloat(e.target.value);
+        addKeyframeAuto();
+        render();
+      }
+    });
+
+    bonePosXSlider.addEventListener('input', (e) => {
+      if (selectedBone && mode === 'POSE' && transformTarget === 'BONE') {
+        selectedBone.posX = parseFloat(e.target.value);
+        addKeyframeAuto();
+        render();
+      }
+    });
+
+    bonePosYSlider.addEventListener('input', (e) => {
+      if (selectedBone && mode === 'POSE' && transformTarget === 'BONE') {
+        selectedBone.posY = parseFloat(e.target.value);
+        addKeyframeAuto();
+        render();
+      }
+    });
+
+    function reorderBone(bone, direction) {
+      const index = bones.indexOf(bone);
+      const targetIndex = index + direction;
+
+      if (targetIndex >= 0 && targetIndex < bones.length) {
+        saveState();
+        const temp = bones[index];
+        bones[index] = bones[targetIndex];
+        bones[targetIndex] = temp;
+        updateUI();
+        resizeCanvas();
+      }
+    }
+
+    const offXSlider = document.getElementById('sprite-offx');
+    const offYSlider = document.getElementById('sprite-offy');
+    const scaleSlider = document.getElementById('sprite-scale');
+    const rotSlider = document.getElementById('sprite-rot');
+
+    function updateSpriteFromSliders() {
+      if (selectedBone && selectedBone.attachedSprite && transformTarget === 'IMAGE') {
+        const sprite = selectedBone.attachedSprite;
+        sprite.offX = parseFloat(offXSlider.value);
+        sprite.offY = parseFloat(offYSlider.value);
+        sprite.scale = parseFloat(scaleSlider.value);
+        sprite.rot = (parseFloat(rotSlider.value) * Math.PI) / 180;
+
+        if (spriteKeyframes[selectedBone.id] && spriteKeyframes[selectedBone.id][currentFrame]) {
+          const group = spriteKeyframes[selectedBone.id][currentFrame];
+          if (group.sprites[group.activeIndex]) {
+            group.sprites[group.activeIndex].offX = sprite.offX;
+            group.sprites[group.activeIndex].offY = sprite.offY;
+            group.sprites[group.activeIndex].scale = sprite.scale;
+            group.sprites[group.activeIndex].rot = sprite.rot;
+          }
+        }
+        render();
+      }
+    }
+
+    [offXSlider, offYSlider, scaleSlider, rotSlider].forEach(s => s.addEventListener('input', updateSpriteFromSliders));
+
+    function selectBone(bone) {
+      selectedBone = bone;
+      if (mode !== 'POSE') {
+        setMode('POSE');
+      }
+      updateUI();
+      render();
+    }
+
+    function updateSpritePanel() {
+      const infoText = document.getElementById('attached-image-info');
+      const editorBox = document.getElementById('sprite-editor-controls');
+      const historyBox = document.getElementById('sprite-history-selector-box');
+      const historySelect = document.getElementById('sprite-history-select');
+
+      if (!selectedBone || !selectedBone.attachedSprite) {
+        infoText.innerText = "Nenhuma imagem associada a este osso.";
+        editorBox.style.display = 'none';
+        historyBox.style.display = 'none';
+        return;
+      }
+
+      editorBox.style.display = 'flex';
+      const sprite = selectedBone.attachedSprite;
+      infoText.innerText = `Imagem Ativa: ${sprite.name}`;
+
+      if (spriteKeyframes[selectedBone.id] && spriteKeyframes[selectedBone.id][currentFrame]) {
+        const group = spriteKeyframes[selectedBone.id][currentFrame];
+        if (group.sprites && group.sprites.length > 1) {
+          historyBox.style.display = 'flex';
+          historySelect.innerHTML = '';
+          group.sprites.forEach((s, idx) => {
+            const opt = document.createElement('option');
+            opt.value = idx;
+            opt.text = `${s.name} ${idx === group.activeIndex ? '(Ativa)' : ''}`;
+            if (idx === group.activeIndex) opt.selected = true;
+            historySelect.appendChild(opt);
+          });
+        } else {
+          historyBox.style.display = 'none';
+        }
+      } else {
+        historyBox.style.display = 'none';
+      }
+
+      offXSlider.value = sprite.offX;
+      offYSlider.value = sprite.offY;
+      scaleSlider.value = sprite.scale;
+      rotSlider.value = Math.round((sprite.rot * 180) / Math.PI);
+
+      render();
+    }
+
+    function switchActiveSpriteFromHistory(indexStr) {
+      if (!selectedBone) return;
+      const idx = parseInt(indexStr);
+      if (spriteKeyframes[selectedBone.id] && spriteKeyframes[selectedBone.id][currentFrame]) {
+        const group = spriteKeyframes[selectedBone.id][currentFrame];
+        if (!isNaN(idx) && group.sprites[idx]) {
+          saveState();
+          group.activeIndex = idx;
+          selectedBone.attachedSprite = group.sprites[idx];
+          updateSpritePanel();
+          render();
+        }
+      }
+    }
+
+    function updateUnattachedImagesList() {
+      const select = document.getElementById('unattached-select');
+      select.innerHTML = '';
+
+      if (unattachedImages.length === 0) {
+        select.innerHTML = '<option value="-1">Nenhuma imagem solta</option>';
+        return;
+      }
+
+      unattachedImages.forEach((imgObj, idx) => {
+        const option = document.createElement('option');
+        option.value = idx;
+        option.text = imgObj.name || `Imagem Solta #${idx + 1}`;
+        select.appendChild(option);
+      });
+    }
+
+    function attachUnattachedImageToSelectedBone() {
+      if (!selectedBone) {
+        alert("Selecione um osso na tela antes para associar a imagem.");
+        return;
+      }
+
+      const select = document.getElementById('unattached-select');
+      const idx = parseInt(select.value);
+
+      if (idx >= 0 && unattachedImages[idx]) {
+        saveState();
+        
+        if (selectedBone.attachedSprite) {
+          unattachedImages.push(selectedBone.attachedSprite);
+        }
+
+        const newSprite = unattachedImages.splice(idx, 1)[0];
+        selectedBone.attachedSprite = newSprite;
+
+        setTransformTarget('IMAGE');
+        updateUI();
+        render();
+      }
+    }
+
+    function detachSelectedSprite() {
+      if (!selectedBone || !selectedBone.attachedSprite) return;
+
+      saveState();
+      const sprite = selectedBone.attachedSprite;
+      selectedBone.attachedSprite = null;
+      unattachedImages.push(sprite);
+
+      updateUI();
+      render();
+    }
+
+    function updateUI() {
+      const infoBox = document.getElementById('hierarchy-info');
+      const lblName = document.getElementById('lbl-bone-name');
+
+      if (selectedBone) {
+        const imageName = selectedBone.attachedSprite ? selectedBone.attachedSprite.name : 'Nenhuma';
+        infoBox.innerHTML = `
+          <b>Osso Selecionado:</b> ${selectedBone.id}<br>
+          <b>Imagem Associada:</b> ${imageName}<br>
+          <b>Comprimento:</b> ${Math.round(selectedBone.length)}px<br>
+          <b>Posição Relativa:</b> X:${Math.round(selectedBone.posX)}, Y:${Math.round(selectedBone.posY)}<br>
+          <b>Pai:</b> ${selectedBone.parent ? selectedBone.parent.id : 'Nenhum'}
+        `;
+
+        lblName.innerText = `Rotacionar Osso: ${selectedBone.id}`;
+        angleSlider.value = Math.round((selectedBone.localAngle * 180) / Math.PI);
+        boneLenSlider.value = Math.round(selectedBone.length);
+        bonePosXSlider.value = Math.round(selectedBone.posX);
+        bonePosYSlider.value = Math.round(selectedBone.posY);
+
+        updateSpritePanel();
+      } else {
+        infoBox.innerHTML = 'Nenhum osso selecionado.';
+      }
+
+      updateUnattachedImagesList();
+
+      document.getElementById('frame-counter').innerText = `Frame: ${currentFrame} / ${maxFrames}`;
+      const kf = selectedBone && boneKeyframes[selectedBone.id] && boneKeyframes[selectedBone.id][currentFrame];
+      const hasKeyframe = !!kf;
+      document.getElementById('keyframe-info').innerText = hasKeyframe ? '★ KF' : '';
+
+      const btnInterp = document.getElementById('btn-toggle-interp');
+      if (hasKeyframe) {
+        btnInterp.disabled = false;
+        const isInterp = kf.interpolated !== false;
+        btnInterp.innerText = isInterp ? '⚡ Interpolando' : '⏹️ Hold';
+        btnInterp.className = isInterp ? 'accent-btn' : 'warning-btn';
+      } else {
+        btnInterp.disabled = true;
+        btnInterp.innerText = '⚡ Interpolação';
+        btnInterp.className = '';
+      }
+
+      renderBoneLayersPanel();
+      drawTimelineCanvas();
+    }
+
+    function toggleBoneVisibility(bone) {
+      bone.visibleBone = !bone.visibleBone;
+      renderBoneLayersPanel();
+      render();
+    }
+
+    function toggleImageVisibility(bone) {
+      bone.visibleImage = !bone.visibleImage;
+      renderBoneLayersPanel();
+      render();
+    }
+
+    function renderBoneLayersPanel() {
+      const panel = document.getElementById('bone-layers-panel');
+      panel.innerHTML = '';
+
+      bones.forEach((bone) => {
+        const row = document.createElement('div');
+        row.className = 'bone-layer-row' + (bone === selectedBone ? ' active' : '');
+
+        const label = document.createElement('span');
+        label.className = 'bone-layer-label';
+        label.innerText = bone.id;
+        label.title = bone.id;
+        label.onclick = () => {
+          selectBone(bone);
+          setTransformTarget('BONE');
+        };
+        label.ondblclick = () => {
+          const newName = prompt("Digite o novo nome para o osso:", bone.id);
+          if (newName && newName.trim() !== "") {
+            saveState();
+            const oldId = bone.id;
+            const trimmedName = newName.trim();
+            bone.id = trimmedName;
+
+            if (boneKeyframes[oldId]) {
+              boneKeyframes[trimmedName] = boneKeyframes[oldId];
+              delete boneKeyframes[oldId];
+            }
+            if (spriteKeyframes[oldId]) {
+              spriteKeyframes[trimmedName] = spriteKeyframes[oldId];
+              delete spriteKeyframes[oldId];
+            }
+
+            updateUI();
+            render();
+          }
+        };
+
+        const btnGroup = document.createElement('div');
+        btnGroup.className = 'layer-btn-group';
+
+        const btnBoneVis = document.createElement('button');
+        btnBoneVis.className = 'btn-layer-toggle' + (!bone.visibleBone ? ' hidden-item' : '');
+        btnBoneVis.innerText = '👁️';
+        btnBoneVis.title = bone.visibleBone ? 'Ocultar Osso' : 'Exibir Osso';
+        btnBoneVis.onclick = (e) => { e.stopPropagation(); toggleBoneVisibility(bone); };
+
+        const btnImgVis = document.createElement('button');
+        btnImgVis.className = 'btn-layer-toggle' + (!bone.visibleImage ? ' hidden-item' : '');
+        btnImgVis.innerText = '🖼️';
+        btnImgVis.title = bone.visibleImage ? 'Ocultar Imagem' : 'Exibir Imagem';
+        btnImgVis.onclick = (e) => { e.stopPropagation(); toggleImageVisibility(bone); };
+
+        const btnUp = document.createElement('button');
+        btnUp.className = 'btn-layer-order';
+        btnUp.innerText = '⬆';
+        btnUp.title = 'Mover Para Trás';
+        btnUp.onclick = (e) => { e.stopPropagation(); reorderBone(bone, -1); };
+
+        const btnDown = document.createElement('button');
+        btnDown.className = 'btn-layer-order';
+        btnDown.innerText = '⬇';
+        btnDown.title = 'Mover Para Frente';
+        btnDown.onclick = (e) => { e.stopPropagation(); reorderBone(bone, 1); };
+
+        btnGroup.appendChild(btnBoneVis);
+        btnGroup.appendChild(btnImgVis);
+        btnGroup.appendChild(btnUp);
+        btnGroup.appendChild(btnDown);
+
+        row.appendChild(label);
+        row.appendChild(btnGroup);
+        panel.appendChild(row);
+      });
+    }
+
+    function removeSelectedSprite() {
+      if (selectedBone && selectedBone.attachedSprite) {
+        if (confirm("Tem certeza de que deseja excluir esta imagem permanentemente?")) {
+          saveState();
+          selectedBone.attachedSprite = null;
+          updateUI();
+          render();
+        }
+      }
+    }
+
+    function clearAll() {
+      saveState();
+      bones = [];
+      unattachedImages = [];
+      trayImages = [];
+      selectedBone = null;
+      currentDrawingStroke = [];
+      boneKeyframes = {};
+      spriteKeyframes = {};
+      renderAssetTray();
+      updateUI();
+      resizeCanvas();
+    }
+
+    function updateMaxFrames(val) {
+      maxFrames = Math.max(5, parseInt(val) || 60);
+      if (currentFrame > maxFrames) currentFrame = maxFrames;
+      updateUI();
+    }
+
+    function updateFPS(val) {
+      fps = Math.max(1, Math.min(120, parseInt(val) || 24));
+      if (isPlaying) {
+        togglePlay();
+        togglePlay();
+      }
+    }
+
+    function drawTimelineCanvas() {
+      const w = timelineCanvas.width;
+      const h = timelineCanvas.height;
+      applySmoothing(tCtx);
+      tCtx.clearRect(0, 0, w, h);
+
+      const headerHeight = 30;
+      const trackHeight = 24;
+      const paddingRight = 20;
+
+      const trackWidth = w - paddingRight;
+      const step = trackWidth / maxFrames;
+
+      tCtx.fillStyle = '#18181f';
+      tCtx.fillRect(0, 0, w, headerHeight);
+
+      tCtx.strokeStyle = '#3f3f52';
+      tCtx.lineWidth = 1;
+      tCtx.fillStyle = '#888';
+      tCtx.font = '10px sans-serif';
+      tCtx.textAlign = 'center';
+
+      for (let i = 0; i <= maxFrames; i += 5) {
+        const x = i * step;
+        tCtx.beginPath();
+        tCtx.moveTo(x, 0);
+        tCtx.lineTo(x, 10);
+        tCtx.stroke();
+        tCtx.fillText(i, x, 22);
+      }
+
+      const resizeHandleX = maxFrames * step;
+      tCtx.fillStyle = '#00d2ff';
+      tCtx.fillRect(resizeHandleX - 4, 0, 8, headerHeight);
+      tCtx.fillStyle = '#000';
+      tCtx.fillText('⇹', resizeHandleX, 18);
+
+      bones.forEach((bone, index) => {
+        const y = headerHeight + index * trackHeight;
+        const trackCenterY = y + trackHeight / 2;
+
+        tCtx.fillStyle = (bone === selectedBone) ? '#2a2a3a' : (index % 2 === 0 ? '#14141a' : '#18181f');
+        tCtx.fillRect(0, y, w, trackHeight);
+
+        tCtx.strokeStyle = '#2b2b36';
+        tCtx.beginPath();
+        tCtx.moveTo(0, y + trackHeight);
+        tCtx.lineTo(w, y + trackHeight);
+        tCtx.stroke();
+
+        const kfs = boneKeyframes[bone.id] || {};
+        const activeFrames = Object.keys(kfs).map(Number).sort((a, b) => a - b);
+
+        for (let i = 0; i < activeFrames.length - 1; i++) {
+          const f1 = activeFrames[i];
+          const f2 = activeFrames[i + 1];
+
+          if (f1 <= maxFrames) {
+            const x1 = f1 * step;
+            const x2 = Math.min(f2, maxFrames) * step;
+            const isInterp = kfs[f1].interpolated !== false;
+
+            tCtx.beginPath();
+            tCtx.moveTo(x1, trackCenterY);
+            tCtx.lineTo(x2, trackCenterY);
+            tCtx.lineWidth = 2;
+            tCtx.strokeStyle = isInterp ? '#00d2ff' : '#d97706';
+            if (!isInterp) {
+              tCtx.setLineDash([3, 3]);
+            } else {
+              tCtx.setLineDash([]);
+            }
+            tCtx.stroke();
+            tCtx.setLineDash([]);
+          }
+        }
+
+        activeFrames.forEach(f => {
+          if (f <= maxFrames) {
+            const kx = f * step;
+
+            tCtx.beginPath();
+            tCtx.arc(kx, trackCenterY, 5, 0, Math.PI * 2);
+            tCtx.fillStyle = (kfs[f].interpolated === false) ? '#d97706' : '#ffcc00';
+            tCtx.fill();
+            tCtx.strokeStyle = '#000';
+            tCtx.lineWidth = 1;
+            tCtx.stroke();
+          }
+        });
+      });
+
+      const currentX = currentFrame * step;
+      tCtx.beginPath();
+      tCtx.moveTo(currentX, 0);
+      tCtx.lineTo(currentX, h);
+      tCtx.strokeStyle = '#00d2ff';
+      tCtx.lineWidth = 2;
+      tCtx.stroke();
+
+      tCtx.beginPath();
+      tCtx.moveTo(currentX - 6, 0);
+      tCtx.lineTo(currentX + 6, 0);
+      tCtx.lineTo(currentX, 8);
+      tCtx.closePath();
+      tCtx.fillStyle = '#00d2ff';
+      tCtx.fill();
+    }
+
+    timelineCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    timelineCanvas.addEventListener('mousedown', (e) => {
+      const rect = timelineCanvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      const headerHeight = 30;
+      const trackHeight = 24;
+      const paddingRight = 20;
+
+      const trackWidth = timelineCanvas.width - paddingRight;
+      const step = trackWidth / maxFrames;
+      const resizeHandleX = maxFrames * step;
+
+      if (e.button === 2) {
+        if (clickY > headerHeight) {
+          const boneIndex = Math.floor((clickY - headerHeight) / trackHeight);
+          if (boneIndex >= 0 && boneIndex < bones.length) {
+            const bone = bones[boneIndex];
+            const targetFrame = Math.round(clickX / step);
+
+            if (boneKeyframes[bone.id] && boneKeyframes[bone.id][targetFrame] !== undefined) {
+              if (confirm(`Remover keyframe do osso "${bone.id}" no frame ${targetFrame}?`)) {
+                deleteKeyframeByFrame(bone.id, targetFrame);
+              }
+            }
+          }
+        }
+        return;
+      }
+
+      if (Math.abs(clickX - resizeHandleX) <= 8 && clickY <= headerHeight) {
+        isResizingTimeline = true;
+        return;
+      }
+
+      if (clickY > headerHeight) {
+        const boneIndex = Math.floor((clickY - headerHeight) / trackHeight);
+        if (boneIndex >= 0 && boneIndex < bones.length) {
+          selectBone(bones[boneIndex]);
+          setTransformTarget('BONE');
+        }
+      }
+
+      isScrubbingTimeline = true;
+      updateFrameFromClick(clickX);
+    });
+
+    timelineCanvas.addEventListener('mousemove', (e) => {
+      const rect = timelineCanvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const paddingRight = 20;
+
+      if (isResizingTimeline) {
+        const trackWidth = timelineCanvas.width - paddingRight;
+        const newMax = Math.round((clickX / trackWidth) * maxFrames);
+        if (newMax >= 5 && newMax <= 1000) {
+          maxFrames = newMax;
+          document.getElementById('max-frames-input').value = maxFrames;
+          updateUI();
+        }
+        return;
+      }
+
+      if (isScrubbingTimeline) {
+        updateFrameFromClick(clickX);
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      isResizingTimeline = false;
+      isScrubbingTimeline = false;
+    });
+
+    function updateFrameFromClick(clickX) {
+      const paddingRight = 20;
+      const trackWidth = timelineCanvas.width - paddingRight;
+      const step = trackWidth / maxFrames;
+
+      let frame = Math.round(clickX / step);
+      frame = Math.max(0, Math.min(maxFrames, frame));
+
+      currentFrame = frame;
+      applyKeyframeState(currentFrame);
+      updateUI();
+      render();
+    }
+
+
+    // ============================================================
+    // COPIAR / COLAR UMA LINHA DA TIMELINE
+    // Copia somente a animação do osso selecionado:
+    // - todos os keyframes
+    // - posições, rotação e comprimento
+    // - estado de interpolação de cada keyframe
+    // - grupos de imagens dos keyframes
+    // - imagem ativa de cada grupo
+    // - transformações das imagens (escala, rotação e offsets)
+    //
+    // O osso de destino NÃO é recriado. A animação é aplicada ao
+    // osso atualmente selecionado, preservando sua hierarquia.
+    // ============================================================
+
+    let timelineClipboard = null;
+
+    function spriteToClipboardData(sprite) {
+      if (!sprite) return null;
+
+      return {
+        assetId: ensureSpriteAssetId(sprite),
+        name: sprite.name || "Imagem",
+        dataUrl: sprite.imageCanvas ? sprite.imageCanvas.toDataURL("image/png") : null,
+        scale: sprite.scale !== undefined ? sprite.scale : 1,
+        rot: sprite.rot !== undefined ? sprite.rot : 0,
+        offX: sprite.offX !== undefined ? sprite.offX : 0,
+        offY: sprite.offY !== undefined ? sprite.offY : 0
+      };
+    }
+
+    function buildTimelineClipboard(bone) {
+      if (!bone) return null;
+
+      const boneKfs = boneKeyframes[bone.id] || {};
+      const spriteKfs = spriteKeyframes[bone.id] || {};
+
+      const copiedBoneKeyframes = {};
+      Object.keys(boneKfs).forEach(frame => {
+        const kf = boneKfs[frame];
+
+        copiedBoneKeyframes[frame] = {
+          angle: kf.angle,
+          posX: kf.posX,
+          posY: kf.posY,
+          length: kf.length,
+          // Mantém exatamente o estado da interpolação.
+          interpolated: kf.interpolated !== false
+        };
+      });
+
+      const copiedSpriteKeyframes = {};
+      Object.keys(spriteKfs).forEach(frame => {
+        const group = spriteKfs[frame];
+
+        copiedSpriteKeyframes[frame] = {
+          activeIndex: group.activeIndex || 0,
+          sprites: (group.sprites || [])
+            .map(spriteToClipboardData)
+            .filter(Boolean)
+        };
+      });
+
+      return {
+        type: "NICKEMAN_TIMELINE_ROW",
+        version: 2,
+        sourceBoneId: bone.id,
+        bone: {
+          length: bone.length,
+          localAngle: bone.localAngle,
+          posX: bone.posX,
+          posY: bone.posY,
+          parentId: bone.parent ? bone.parent.id : null,
+          meshStrokes: JSON.parse(JSON.stringify(bone.meshStrokes || [])),
+          visibleBone: bone.visibleBone !== false,
+          visibleImage: bone.visibleImage !== false,
+          attachedSprite: bone.attachedSprite ? spriteToClipboardData(bone.attachedSprite) : null
+        },
+        maxFrames: maxFrames,
+        fps: fps,
+        boneKeyframes: copiedBoneKeyframes,
+        spriteKeyframes: copiedSpriteKeyframes
+      };
+    }
+
+    async function copyTimelineData() {
+      if (!selectedBone) {
+        alert("Selecione o osso cuja linha do tempo deseja copiar.");
+        return;
+      }
+
+      const data = buildTimelineClipboard(selectedBone);
+      if (!data) return;
+
+      // Guarda internamente para permitir copiar/colar mesmo quando
+      // o navegador bloquear o Clipboard API.
+      timelineClipboard = data;
+
+      const text = JSON.stringify(data);
+
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+        }
+      } catch (err) {
+        // A cópia interna continua funcionando.
+      }
+
+      const frameCount = Object.keys(data.boneKeyframes).length;
+      const imageCount = Object.values(data.spriteKeyframes)
+        .reduce((total, group) => total + (group.sprites ? group.sprites.length : 0), 0);
+
+      const info = document.getElementById("keyframe-info");
+      if (info) {
+        info.innerText =
+          `Linha copiada: ${selectedBone.id} • ${frameCount} KF • ${imageCount} imagem(ns)`;
+      }
+
+      alert(
+        `Linha do osso "${selectedBone.id}" copiada.\n\n` +
+        `${frameCount} keyframe(s), imagens e interpolações foram armazenados.`
+      );
+    }
+
+    function createCanvasFromDataUrl(dataUrl) {
+      return new Promise(resolve => {
+        const offCanvas = document.createElement("canvas");
+
+        if (!dataUrl) {
+          resolve(offCanvas);
+          return;
+        }
+
+        const img = new Image();
+
+        img.onload = () => {
+          offCanvas.width = img.width;
+          offCanvas.height = img.height;
+
+          const offCtx = offCanvas.getContext("2d");
+          applySmoothing(offCtx);
+          offCtx.drawImage(img, 0, 0);
+
+          resolve(offCanvas);
+        };
+
+        img.onerror = () => {
+          resolve(offCanvas);
+        };
+
+        img.src = dataUrl;
+      });
+    }
+
+    async function clipboardSpriteToRuntime(spriteData) {
+      if (!spriteData) return null;
+
+      return {
+        assetId: spriteData.assetId || legacySpriteAssetId(spriteData.name, spriteData.dataUrl),
+        name: spriteData.name || "Imagem",
+        imageCanvas: await createCanvasFromDataUrl(spriteData.dataUrl),
+        scale: spriteData.scale !== undefined ? spriteData.scale : 1,
+        rot: spriteData.rot !== undefined ? spriteData.rot : 0,
+        offX: spriteData.offX !== undefined ? spriteData.offX : 0,
+        offY: spriteData.offY !== undefined ? spriteData.offY : 0
+      };
+    }
+
+    async function convertTimelineClipboardToRuntime(data) {
+      const runtimeBoneKeyframes = {};
+
+      Object.keys(data.boneKeyframes || {}).forEach(frame => {
+        const kf = data.boneKeyframes[frame];
+
+        runtimeBoneKeyframes[frame] = {
+          angle: kf.angle,
+          posX: kf.posX,
+          posY: kf.posY,
+          length: kf.length,
+          interpolated: kf.interpolated !== false
+        };
+      });
+
+      const runtimeSpriteKeyframes = {};
+
+      for (const frame of Object.keys(data.spriteKeyframes || {})) {
+        const group = data.spriteKeyframes[frame] || {};
+
+        runtimeSpriteKeyframes[frame] = {
+          activeIndex: group.activeIndex || 0,
+          sprites: []
+        };
+
+        for (const spriteData of (group.sprites || [])) {
+          const sprite = await clipboardSpriteToRuntime(spriteData);
+          if (sprite) {
+            runtimeSpriteKeyframes[frame].sprites.push(sprite);
+          }
+        }
+
+        if (runtimeSpriteKeyframes[frame].sprites.length > 0) {
+          runtimeSpriteKeyframes[frame].activeIndex = Math.min(
+            runtimeSpriteKeyframes[frame].activeIndex,
+            runtimeSpriteKeyframes[frame].sprites.length - 1
+          );
+        } else {
+          runtimeSpriteKeyframes[frame].activeIndex = 0;
+        }
+      }
+
+      return {
+        boneKeyframes: runtimeBoneKeyframes,
+        spriteKeyframes: runtimeSpriteKeyframes
+      };
+    }
+
+    function getUniqueBoneCopyId(sourceId) {
+      const base = `${sourceId}_Copia`;
+      let id = base;
+      let n = 2;
+
+      while (bones.some(b => b.id === id)) {
+        id = `${base}_${n}`;
+        n++;
+      }
+
+      return id;
+    }
+
+    async function pasteTimelineData() {
+      let data = timelineClipboard;
+
+      // Se não houver cópia interna, tenta recuperar a linha
+      // copiada pelo Clipboard do navegador.
+      if (!data) {
+        try {
+          if (navigator.clipboard && navigator.clipboard.readText) {
+            const text = await navigator.clipboard.readText();
+            if (text) data = JSON.parse(text);
+          }
+        } catch (err) {
+          // Tratado abaixo com uma mensagem clara.
+        }
+      }
+
+      if (!data || data.type !== "NICKEMAN_TIMELINE_ROW") {
+        alert("Nenhuma linha da timeline válida foi copiada.");
+        return;
+      }
+
+      const sourceBone = bones.find(b => b.id === data.sourceBoneId);
+      const sourceInfo = data.bone || {};
+
+      // A cópia SEMPRE cria um novo osso, portanto uma nova linha
+      // independente na timeline. O osso original nunca é alterado.
+      let parentBone = null;
+      if (sourceInfo.parentId) {
+        parentBone = bones.find(b => b.id === sourceInfo.parentId) || null;
+      } else if (sourceBone) {
+        parentBone = sourceBone.parent || null;
+      }
+
+      saveState();
+
+      const newBoneId = getUniqueBoneCopyId(data.sourceBoneId || "Osso");
+      const newBone = new Bone(
+        newBoneId,
+        parentBone,
+        sourceInfo.length !== undefined
+          ? sourceInfo.length
+          : (sourceBone ? sourceBone.length : 100),
+        sourceInfo.localAngle !== undefined
+          ? sourceInfo.localAngle
+          : (sourceBone ? sourceBone.localAngle : 0),
+        {
+          x: sourceInfo.posX !== undefined
+            ? sourceInfo.posX
+            : (sourceBone ? sourceBone.posX : 0),
+          y: sourceInfo.posY !== undefined
+            ? sourceInfo.posY
+            : (sourceBone ? sourceBone.posY : 0)
+        }
+      );
+
+      newBone.meshStrokes = JSON.parse(
+        JSON.stringify(
+          sourceInfo.meshStrokes || (sourceBone ? sourceBone.meshStrokes : []) || []
+        )
+      );
+      newBone.visibleBone = sourceInfo.visibleBone !== false;
+      newBone.visibleImage = sourceInfo.visibleImage !== false;
+
+      // Converte as imagens para canvases independentes.
+      const runtime = await convertTimelineClipboardToRuntime(data);
+
+      bones.push(newBone);
+      boneKeyframes[newBone.id] = runtime.boneKeyframes;
+      spriteKeyframes[newBone.id] = runtime.spriteKeyframes;
+
+      // Copia também a imagem base do osso, quando existir.
+      if (sourceInfo.attachedSprite) {
+        newBone.attachedSprite = await clipboardSpriteToRuntime(sourceInfo.attachedSprite);
+      } else if (sourceBone && sourceBone.attachedSprite) {
+        const baseSprite = spriteToClipboardData(sourceBone.attachedSprite);
+        newBone.attachedSprite = await clipboardSpriteToRuntime(baseSprite);
+      }
+
+      // Se houver uma imagem no frame atual, torna-a a imagem ativa
+      // da nova linha.
+      const currentGroup = spriteKeyframes[newBone.id][currentFrame];
+
+      if (currentGroup && currentGroup.sprites.length > 0) {
+        const activeIndex = Math.min(
+          currentGroup.activeIndex,
+          currentGroup.sprites.length - 1
+        );
+
+        currentGroup.activeIndex = activeIndex;
+        newBone.attachedSprite = currentGroup.sprites[activeIndex];
+      } else {
+        // Procura a última imagem disponível até o frame atual.
+        const activeFrames = Object.keys(spriteKeyframes[newBone.id])
+          .map(Number)
+          .filter(f => f <= currentFrame)
+          .sort((a, b) => a - b);
+
+        if (activeFrames.length > 0) {
+          const lastFrame = activeFrames[activeFrames.length - 1];
+          const group = spriteKeyframes[newBone.id][lastFrame];
+
+          if (group && group.sprites.length > 0) {
+            const activeIndex = Math.min(
+              group.activeIndex,
+              group.sprites.length - 1
+            );
+            newBone.attachedSprite = group.sprites[activeIndex];
+          }
+        }
+      }
+
+      // Seleciona a nova linha, sem modificar a linha original.
+      selectedBone = newBone;
+      setTransformTarget('BONE');
+      applyKeyframeState(currentFrame);
+      updateUI();
+      drawTimelineCanvas();
+      render();
+
+      const frameCount = Object.keys(runtime.boneKeyframes).length;
+      const imageCount = Object.values(runtime.spriteKeyframes)
+        .reduce((total, group) => total + group.sprites.length, 0);
+
+      const info = document.getElementById("keyframe-info");
+      if (info) {
+        info.innerText =
+          `Nova linha: ${newBone.id} • ${frameCount} KF • ${imageCount} imagem(ns)`;
+      }
+
+      alert(
+        `Linha do tempo duplicada em uma NOVA linha: "${newBone.id}".\n\n` +
+        `✓ Nova linha do tempo criada\n` +
+        `✓ Keyframes copiados\n` +
+        `✓ Imagens copiadas\n` +
+        `✓ Interpolações copiadas\n` +
+        `✓ Transformações das imagens copiadas\n\n` +
+        `A linha original permanece intacta.`
+      );
+    }
+
+    // Atalhos: Ctrl+C copia a linha do osso selecionado e
+    // Ctrl+V cria uma NOVA linha do tempo duplicada.
+    window.addEventListener("keydown", async (e) => {
+      const activeEl = document.activeElement;
+
+      if (
+        activeEl &&
+        (
+          activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.tagName === "SELECT"
+        )
+      ) {
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c") {
+        e.preventDefault();
+        await copyTimelineData();
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "v") {
+        e.preventDefault();
+        await pasteTimelineData();
+      }
+    });
+
+    function addKeyframeAuto() {
+      if (!selectedBone) return;
+
+      if (!boneKeyframes[selectedBone.id]) {
+        boneKeyframes[selectedBone.id] = {};
+      }
+
+      const existingKf = boneKeyframes[selectedBone.id][currentFrame];
+      boneKeyframes[selectedBone.id][currentFrame] = {
+        angle: selectedBone.localAngle,
+        posX: selectedBone.posX,
+        posY: selectedBone.posY,
+        length: selectedBone.length,
+        interpolated: existingKf ? (existingKf.interpolated !== false) : true
+      };
+
+      if (selectedBone.attachedSprite) {
+        if (!spriteKeyframes[selectedBone.id]) spriteKeyframes[selectedBone.id] = {};
+        if (!spriteKeyframes[selectedBone.id][currentFrame]) {
+          spriteKeyframes[selectedBone.id][currentFrame] = { 
+            activeIndex: 0, 
+            sprites: [{ ...selectedBone.attachedSprite }] 
+          };
+        } else {
+          const group = spriteKeyframes[selectedBone.id][currentFrame];
+          const activeSprite = group.sprites[group.activeIndex] || selectedBone.attachedSprite;
+          activeSprite.scale = selectedBone.attachedSprite.scale;
+          activeSprite.rot = selectedBone.attachedSprite.rot;
+          activeSprite.offX = selectedBone.attachedSprite.offX;
+          activeSprite.offY = selectedBone.attachedSprite.offY;
+        }
+      }
+    }
+
+    function toggleKeyframeInterpolation() {
+      if (!selectedBone || !boneKeyframes[selectedBone.id] || !boneKeyframes[selectedBone.id][currentFrame]) return;
+      saveState();
+      const kf = boneKeyframes[selectedBone.id][currentFrame];
+      kf.interpolated = (kf.interpolated === false);
+      updateUI();
+      render();
+    }
+
+    function addKeyframe() {
+      if (!selectedBone) {
+        alert("Selecione um osso para gravar seu keyframe.");
+        return;
+      }
+      saveState();
+      addKeyframeAuto();
+      updateUI();
+    }
+
+    function deleteKeyframeByFrame(boneId, frameIndex) {
+      if (boneKeyframes[boneId] && boneKeyframes[boneId][frameIndex] !== undefined) {
+        saveState();
+        delete boneKeyframes[boneId][frameIndex];
+        if (spriteKeyframes[boneId]) {
+          delete spriteKeyframes[boneId][frameIndex];
+        }
+        applyKeyframeState(currentFrame);
+        updateUI();
+        render();
+      }
+    }
+
+    function removeKeyframe() {
+      if (!selectedBone) {
+        alert("Selecione um osso para remover seu keyframe.");
+        return;
+      }
+
+      if (boneKeyframes[selectedBone.id] && boneKeyframes[selectedBone.id][currentFrame] !== undefined) {
+        deleteKeyframeByFrame(selectedBone.id, currentFrame);
+      } else {
+        alert(`Não há keyframe gravado no frame ${currentFrame} para o osso "${selectedBone.id}".`);
+      }
+    }
+
+    function jumpToKeyframe(direction) {
+      if (!selectedBone || !boneKeyframes[selectedBone.id]) return;
+
+      const activeFrames = Object.keys(boneKeyframes[selectedBone.id]).map(Number).sort((a, b) => a - b);
+      if (activeFrames.length === 0) return;
+
+      if (direction > 0) {
+        const next = activeFrames.find(f => f > currentFrame);
+        if (next !== undefined) {
+          currentFrame = next;
+          applyKeyframeState(currentFrame);
+          updateUI();
+          render();
+        }
+      } else {
+        const prev = activeFrames.filter(f => f < currentFrame).pop();
+        if (prev !== undefined) {
+          currentFrame = prev;
+          applyKeyframeState(currentFrame);
+          updateUI();
+          render();
+        }
+      }
+    }
+
+    function calculateFrameState(frame) {
+      const frameStateMap = {};
+      bones.forEach(bone => {
+        const kfs = boneKeyframes[bone.id];
+        if (!kfs) {
+          frameStateMap[bone.id] = { angle: bone.localAngle, posX: bone.posX, posY: bone.posY, length: bone.length };
+          return;
+        }
+
+        const activeFrames = Object.keys(kfs).map(Number).sort((a, b) => a - b);
+        if (activeFrames.length === 0) {
+          frameStateMap[bone.id] = { angle: bone.localAngle, posX: bone.posX, posY: bone.posY, length: bone.length };
+          return;
+        }
+
+        if (kfs[frame]) {
+          frameStateMap[bone.id] = {
+            angle: kfs[frame].angle,
+            posX: kfs[frame].posX,
+            posY: kfs[frame].posY,
+            length: kfs[frame].length !== undefined ? kfs[frame].length : bone.length
+          };
+          return;
+        }
+
+        let prevFrame = null;
+        let nextFrame = null;
+
+        for (let f of activeFrames) {
+          if (f <= frame) prevFrame = f;
+          if (f >= frame && nextFrame === null) nextFrame = f;
+        }
+
+        if (prevFrame !== null && nextFrame !== null && prevFrame !== nextFrame) {
+          if (kfs[prevFrame].interpolated === false) {
+            frameStateMap[bone.id] = {
+              angle: kfs[prevFrame].angle,
+              posX: kfs[prevFrame].posX,
+              posY: kfs[prevFrame].posY,
+              length: kfs[prevFrame].length !== undefined ? kfs[prevFrame].length : bone.length
+            };
+          } else {
+            const factor = (frame - prevFrame) / (nextFrame - prevFrame);
+            const fixedLen = kfs[prevFrame].length !== undefined ? kfs[prevFrame].length : bone.length;
+
+            frameStateMap[bone.id] = {
+              angle: kfs[prevFrame].angle + (kfs[nextFrame].angle - kfs[prevFrame].angle) * factor,
+              posX: kfs[prevFrame].posX + (kfs[nextFrame].posX - kfs[prevFrame].posX) * factor,
+              posY: kfs[prevFrame].posY + (kfs[nextFrame].posY - kfs[prevFrame].posY) * factor,
+              length: fixedLen
+            };
+          }
+        } else if (prevFrame !== null) {
+          frameStateMap[bone.id] = {
+            angle: kfs[prevFrame].angle,
+            posX: kfs[prevFrame].posX,
+            posY: kfs[prevFrame].posY,
+            length: kfs[prevFrame].length !== undefined ? kfs[prevFrame].length : bone.length
+          };
+        } else {
+          frameStateMap[bone.id] = { angle: bone.localAngle, posX: bone.posX, posY: bone.posY, length: bone.length };
+        }
+      });
+      return frameStateMap;
+    }
+
+    function applyKeyframeState(frame) {
+      const stateMap = calculateFrameState(frame);
+      bones.forEach(bone => {
+        if (stateMap[bone.id]) {
+          bone.localAngle = stateMap[bone.id].angle;
+          bone.posX = stateMap[bone.id].posX;
+          bone.posY = stateMap[bone.id].posY;
+          bone.length = stateMap[bone.id].length;
+        }
+
+        if (spriteKeyframes[bone.id]) {
+          const sKfs = spriteKeyframes[bone.id];
+          const activeSpriteFrames = Object.keys(sKfs).map(Number).sort((a, b) => a - b);
+          
+          if (activeSpriteFrames.length > 0) {
+            let prevF = null;
+            let nextF = null;
+
+            for (let f of activeSpriteFrames) {
+              if (f <= frame) prevF = f;
+              if (f >= frame && nextF === null) nextF = f;
+            }
+
+            if (prevF !== null) {
+              const prevGroup = sKfs[prevF];
+              const activeIdx = Math.min(prevGroup.activeIndex, prevGroup.sprites.length - 1);
+              const prevSprite = prevGroup.sprites[activeIdx];
+
+              if (prevSprite) {
+                if (!bone._interpolatedSprite) {
+                  bone._interpolatedSprite = { ...prevSprite };
+                  bone._interpolatedSprite.assetId = ensureSpriteAssetId(prevSprite);
+                } else {
+                  // A referência temporária precisa carregar o MESMO assetId
+                  // do sprite do keyframe. Sem isso, editar pelo Mini Paint
+                  // poderia procurar um asset diferente e não atualizar os
+                  // demais keyframes.
+                  bone._interpolatedSprite.assetId = ensureSpriteAssetId(prevSprite);
+                  bone._interpolatedSprite.name = prevSprite.name;
+                  bone._interpolatedSprite.imageCanvas = prevSprite.imageCanvas;
+                  bone._interpolatedSprite.offX = prevSprite.offX;
+                  bone._interpolatedSprite.offY = prevSprite.offY;
+                  bone._interpolatedSprite.scale = prevSprite.scale;
+                  bone._interpolatedSprite.rot = prevSprite.rot;
+                }
+
+                if (nextF !== null && prevF !== nextF && boneKeyframes[bone.id] && boneKeyframes[bone.id][prevF] && boneKeyframes[bone.id][prevF].interpolated !== false) {
+                  const nextGroup = sKfs[nextF];
+                  const nextActiveIdx = Math.min(nextGroup.activeIndex, nextGroup.sprites.length - 1);
+                  const nextSprite = nextGroup.sprites[nextActiveIdx];
+
+                  if (nextSprite) {
+                    const factor = (frame - prevF) / (nextF - prevF);
+                    bone._interpolatedSprite.scale = prevSprite.scale + (nextSprite.scale - prevSprite.scale) * factor;
+                    bone._interpolatedSprite.offX = prevSprite.offX + (nextSprite.offX - prevSprite.offX) * factor;
+                    bone._interpolatedSprite.offY = prevSprite.offY + (nextSprite.offY - prevSprite.offY) * factor;
+                    bone._interpolatedSprite.rot = prevSprite.rot + (nextSprite.rot - prevSprite.rot) * factor;
+                  }
+                }
+
+                bone.attachedSprite = bone._interpolatedSprite;
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function togglePlay() {
+      isPlaying = !isPlaying;
+      const btn = document.getElementById('btn-play');
+
+      if (isPlaying) {
+        btn.innerText = '⏸ Pause';
+        animationInterval = setInterval(() => {
+          currentFrame = (currentFrame + 1) % (maxFrames + 1);
+          applyKeyframeState(currentFrame);
+          updateUI();
+          render();
+        }, 1000 / fps);
+      } else {
+        btn.innerText = '▶ Play';
+        clearInterval(animationInterval);
+      }
+      render();
+    }
+
+    function openImageModal() {
+      document.getElementById('image-modal').style.display = 'flex';
+    }
+
+    function closeImageModal() {
+      document.getElementById('image-modal').style.display = 'none';
+      polyPoints = [];
+      isPolyClosed = false;
+      loadedImage = null;
+      cropCtx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
+    }
+
+    document.getElementById('image-loader').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          const img = new Image();
+          img.onload = () => {
+            loadedImage = img;
+            polyPoints = [];
+            isPolyClosed = false;
+            cropZoom = 1;
+            cropPan = { x: 0, y: 0 };
+            renderCropCanvas();
+          };
+          img.src = evt.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    function resetCropZoom() {
+      cropZoom = 1;
+      cropPan = { x: 0, y: 0 };
+      renderCropCanvas();
+    }
+
+    function undoCropPoint() {
+      if (polyPoints.length > 0) {
+        polyPoints.pop();
+        isPolyClosed = false;
+        renderCropCanvas();
+      }
+    }
+
+    function finishPolygon() {
+      if (polyPoints.length >= 3) {
+        isPolyClosed = true;
+        renderCropCanvas();
+      }
+    }
+
+    function renderCropCanvas() {
+      cropCanvas.width = cropCanvas.parentElement.clientWidth;
+      cropCanvas.height = cropCanvas.parentElement.clientHeight;
+      applySmoothing(cropCtx);
+      cropCtx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
+
+      if (!loadedImage) return;
+
+      cropCtx.save();
+      cropCtx.translate(cropPan.x, cropPan.y);
+      cropCtx.scale(cropZoom, cropZoom);
+
+      cropCtx.drawImage(loadedImage, 0, 0);
+
+      if (polyPoints.length > 0) {
+        cropCtx.beginPath();
+        cropCtx.moveTo(polyPoints[0].x, polyPoints[0].y);
+        for (let i = 1; i < polyPoints.length; i++) {
+          cropCtx.lineTo(polyPoints[i].x, polyPoints[i].y);
+        }
+        if (isPolyClosed) cropCtx.closePath();
+
+        cropCtx.strokeStyle = '#00d2ff';
+        cropCtx.lineWidth = 2 / cropZoom;
+        cropCtx.stroke();
+
+        cropCtx.fillStyle = '#ff0055';
+        polyPoints.forEach(p => {
+          cropCtx.beginPath();
+          cropCtx.arc(p.x, p.y, 4 / cropZoom, 0, Math.PI * 2);
+          cropCtx.fill();
+        });
+      }
+
+      cropCtx.restore();
+    }
+
+    cropCanvas.addEventListener('mousedown', (e) => {
+      if (!loadedImage) return;
+      const rect = cropCanvas.getBoundingClientRect();
+      const clickX = (e.clientX - rect.left - cropPan.x) / cropZoom;
+      const clickY = (e.clientY - rect.top - cropPan.y) / cropZoom;
+
+      if (e.button === 2) {
+        isPanning = true;
+        panStart = { x: e.clientX - cropPan.x, y: e.clientY - cropPan.y };
+        return;
+      }
+
+      if (!isPolyClosed) {
+        polyPoints.push({ x: clickX, y: clickY });
+        renderCropCanvas();
+      }
+    });
+
+    cropCanvas.addEventListener('mousemove', (e) => {
+      if (isPanning) {
+        cropPan.x = e.clientX - panStart.x;
+        cropPan.y = e.clientY - panStart.y;
+        renderCropCanvas();
+      }
+    });
+
+    window.addEventListener('mouseup', () => { isPanning = false; });
+
+    cropCanvas.addEventListener('wheel', (e) => {
+      if (!loadedImage) return;
+      e.preventDefault();
+      const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
+      cropZoom = Math.max(0.1, Math.min(10, cropZoom * zoomFactor));
+      renderCropCanvas();
+    });
+
+    function confirmCrop() {
+      if (!loadedImage) return;
+
+      saveState();
+
+      let minX = 0, minY = 0, maxX = loadedImage.width, maxY = loadedImage.height;
+      if (polyPoints.length >= 3) {
+        minX = Math.min(...polyPoints.map(p => p.x));
+        minY = Math.min(...polyPoints.map(p => p.y));
+        maxX = Math.max(...polyPoints.map(p => p.x));
+        maxY = Math.max(...polyPoints.map(p => p.y));
+      }
+
+      const cropW = Math.max(1, maxX - minX);
+      const cropH = Math.max(1, maxY - minY);
+
+      const offCanvas = document.createElement('canvas');
+      offCanvas.width = cropW;
+      offCanvas.height = cropH;
+      const offCtx = offCanvas.getContext('2d');
+      applySmoothing(offCtx);
+
+      if (polyPoints.length >= 3) {
+        offCtx.beginPath();
+        offCtx.moveTo(polyPoints[0].x - minX, polyPoints[0].y - minY);
+        for (let i = 1; i < polyPoints.length; i++) {
+          offCtx.lineTo(polyPoints[i].x - minX, polyPoints[i].y - minY);
+        }
+        offCtx.closePath();
+        offCtx.clip();
+      }
+
+      offCtx.drawImage(loadedImage, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
+
+      if (document.getElementById('chk-remove-white').checked) {
+        removeWhiteBackground(offCtx, cropW, cropH);
+      }
+
+      const imgObj = {
+        assetId: createSpriteAssetId(),
+        name: `Recorte_${trayImages.length + 1}`,
+        imageCanvas: offCanvas,
+        scale: 1,
+        rot: 0,
+        offX: 0,
+        offY: 0
+      };
+
+      trayImages.push(imgObj);
+      renderAssetTray();
+      closeImageModal();
+      updateUI();
+    }
+
+    function removeWhiteBackground(context, w, h) {
+      const imgData = context.getImageData(0, 0, w, h);
+      const data = imgData.data;
+
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+
+        if (r > 230 && g > 230 && b > 230) {
+          data[i + 3] = 0;
+        }
+      }
+
+      context.putImageData(imgData, 0, 0);
+    }
+
+    function autoCropSeparateShapes() {
+      if (!loadedImage) {
+        alert("Carregue uma imagem antes de executar o recorte automático.");
+        return;
+      }
+
+      saveState();
+
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = loadedImage.width;
+      tempCanvas.height = loadedImage.height;
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCtx.drawImage(loadedImage, 0, 0);
+
+      const w = tempCanvas.width;
+      const h = tempCanvas.height;
+      const imgData = tempCtx.getImageData(0, 0, w, h);
+      const data = imgData.data;
+
+      const removeWhite = document.getElementById('chk-remove-white').checked;
+      const visited = new Uint8Array(w * h);
+      const boundsList = [];
+
+      function isSolid(x, y) {
+        const idx = (y * w + x) * 4;
+        const r = data[idx];
+        const g = data[idx + 1];
+        const b = data[idx + 2];
+        const a = data[idx + 3];
+
+        if (a < 10) return false;
+        if (removeWhite && r > 230 && g > 230 && b > 230) return false;
+        return true;
+      }
+
+      for (let y = 0; y < h; y += 2) {
+        for (let x = 0; x < w; x += 2) {
+          const pixelIdx = y * w + x;
+          if (!visited[pixelIdx] && isSolid(x, y)) {
+            let bMinX = x, bMaxX = x, bMinY = y, bMaxY = y;
+            let pixelCount = 0;
+            const queue = [x, y];
+            visited[pixelIdx] = 1;
+
+            while (queue.length > 0) {
+              const cy = queue.pop();
+              const cx = queue.pop();
+              pixelCount++;
+
+              if (cx < bMinX) bMinX = cx;
+              if (cx > bMaxX) bMaxX = cx;
+              if (cy < bMinY) bMinY = cy;
+              if (cy > bMaxY) bMaxY = cy;
+
+              const neighbors = [
+                [cx + 2, cy], [cx - 2, cy], [cx, cy + 2], [cx, cy - 2]
+              ];
+
+              for (let i = 0; i < neighbors.length; i++) {
+                const nx = neighbors[i][0];
+                const ny = neighbors[i][1];
+
+                if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+                  const nIdx = ny * w + nx;
+                  if (!visited[nIdx] && isSolid(nx, ny)) {
+                    visited[nIdx] = 1;
+                    queue.push(nx, ny);
+                  }
+                }
+              }
+            }
+
+            if (pixelCount > 50) {
+              boundsList.push({ minX: Math.max(0, bMinX - 2), minY: Math.max(0, bMinY - 2), maxX: Math.min(w, bMaxX + 2), maxY: Math.min(h, bMaxY + 2) });
+            }
+          }
+        }
+      }
+
+      if (boundsList.length === 0) {
+        alert("Nenhuma figura individual detectada na imagem.");
+        return;
+      }
+
+      boundsList.forEach((b) => {
+        const cropW = b.maxX - b.minX;
+        const cropH = b.maxY - b.minY;
+
+        const shapeCanvas = document.createElement('canvas');
+        shapeCanvas.width = cropW;
+        shapeCanvas.height = cropH;
+        const sCtx = shapeCanvas.getContext('2d');
+        sCtx.drawImage(loadedImage, b.minX, b.minY, cropW, cropH, 0, 0, cropW, cropH);
+
+        if (removeWhite) {
+          removeWhiteBackground(sCtx, cropW, cropH);
+        }
+
+        trayImages.push({
+          assetId: createSpriteAssetId(),
+          name: `Figura_${trayImages.length + 1}`,
+          imageCanvas: shapeCanvas,
+          scale: 1,
+          rot: 0,
+          offX: 0,
+          offY: 0
+        });
+      });
+
+      renderAssetTray();
+      closeImageModal();
+      updateUI();
+    }
+
+    function renderToContext(targetCtx, isExporting = false) {
+      const w = targetCtx.canvas.width;
+      const h = targetCtx.canvas.height;
+      targetCtx.clearRect(0, 0, w, h);
+
+      // O palco acompanha a cor de fundo configurada e é redesenhado
+      // imediatamente durante a pré-visualização.
+      if (!isExporting) {
+        targetCtx.save();
+        targetCtx.fillStyle = getComputedStyle(document.documentElement)
+          .getPropertyValue('--ui-bg').trim() || '#121216';
+        targetCtx.fillRect(0, 0, w, h);
+        targetCtx.restore();
+      }
+
+      bones.forEach(b => b.updateTransform());
+
+      targetCtx.save();
+      if (!isExporting) {
+        targetCtx.translate(stagePan.x, stagePan.y);
+        targetCtx.scale(stageZoom, stageZoom);
+      }
+
+      if (onionSkinEnabled && !isExporting) {
+        const startGhostFrame = Math.max(0, currentFrame - onionSkinCount);
+        for (let f = startGhostFrame; f < currentFrame; f++) {
+          const ghostStateMap = calculateFrameState(f);
+          const alpha = 0.15 + 0.2 * ((f - startGhostFrame) / onionSkinCount);
+
+          targetCtx.save();
+          targetCtx.globalAlpha = alpha;
+
+          bones.forEach(bone => {
+            if (ghostStateMap[bone.id] && bone.attachedSprite && bone.visibleImage) {
+              const st = ghostStateMap[bone.id];
+              let pAngle = 0;
+              let pX = 0;
+              let pY = 0;
+
+              if (bone.parent) {
+                pX = bone.parent.endX;
+                pY = bone.parent.endY;
+                pAngle = bone.parent.worldAngle;
+              }
+
+              const bStartX = pX + st.posX;
+              const bStartY = pY + st.posY;
+              const bWorldAngle = pAngle + st.angle;
+
+              const sprite = bone.attachedSprite;
+              if (sprite.imageCanvas) {
+                targetCtx.save();
+                targetCtx.translate(bStartX, bStartY);
+                targetCtx.rotate(bWorldAngle);
+                targetCtx.translate(sprite.offX, sprite.offY);
+                targetCtx.rotate(sprite.rot);
+                targetCtx.scale(sprite.scale, sprite.scale);
+                targetCtx.drawImage(sprite.imageCanvas, -sprite.imageCanvas.width / 2, -sprite.imageCanvas.height / 2);
+                targetCtx.restore();
+              }
+            }
+          });
+          targetCtx.restore();
+        }
+      }
+
+      unattachedImages.forEach(imgObj => {
+        if (imgObj.imageCanvas) {
+          const centerX = (canvas.width / (2 * stageZoom)) + (imgObj.offX || 0);
+          const centerY = (canvas.height / (2 * stageZoom)) + (imgObj.offY || 0);
+          targetCtx.save();
+          targetCtx.drawImage(imgObj.imageCanvas, centerX - imgObj.imageCanvas.width / 2, centerY - imgObj.imageCanvas.height / 2);
+          targetCtx.restore();
+        }
+      });
+
+      bones.forEach(bone => {
+        if (!bone.visibleImage) return;
+        const sprite = bone.attachedSprite;
+        if (sprite && sprite.imageCanvas) {
+          targetCtx.save();
+          targetCtx.translate(bone.startX, bone.startY);
+          targetCtx.rotate(bone.worldAngle);
+          targetCtx.translate(sprite.offX, sprite.offY);
+          targetCtx.rotate(sprite.rot);
+          targetCtx.scale(sprite.scale, sprite.scale);
+
+          if (!isExporting && selectedBone && bone !== selectedBone) {
+            targetCtx.globalAlpha = unselectedOpacity;
+          }
+
+          targetCtx.drawImage(sprite.imageCanvas, -sprite.imageCanvas.width / 2, -sprite.imageCanvas.height / 2);
+          targetCtx.restore();
+        }
+      });
+
+      if (!isExporting) {
+        bones.forEach(bone => {
+          if (!bone.visibleBone) return;
+          const isSelected = (bone === selectedBone);
+
+          targetCtx.save();
+          if (selectedBone && !isSelected) {
+            targetCtx.globalAlpha = unselectedOpacity;
+          }
+
+          targetCtx.beginPath();
+          targetCtx.moveTo(bone.startX, bone.startY);
+          targetCtx.lineTo(bone.endX, bone.endY);
+          targetCtx.strokeStyle = isSelected ? '#00d2ff' : '#aaa';
+          targetCtx.lineWidth = (isSelected ? 4 : 2) / stageZoom;
+          targetCtx.stroke();
+
+          targetCtx.beginPath();
+          targetCtx.arc(bone.startX, bone.startY, (isSelected ? 6 : 4) / stageZoom, 0, Math.PI * 2);
+          targetCtx.fillStyle = isSelected ? '#ff0055' : '#888';
+          targetCtx.fill();
+
+          targetCtx.beginPath();
+          targetCtx.arc(bone.endX, bone.endY, (isSelected ? 5 : 3) / stageZoom, 0, Math.PI * 2);
+          targetCtx.fillStyle = isSelected ? '#00d2ff' : '#888';
+          targetCtx.fill();
+
+          bone.meshStrokes.forEach(stroke => {
+            if (stroke.length > 1) {
+              targetCtx.beginPath();
+              targetCtx.strokeStyle = isSelected ? '#ff0055' : '#888';
+              targetCtx.lineWidth = 2 / stageZoom;
+              for (let i = 0; i < stroke.length - 1; i++) {
+                const pt1 = bone.localToWorld(stroke[i]);
+                const pt2 = bone.localToWorld(stroke[i + 1]);
+                targetCtx.moveTo(pt1.x, pt1.y);
+                targetCtx.lineTo(pt2.x, pt2.y);
+              }
+              targetCtx.stroke();
+            }
+          });
+
+          if (isSelected && mode === 'POSE' && transformTarget === 'BONE') {
+            const rotHandleX = bone.endX + Math.cos(bone.worldAngle) * (20 / stageZoom);
+            const rotHandleY = bone.endY + Math.sin(bone.worldAngle) * (20 / stageZoom);
+
+            targetCtx.beginPath();
+            targetCtx.moveTo(bone.endX, bone.endY);
+            targetCtx.lineTo(rotHandleX, rotHandleY);
+            targetCtx.strokeStyle = '#00d2ff';
+            targetCtx.lineWidth = 1.5 / stageZoom;
+            targetCtx.stroke();
+
+            targetCtx.beginPath();
+            targetCtx.arc(rotHandleX, rotHandleY, 6 / stageZoom, 0, Math.PI * 2);
+            targetCtx.fillStyle = '#00d2ff';
+            targetCtx.fill();
+            targetCtx.strokeStyle = '#000';
+            targetCtx.lineWidth = 1 / stageZoom;
+            targetCtx.stroke();
+
+            const midX = (bone.startX + bone.endX) / 2;
+            const midY = (bone.startY + bone.endY) / 2;
+            targetCtx.beginPath();
+            targetCtx.arc(midX, midY, 5 / stageZoom, 0, Math.PI * 2);
+            targetCtx.fillStyle = '#ffcc00';
+            targetCtx.fill();
+            targetCtx.stroke();
+          }
+
+          if (isSelected && mode === 'POSE' && transformTarget === 'IMAGE' && bone.attachedSprite) {
+            const bbox = getSelectedSpriteBoundingBox();
+            if (bbox) {
+              targetCtx.save();
+              targetCtx.translate(bbox.centerWorld.x, bbox.centerWorld.y);
+              targetCtx.rotate(bbox.spriteWorldAngle);
+
+              targetCtx.strokeStyle = '#00d2ff';
+              targetCtx.lineWidth = 1.5 / stageZoom;
+              targetCtx.setLineDash([4, 4]);
+              targetCtx.strokeRect(-bbox.w / 2, -bbox.h / 2, bbox.w, bbox.h);
+              targetCtx.setLineDash([]);
+
+              targetCtx.beginPath();
+              targetCtx.arc(0, 0, 5 / stageZoom, 0, Math.PI * 2);
+              targetCtx.fillStyle = '#00d2ff';
+              targetCtx.fill();
+
+              targetCtx.beginPath();
+              targetCtx.moveTo(0, -bbox.h / 2);
+              targetCtx.lineTo(0, -bbox.h / 2 - 25 / stageZoom);
+              targetCtx.stroke();
+
+              targetCtx.beginPath();
+              targetCtx.arc(0, -bbox.h / 2 - 25 / stageZoom, 6 / stageZoom, 0, Math.PI * 2);
+              targetCtx.fillStyle = '#ffcc00';
+              targetCtx.fill();
+              targetCtx.stroke();
+
+              targetCtx.beginPath();
+              targetCtx.arc(bbox.w / 2, bbox.h / 2, 5 / stageZoom, 0, Math.PI * 2);
+              targetCtx.fillStyle = '#00d2ff';
+              targetCtx.fill();
+              targetCtx.stroke();
+
+              targetCtx.restore();
+            }
+          }
+
+          targetCtx.restore();
+        });
+      }
+
+      targetCtx.restore();
+    }
+
+    function render() {
+      renderToContext(ctx, false);
+    }
+
+    function serializeProject() {
+      const dataBones = bones.map(b => ({
+        id: b.id,
+        parentId: b.parent ? b.parent.id : null,
+        length: b.length,
+        localAngle: b.localAngle,
+        posX: b.posX,
+        posY: b.posY,
+        meshStrokes: b.meshStrokes,
+        visibleBone: b.visibleBone,
+        visibleImage: b.visibleImage,
+        attachedSprite: b.attachedSprite ? {
+          assetId: ensureSpriteAssetId(b.attachedSprite),
+          name: b.attachedSprite.name,
+          dataUrl: b.attachedSprite.imageCanvas.toDataURL(),
+          scale: b.attachedSprite.scale,
+          rot: b.attachedSprite.rot,
+          offX: b.attachedSprite.offX,
+          offY: b.attachedSprite.offY
+        } : null
+      }));
+
+      const dataUnattached = unattachedImages.map(img => ({
+        assetId: ensureSpriteAssetId(img),
+        name: img.name,
+        dataUrl: img.imageCanvas ? img.imageCanvas.toDataURL() : null,
+        scale: img.scale,
+        rot: img.rot,
+        offX: img.offX,
+        offY: img.offY
+      }));
+
+      const dataTray = trayImages.map(img => ({
+        assetId: ensureSpriteAssetId(img),
+        name: img.name,
+        dataUrl: img.imageCanvas ? img.imageCanvas.toDataURL() : null,
+        scale: img.scale,
+        rot: img.rot,
+        offX: img.offX,
+        offY: img.offY
+      }));
+
+      const serializedSpriteKeyframes = {};
+      Object.keys(spriteKeyframes).forEach(bId => {
+        serializedSpriteKeyframes[bId] = {};
+        Object.keys(spriteKeyframes[bId]).forEach(fIdx => {
+          const group = spriteKeyframes[bId][fIdx];
+          serializedSpriteKeyframes[bId][fIdx] = {
+            activeIndex: group.activeIndex,
+            sprites: group.sprites.map(s => ({
+              assetId: ensureSpriteAssetId(s),
+              name: s.name,
+              dataUrl: s.imageCanvas ? s.imageCanvas.toDataURL() : null,
+              scale: s.scale,
+              rot: s.rot,
+              offX: s.offX,
+              offY: s.offY
+            }))
+          };
+        });
+      });
+
+      return JSON.stringify({
+        maxFrames,
+        fps,
+        bones: dataBones,
+        unattachedImages: dataUnattached,
+        trayImages: dataTray,
+        boneKeyframes,
+        spriteKeyframes: serializedSpriteKeyframes
+      });
+    }
+
+    function deserializeProject(jsonStr, isInitialLoad = false) {
+      try {
+        const data = JSON.parse(jsonStr);
+        maxFrames = data.maxFrames || 60;
+        fps = data.fps || 24;
+
+        document.getElementById('max-frames-input').value = maxFrames;
+        document.getElementById('fps-input').value = fps;
+
+        boneKeyframes = data.boneKeyframes || {};
+        spriteKeyframes = {};
+
+        if (data.spriteKeyframes) {
+          Object.keys(data.spriteKeyframes).forEach(bId => {
+            spriteKeyframes[bId] = {};
+            Object.keys(data.spriteKeyframes[bId]).forEach(fIdx => {
+              const group = data.spriteKeyframes[bId][fIdx];
+              spriteKeyframes[bId][fIdx] = {
+                activeIndex: group.activeIndex,
+                sprites: group.sprites.map(s => {
+                  const offCanvas = document.createElement('canvas');
+                  const img = new Image();
+                  img.onload = () => {
+                    offCanvas.width = img.width;
+                    offCanvas.height = img.height;
+                    const oCtx = offCanvas.getContext('2d');
+                    applySmoothing(oCtx);
+                    oCtx.drawImage(img, 0, 0);
+                    render();
+                  };
+                  if (s.dataUrl) img.src = s.dataUrl;
+
+                  return {
+                    assetId: s.assetId || legacySpriteAssetId(s.name, s.dataUrl),
+                    name: s.name,
+                    imageCanvas: offCanvas,
+                    scale: s.scale,
+                    rot: s.rot,
+                    offX: s.offX,
+                    offY: s.offY
+                  };
+                })
+              };
+            });
+          });
+        }
+
+        bones = [];
+        const boneMap = {};
+
+        data.bones.forEach(bd => {
+          const newBone = new Bone(bd.id, null, bd.length, bd.localAngle, { x: bd.posX, y: bd.posY });
+          newBone.meshStrokes = bd.meshStrokes || [];
+          newBone.visibleBone = bd.visibleBone !== undefined ? bd.visibleBone : true;
+          newBone.visibleImage = bd.visibleImage !== undefined ? bd.visibleImage : true;
+
+          if (bd.attachedSprite && bd.attachedSprite.dataUrl) {
+            const offCanvas = document.createElement('canvas');
+            const img = new Image();
+            img.onload = () => {
+              offCanvas.width = img.width;
+              offCanvas.height = img.height;
+              const oCtx = offCanvas.getContext('2d');
+              applySmoothing(oCtx);
+              oCtx.drawImage(img, 0, 0);
+              render();
+            };
+            img.src = bd.attachedSprite.dataUrl;
+
+            newBone.attachedSprite = {
+              assetId: bd.attachedSprite.assetId || legacySpriteAssetId(bd.attachedSprite.name, bd.attachedSprite.dataUrl),
+              name: bd.attachedSprite.name,
+              imageCanvas: offCanvas,
+              scale: bd.attachedSprite.scale,
+              rot: bd.attachedSprite.rot,
+              offX: bd.attachedSprite.offX,
+              offY: bd.attachedSprite.offY
+            };
+          }
+
+          boneMap[bd.id] = newBone;
+          bones.push(newBone);
+        });
+
+        data.bones.forEach(bd => {
+          if (bd.parentId && boneMap[bd.parentId]) {
+            boneMap[bd.id].parent = boneMap[bd.parentId];
+          }
+        });
+
+        unattachedImages = [];
+        if (data.unattachedImages) {
+          data.unattachedImages.forEach(imgData => {
+            const offCanvas = document.createElement('canvas');
+            const img = new Image();
+            img.onload = () => {
+              offCanvas.width = img.width;
+              offCanvas.height = img.height;
+              const oCtx = offCanvas.getContext('2d');
+              applySmoothing(oCtx);
+              oCtx.drawImage(img, 0, 0);
+              render();
+            };
+            if (imgData.dataUrl) img.src = imgData.dataUrl;
+
+            unattachedImages.push({
+              assetId: imgData.assetId || legacySpriteAssetId(imgData.name, imgData.dataUrl),
+              name: imgData.name,
+              imageCanvas: offCanvas,
+              scale: imgData.scale || 1,
+              rot: imgData.rot || 0,
+              offX: imgData.offX || 0,
+              offY: imgData.offY || 0
+            });
+          });
+        }
+
+        trayImages = [];
+        if (data.trayImages) {
+          data.trayImages.forEach(imgData => {
+            const offCanvas = document.createElement('canvas');
+            const img = new Image();
+            img.onload = () => {
+              offCanvas.width = img.width;
+              offCanvas.height = img.height;
+              const oCtx = offCanvas.getContext('2d');
+              applySmoothing(oCtx);
+              oCtx.drawImage(img, 0, 0);
+              renderAssetTray();
+            };
+            if (imgData.dataUrl) img.src = imgData.dataUrl;
+
+            trayImages.push({
+              assetId: imgData.assetId || legacySpriteAssetId(imgData.name, imgData.dataUrl),
+              name: imgData.name,
+              imageCanvas: offCanvas,
+              scale: imgData.scale || 1,
+              rot: imgData.rot || 0,
+              offX: imgData.offX || 0,
+              offY: imgData.offY || 0
+            });
+          });
+        }
+
+        selectedBone = bones.length > 0 ? bones[0] : null;
+        currentFrame = 0;
+        applyKeyframeState(currentFrame);
+
+        renderAssetTray();
+        updateUI();
+        resizeCanvas();
+      } catch (err) {
+        console.error("Falha ao desserializar projeto:", err);
+      }
+    }
+
+    function saveToLocalStorage() {
+      localStorage.setItem('nickeman_project_data', serializeProject());
+      alert("Projeto salvo no armazenamento local!");
+    }
+
+    function loadFromLocalStorage() {
+      const saved = localStorage.getItem('nickeman_project_data');
+      if (saved) {
+        saveState();
+        deserializeProject(saved);
+      } else {
+        alert("Nenhum projeto salvo encontrado.");
+      }
+    }
+
+    function exportJSON() {
+      const jsonStr = serializeProject();
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'nickeman_rigging_project.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importJSON(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          saveState();
+          deserializeProject(e.target.result);
+        };
+        reader.readAsText(file);
+      }
+    }
+
+    async function exportImageSequence() {
+      if (typeof JSZip === 'undefined') {
+        alert("Biblioteca JSZip carregando, tente novamente.");
+        return;
+      }
+
+      const zip = new JSZip();
+      const exportCanvas = document.createElement('canvas');
+      exportCanvas.width = canvas.width;
+      exportCanvas.height = canvas.height;
+      const exportCtx = exportCanvas.getContext('2d');
+      applySmoothing(exportCtx);
+
+      const initialFrame = currentFrame;
+
+      for (let f = 0; f <= maxFrames; f++) {
+        applyKeyframeState(f);
+        renderToContext(exportCtx, true);
+
+        const dataUrl = exportCanvas.toDataURL('image/png');
+        const base64Data = dataUrl.replace(/^data:image\/png;base64,/, "");
+        const frameNumber = String(f).padStart(4, '0');
+        zip.file(`frame_${frameNumber}.png`, base64Data, { base64: true });
+      }
+
+      currentFrame = initialFrame;
+      applyKeyframeState(currentFrame);
+      updateUI();
+      render();
+
+      const content = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(content);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'animacao_sequencia.zip';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    resizeCanvas();
+    setMode('ADD_BONE_ROOT');
+
+    /* ============================================================
+       CONFIGURAÇÃO VISUAL DO LAYOUT
+       ============================================================ */
+    const START_LAYOUT_PRESET = 'dark';
+
+    const DEFAULT_LAYOUT_CONFIG = {
+      preset: START_LAYOUT_PRESET,
+      colors: {
+        '--ui-bg': '#202027',
+        '--ui-panel': '#2b2b36',
+        '--ui-panel-2': '#18181f',
+        '--ui-input': '#121216',
+        '--ui-border': '#3f3f52',
+        '--ui-text': '#eeeeee',
+        '--ui-accent': '#00d2ff',
+        '--ui-timeline-grid': '#2d2d3a',
+        '--ui-keyframe': '#ffd54a',
+        '--ui-keyframe-selected': '#ff7b00'
+      },
+      rowHeight: 24,
+      headerHeight: 30,
+      panelWidth: 160,
+      compact: false
+    };
+
+    let layoutConfig = JSON.parse(JSON.stringify(DEFAULT_LAYOUT_CONFIG));
+    let layoutCommittedConfig = JSON.parse(JSON.stringify(DEFAULT_LAYOUT_CONFIG));
+    let layoutEditing = false;
+
+    function getLayoutRoot() {
+      return document.documentElement;
+    }
+
+    function markLayoutEditing() {
+      layoutEditing = true;
+      updateLayoutActionState();
+    }
+
+    function updateLayoutColor(variable, value) {
+      const root = getLayoutRoot();
+      root.style.setProperty(variable, value);
+      layoutConfig.colors[variable] = value;
+      markLayoutEditing();
+
+      if (
+        variable === '--ui-keyframe' ||
+        variable === '--ui-keyframe-selected' ||
+        variable === '--ui-timeline-grid'
+      ) drawTimelineCanvas();
+
+      // O palco é redesenhado imediatamente e a cor CSS da aplicação/janelas
+      // é atualizada sem precisar fechar/reabrir a janela de configuração.
+      if (
+        variable === '--ui-bg' ||
+        variable === '--ui-panel' ||
+        variable === '--ui-panel-2' ||
+        variable === '--ui-input' ||
+        variable.startsWith('--win-')
+      ) render();
+
+      syncLayoutControls();
+    }
+
+    const LAYOUT_PRESETS = {
+      dark: {
+        '--ui-bg':'#202027','--ui-panel':'#2b2b36','--ui-panel-2':'#18181f',
+        '--ui-input':'#121216','--ui-border':'#3f3f52','--ui-text':'#eeeeee',
+        '--ui-accent':'#00d2ff','--ui-timeline-grid':'#2d2d3a',
+        '--ui-keyframe':'#ffd54a','--ui-keyframe-selected':'#ff7b00',
+        '--win-project-bg':'#2b2b36',
+        '--win-rigging-bg':'#2b2b36',
+        '--win-images-bg':'#2b2b36',
+        '--win-tray-bg':'#2b2b36',
+        '--win-timeline-bg':'#2b2b36'
+      },
+      light: {
+        '--ui-bg':'#eef1f5','--ui-panel':'#ffffff','--ui-panel-2':'#e5e9ef',
+        '--ui-input':'#ffffff','--ui-border':'#b9c0cb','--ui-text':'#20242b',
+        '--ui-accent':'#0077aa','--ui-timeline-grid':'#d5dbe3',
+        '--ui-keyframe':'#c58b00','--ui-keyframe-selected':'#d85d00'
+      },
+      midnight: {
+        '--ui-bg':'#0b1020','--ui-panel':'#11182b','--ui-panel-2':'#0a1020',
+        '--ui-input':'#070b15','--ui-border':'#293858','--ui-text':'#e9f0ff',
+        '--ui-accent':'#62d9ff','--ui-timeline-grid':'#1d2940',
+        '--ui-keyframe':'#f6d365','--ui-keyframe-selected':'#ff884d'
+      },
+      contrast: {
+        '--ui-bg':'#000000','--ui-panel':'#101010','--ui-panel-2':'#000000',
+        '--ui-input':'#000000','--ui-border':'#ffffff','--ui-text':'#ffffff',
+        '--ui-accent':'#ffff00','--ui-timeline-grid':'#555555',
+        '--ui-keyframe':'#ffff00','--ui-keyframe-selected':'#ff6600'
+      }
+    };
+
+    function applyLayoutPreset(name) {
+      const root = getLayoutRoot();
+      const values = LAYOUT_PRESETS[name] || LAYOUT_PRESETS.dark;
+
+      root.classList.remove('layout-light', 'layout-midnight', 'layout-contrast');
+      if (name === 'light') root.classList.add('layout-light');
+      if (name === 'midnight') root.classList.add('layout-midnight');
+      if (name === 'contrast') root.classList.add('layout-contrast');
+
+      layoutConfig.preset = name;
+      layoutConfig.colors = {
+        ...DEFAULT_LAYOUT_CONFIG.colors,
+        ...values,
+        '--win-project-bg': values['--ui-panel'],
+        '--win-rigging-bg': values['--ui-panel'],
+        '--win-images-bg': values['--ui-panel'],
+        '--win-tray-bg': values['--ui-panel'],
+        '--win-timeline-bg': values['--ui-panel']
+      };
+
+      Object.entries(layoutConfig.colors).forEach(([key, value]) => {
+        root.style.setProperty(key, value);
+      });
+
+      markLayoutEditing();
+      syncLayoutControls();
+      drawTimelineCanvas();
+      render();
+    }
+
+    function applyLayoutConfig(config) {
+      const root = getLayoutRoot();
+      root.classList.remove('layout-light', 'layout-midnight', 'layout-contrast');
+
+      if (config.preset === 'light') root.classList.add('layout-light');
+      if (config.preset === 'midnight') root.classList.add('layout-midnight');
+      if (config.preset === 'contrast') root.classList.add('layout-contrast');
+
+      Object.entries(config.colors || {}).forEach(([key, value]) => {
+        root.style.setProperty(key, value);
+      });
+
+      setTimelineRowHeight(config.rowHeight);
+      setTimelineHeaderHeight(config.headerHeight);
+      setTimelinePanelWidth(config.panelWidth);
+
+      syncLayoutControls();
+      drawTimelineCanvas();
+      render();
+    }
+
+    function cancelLayoutChanges() {
+      if (!layoutEditing) {
+        document.getElementById('layout-settings-window')?.classList.remove('open');
+        return;
+      }
+
+      layoutConfig = JSON.parse(JSON.stringify(layoutCommittedConfig));
+      applyLayoutConfig(layoutConfig);
+      layoutEditing = false;
+
+      document.getElementById('layout-settings-window')?.classList.remove('open');
+      updateLayoutActionState();
+    }
+
+    function confirmLayoutChanges() {
+      try {
+        layoutCommittedConfig = JSON.parse(JSON.stringify(layoutConfig));
+        localStorage.setItem('bonesEditorLayoutConfig', JSON.stringify(layoutCommittedConfig));
+        layoutEditing = false;
+
+        document.getElementById('layout-settings-window')?.classList.remove('open');
+        updateLayoutActionState();
+      } catch (e) {
+        alert('Não foi possível confirmar o layout.');
+      }
+    }
+
+    function restoreDefaultLayoutPreview() {
+      // Padrão é apenas uma prévia até o usuário clicar em Confirmar.
+      layoutConfig = JSON.parse(JSON.stringify(DEFAULT_LAYOUT_CONFIG));
+      applyLayoutConfig(layoutConfig);
+      layoutEditing = true;
+      updateLayoutActionState();
+    }
+
+    function updateLayoutActionState() {
+      const status = document.getElementById('layout-preview-status');
+      const confirmBtn = document.getElementById('layout-confirm-btn');
+      const cancelBtn = document.getElementById('layout-cancel-btn');
+
+      if (status) {
+        status.textContent = layoutEditing
+          ? '● Pré-visualização ao vivo — alterações ainda não confirmadas'
+          : '✓ Layout confirmado';
+      }
+      if (confirmBtn) confirmBtn.disabled = !layoutEditing;
+      if (cancelBtn) cancelBtn.disabled = !layoutEditing;
+    }
+
+    function setTimelineRowHeight(value) {
+      const h = Math.max(18, Math.min(60, parseInt(value, 10) || 24));
+      layoutConfig.rowHeight = h;
+      document.documentElement.style.setProperty('--timeline-row-height', h + 'px');
+
+      document.querySelectorAll('.bone-layer-row').forEach(row => {
+        row.style.height = h + 'px';
+        row.style.minHeight = h + 'px';
+        row.style.flexBasis = h + 'px';
+      });
+
+      resizeTimelineCanvas();
+      drawTimelineCanvas();
+      markLayoutEditing();
+    }
+
+    function setTimelineHeaderHeight(value) {
+      const h = Math.max(20, Math.min(80, parseInt(value, 10) || 30));
+      layoutConfig.headerHeight = h;
+      document.documentElement.style.setProperty('--timeline-header-height', h + 'px');
+
+      const panel = document.getElementById('bone-layers-panel');
+      if (panel) panel.style.paddingTop = h + 'px';
+
+      resizeTimelineCanvas();
+      drawTimelineCanvas();
+      markLayoutEditing();
+    }
+
+    function setTimelinePanelWidth(value) {
+      const w = Math.max(120, Math.min(350, parseInt(value, 10) || 160));
+      layoutConfig.panelWidth = w;
+
+      const panel = document.getElementById('bone-layers-panel');
+      if (panel) {
+        panel.style.width = w + 'px';
+        panel.style.flexBasis = w + 'px';
+      }
+      markLayoutEditing();
+    }
+
+    function toggleCompactTimeline() {
+      layoutConfig.compact = !layoutConfig.compact;
+      setTimelineRowHeight(layoutConfig.compact ? 20 : 24);
+
+      const input = document.getElementById('layout-row-height');
+      if (input) input.value = layoutConfig.rowHeight;
+    }
+
+    function syncLayoutControls() {
+      const map = {
+        '--ui-bg':'layout-bg',
+        '--ui-panel':'layout-panel',
+        '--ui-panel-2':'layout-panel2',
+        '--ui-input':'layout-input',
+        '--ui-text':'layout-text',
+        '--ui-accent':'layout-accent',
+        '--ui-border':'layout-border',
+        '--ui-timeline-grid':'layout-grid',
+        '--ui-keyframe':'layout-keyframe',
+        '--ui-keyframe-selected':'layout-keyframe-selected',
+        '--win-project-bg':'layout-win-project',
+        '--win-rigging-bg':'layout-win-rigging',
+        '--win-images-bg':'layout-win-images',
+        '--win-tray-bg':'layout-win-tray',
+        '--win-timeline-bg':'layout-win-timeline'
+      };
+
+      const styles = getComputedStyle(document.documentElement);
+      Object.entries(map).forEach(([variable, id]) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        let value = (layoutConfig.colors?.[variable] || styles.getPropertyValue(variable).trim()).trim();
+        // Resolve defaults that are expressed as var(--ui-panel).
+        if (!/^#[0-9a-fA-F]{6}$/.test(value)) {
+          value = styles.getPropertyValue(variable).trim();
+        }
+        if (/^#[0-9a-fA-F]{6}$/.test(value)) el.value = value;
+      });
+
+      const row = document.getElementById('layout-row-height');
+      const header = document.getElementById('layout-header-height');
+      const width = document.getElementById('layout-panel-width');
+      if (row) row.value = layoutConfig.rowHeight;
+      if (header) header.value = layoutConfig.headerHeight;
+      if (width) width.value = layoutConfig.panelWidth;
+    }
+
+    function saveLayoutPreferences() {
+      confirmLayoutChanges();
+    }
+
+    function loadLayoutPreferences() {
+      try {
+        const raw = localStorage.getItem('bonesEditorLayoutConfig');
+
+        if (!raw) {
+          layoutConfig = JSON.parse(JSON.stringify(DEFAULT_LAYOUT_CONFIG));
+          layoutConfig.preset = START_LAYOUT_PRESET;
+          layoutCommittedConfig = JSON.parse(JSON.stringify(layoutConfig));
+          applyLayoutConfig(layoutConfig);
+          layoutEditing = false;
+          return;
+        }
+
+        const saved = JSON.parse(raw);
+        layoutConfig = {
+          ...JSON.parse(JSON.stringify(DEFAULT_LAYOUT_CONFIG)),
+          ...saved,
+          colors: {
+            ...DEFAULT_LAYOUT_CONFIG.colors,
+            ...(saved.colors || {})
+          }
+        };
+
+        // Compatibilidade com versões anteriores que não tinham cores individuais.
+        const panelColor = layoutConfig.colors['--ui-panel'] || DEFAULT_LAYOUT_CONFIG.colors['--ui-panel'];
+        ['project','rigging','images','tray','timeline'].forEach(name => {
+          const key = `--win-${name}-bg`;
+          if (!layoutConfig.colors[key]) layoutConfig.colors[key] = panelColor;
+        });
+
+        applyLayoutConfig(layoutConfig);
+        layoutCommittedConfig = JSON.parse(JSON.stringify(layoutConfig));
+        layoutEditing = false;
+      } catch (e) {
+        layoutConfig = JSON.parse(JSON.stringify(DEFAULT_LAYOUT_CONFIG));
+        layoutCommittedConfig = JSON.parse(JSON.stringify(DEFAULT_LAYOUT_CONFIG));
+        applyLayoutConfig(layoutConfig);
+        layoutEditing = false;
+      }
+    }
+
+    function toggleLayoutSettings() {
+      const panel = document.getElementById('layout-settings-window');
+      if (!panel) return;
+
+      if (!panel.classList.contains('open')) {
+        layoutCommittedConfig = JSON.parse(JSON.stringify(layoutConfig));
+        layoutEditing = true;
+        panel.classList.add('open');
+        syncLayoutControls();
+        updateLayoutActionState();
+      } else {
+        cancelLayoutChanges();
+      }
+    }
+
+    function closeLayoutSettings() {
+      cancelLayoutChanges();
+    }
+
+    function applyLayoutConfig(config) {
+      const root = getLayoutRoot();
+      root.classList.remove('layout-light', 'layout-midnight', 'layout-contrast');
+
+      if (config.preset === 'light') root.classList.add('layout-light');
+      if (config.preset === 'midnight') root.classList.add('layout-midnight');
+      if (config.preset === 'contrast') root.classList.add('layout-contrast');
+
+      Object.entries(config.colors || {}).forEach(([key, value]) => {
+        root.style.setProperty(key, value);
+      });
+
+      setTimelineRowHeight(config.rowHeight);
+      setTimelineHeaderHeight(config.headerHeight);
+      setTimelinePanelWidth(config.panelWidth);
+
+      syncLayoutControls();
+      drawTimelineCanvas();
+      render();
+    }
+
+    function cancelLayoutChanges() {
+      if (!layoutEditing) {
+        const panel = document.getElementById('layout-settings-window');
+        if (panel) panel.classList.remove('open');
+        return;
+      }
+
+      layoutConfig = JSON.parse(JSON.stringify(layoutCommittedConfig));
+      applyLayoutConfig(layoutConfig);
+      layoutEditing = false;
+
+      const panel = document.getElementById('layout-settings-window');
+      if (panel) panel.classList.remove('open');
+
+      updateLayoutActionState();
+    }
+
+    function confirmLayoutChanges() {
+      try {
+        layoutCommittedConfig = JSON.parse(JSON.stringify(layoutConfig));
+        localStorage.setItem('bonesEditorLayoutConfig', JSON.stringify(layoutCommittedConfig));
+        layoutEditing = false;
+
+        const panel = document.getElementById('layout-settings-window');
+        if (panel) panel.classList.remove('open');
+
+        updateLayoutActionState();
+        alert('Layout confirmado e salvo neste navegador.');
+      } catch (e) {
+        alert('Não foi possível confirmar o layout.');
+      }
+    }
+
+    function restoreDefaultLayoutPreview() {
+      // Restaura apenas a prévia. O layout só será salvo após Confirmar.
+      layoutConfig = JSON.parse(JSON.stringify(DEFAULT_LAYOUT_CONFIG));
+      applyLayoutConfig(layoutConfig);
+      layoutEditing = true;
+      updateLayoutActionState();
+    }
+
+    function updateLayoutActionState() {
+      const status = document.getElementById('layout-preview-status');
+      const confirmBtn = document.getElementById('layout-confirm-btn');
+      const cancelBtn = document.getElementById('layout-cancel-btn');
+
+      if (status) {
+        status.textContent = layoutEditing
+          ? '● Pré-visualização ao vivo — alterações ainda não confirmadas'
+          : '✓ Layout confirmado';
+      }
+      if (confirmBtn) confirmBtn.disabled = !layoutEditing;
+      if (cancelBtn) cancelBtn.disabled = !layoutEditing;
+    }
+
+    function setTimelineRowHeight(value) {
+      const h = Math.max(18, Math.min(60, parseInt(value, 10) || 24));
+      layoutConfig.rowHeight = h;
+
+      document.documentElement.style.setProperty('--timeline-row-height', h + 'px');
+
+      document.querySelectorAll('.bone-layer-row').forEach(row => {
+        row.style.height = h + 'px';
+        row.style.minHeight = h + 'px';
+        row.style.flexBasis = h + 'px';
+      });
+
+      resizeTimelineCanvas();
+      drawTimelineCanvas();
+    }
+
+    function setTimelineHeaderHeight(value) {
+      const h = Math.max(20, Math.min(80, parseInt(value, 10) || 30));
+      layoutConfig.headerHeight = h;
+
+      document.documentElement.style.setProperty('--timeline-header-height', h + 'px');
+
+      const panel = document.getElementById('bone-layers-panel');
+      if (panel) panel.style.paddingTop = h + 'px';
+
+      resizeTimelineCanvas();
+      drawTimelineCanvas();
+    }
+
+    function setTimelinePanelWidth(value) {
+      const w = Math.max(120, Math.min(350, parseInt(value, 10) || 160));
+      layoutConfig.panelWidth = w;
+
+      const panel = document.getElementById('bone-layers-panel');
+      if (panel) {
+        panel.style.width = w + 'px';
+        panel.style.flexBasis = w + 'px';
+      }
+    }
+
+    function toggleCompactTimeline() {
+      layoutConfig.compact = !layoutConfig.compact;
+      setTimelineRowHeight(layoutConfig.compact ? 20 : 24);
+
+      const input = document.getElementById('layout-row-height');
+      if (input) input.value = layoutConfig.rowHeight;
+    }
+
+    function syncLayoutControls() {
+  const bgPicker = document.getElementById('layout-bg-color');
+  if (bgPicker) {
+    const bg = layoutConfig.colors['--ui-bg'];
+    if (/^#[0-9a-fA-F]{6}$/.test(bg)) bgPicker.value = bg;
+  }
+      const map = {
+        '--ui-bg':'layout-bg',
+        '--ui-panel':'layout-panel',
+        '--ui-panel-2':'layout-panel2',
+        '--ui-input':'layout-input',
+        '--ui-text':'layout-text',
+        '--ui-accent':'layout-accent',
+        '--ui-border':'layout-border',
+        '--ui-timeline-grid':'layout-grid',
+        '--ui-keyframe':'layout-keyframe',
+        '--ui-keyframe-selected':'layout-keyframe-selected'
+      };
+
+      const styles = getComputedStyle(document.documentElement);
+
+      Object.entries(map).forEach(([variable, id]) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const value = styles.getPropertyValue(variable).trim();
+        if (/^#[0-9a-fA-F]{6}$/.test(value)) el.value = value;
+      });
+
+      const row = document.getElementById('layout-row-height');
+      const header = document.getElementById('layout-header-height');
+      const width = document.getElementById('layout-panel-width');
+
+      if (row) row.value = layoutConfig.rowHeight;
+      if (header) header.value = layoutConfig.headerHeight;
+      if (width) width.value = layoutConfig.panelWidth;
+    }
+
+    function saveLayoutPreferences() {
+      confirmLayoutChanges();
+    }
+
+    function loadLayoutPreferences() {
+      try {
+        const raw = localStorage.getItem('bonesEditorLayoutConfig');
+        if (!raw) {
+          applyLayoutPreset('dark');
+          return;
+        }
+
+        const saved = JSON.parse(raw);
+        layoutConfig = {
+          ...JSON.parse(JSON.stringify(DEFAULT_LAYOUT_CONFIG)),
+          ...saved,
+          colors: {
+            ...DEFAULT_LAYOUT_CONFIG.colors,
+            ...(saved.colors || {})
+          }
+        };
+
+        const root = getLayoutRoot();
+        root.classList.remove('layout-light', 'layout-midnight', 'layout-contrast');
+
+        if (layoutConfig.preset === 'light') root.classList.add('layout-light');
+        if (layoutConfig.preset === 'midnight') root.classList.add('layout-midnight');
+        if (layoutConfig.preset === 'contrast') root.classList.add('layout-contrast');
+
+        Object.entries(layoutConfig.colors).forEach(([key, value]) => {
+          root.style.setProperty(key, value);
+        });
+
+        setTimelineRowHeight(layoutConfig.rowHeight);
+        setTimelineHeaderHeight(layoutConfig.headerHeight);
+        setTimelinePanelWidth(layoutConfig.panelWidth);
+        layoutCommittedConfig = JSON.parse(JSON.stringify(layoutConfig));
+        layoutEditing = false;
+        syncLayoutControls();
+        updateLayoutActionState();
+      } catch (e) {
+        applyLayoutPreset('dark');
+        layoutCommittedConfig = JSON.parse(JSON.stringify(layoutConfig));
+        layoutEditing = false;
+      }
+    }
+
+    function resetLayout() {
+      restoreDefaultLayoutPreview();
+    }
+
+    /* ============================================================
+       IDENTIDADE DAS IMAGENS / REFERÊNCIAS DOS KEYFRAMES
+       Uma mesma parte pode aparecer em vários keyframes. O assetId
+       permite editar a imagem uma única vez e propagar os pixels para
+       todas as referências, sem alterar escala/rotação/offset.
+       ============================================================ */
+    let nextSpriteAssetId = 1;
+
+    function createSpriteAssetId() {
+      return `asset_${Date.now()}_${nextSpriteAssetId++}`;
+    }
+
+    function hashSpriteString(value) {
+      let hash = 2166136261;
+      const str = String(value || '');
+      for (let i = 0; i < str.length; i++) {
+        hash ^= str.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+      }
+      return (hash >>> 0).toString(16);
+    }
+
+    function legacySpriteAssetId(name, dataUrl) {
+      return `legacy_${hashSpriteString(`${name || 'Imagem'}|${dataUrl || ''}`)}`;
+    }
+
+    function ensureSpriteAssetId(sprite, fallbackDataUrl = null) {
+      if (!sprite) return null;
+      if (!sprite.assetId) {
+        const dataUrl = fallbackDataUrl !== null
+          ? fallbackDataUrl
+          : (sprite.imageCanvas ? sprite.imageCanvas.toDataURL('image/png') : '');
+        sprite.assetId = legacySpriteAssetId(sprite.name, dataUrl);
+      }
+      return sprite.assetId;
+    }
+
+    function ensureNewSpriteAssetId(sprite) {
+      if (sprite && !sprite.assetId) sprite.assetId = createSpriteAssetId();
+      return sprite ? sprite.assetId : null;
+    }
+
+    function copySpritePixels(sourceCanvas, targetCanvas) {
+      if (!sourceCanvas || !targetCanvas || sourceCanvas === targetCanvas) return;
+      targetCanvas.width = sourceCanvas.width;
+      targetCanvas.height = sourceCanvas.height;
+      const targetCtx = targetCanvas.getContext('2d');
+      applySmoothing(targetCtx);
+      targetCtx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
+      targetCtx.drawImage(sourceCanvas, 0, 0);
+    }
+
+    // Cria uma cópia independente dos pixels. O canvas retornado passa a ser
+    // a referência visual comum de todos os keyframes daquele asset.
+    // Isso evita perder a imagem quando uma referência temporária do frame
+    // atual (_interpolatedSprite) é editada pelo Mini Paint.
+    function cloneSpriteCanvas(sourceCanvas) {
+      if (!sourceCanvas) return null;
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, sourceCanvas.width);
+      c.height = Math.max(1, sourceCanvas.height);
+      const cctx = c.getContext('2d');
+      applySmoothing(cctx);
+      cctx.clearRect(0, 0, c.width, c.height);
+      cctx.drawImage(sourceCanvas, 0, 0);
+      return c;
+    }
+
+    function forEachRuntimeSprite(callback) {
+      const seen = new Set();
+      const visit = sprite => {
+        if (!sprite || seen.has(sprite)) return;
+        seen.add(sprite);
+        callback(sprite);
+      };
+
+      trayImages.forEach(visit);
+      unattachedImages.forEach(visit);
+      bones.forEach(b => visit(b.attachedSprite));
+
+      Object.keys(spriteKeyframes || {}).forEach(boneId => {
+        const frames = spriteKeyframes[boneId] || {};
+        Object.keys(frames).forEach(frame => {
+          const group = frames[frame] || {};
+          (group.sprites || []).forEach(visit);
+        });
+      });
+    }
+
+    function propagateSpriteImageToAllReferences(sourceSprite) {
+      if (!sourceSprite || !sourceSprite.imageCanvas) return 0;
+
+      const assetId = ensureSpriteAssetId(sourceSprite);
+      if (!assetId) return 0;
+
+      // IMPORTANTE: não copiamos pixels canvas-a-canvas. Em alguns casos a
+      // imagem aberta no Mini Paint é a referência temporária do frame atual
+      // (_interpolatedSprite). Copiar dimensões/conteúdo entre canvases pode
+      // deixar uma referência sem imagem.
+      //
+      // Em vez disso, criamos UM canvas mestre e fazemos todas as referências
+      // do mesmo asset apontarem para ele. Assim, qualquer keyframe que tenha
+      // esse asset passa a usar exatamente os mesmos pixels. As propriedades
+      // de animação (scale/rot/offX/offY) continuam individuais.
+      const masterCanvas = cloneSpriteCanvas(sourceSprite.imageCanvas);
+      if (!masterCanvas) return 0;
+
+      let updated = 0;
+      forEachRuntimeSprite(sprite => {
+        if (ensureSpriteAssetId(sprite) !== assetId) return;
+        sprite.imageCanvas = masterCanvas;
+        updated++;
+      });
+
+      // A referência que foi aberta pelo Mini Paint também fica ligada ao
+      // mesmo canvas mestre, inclusive quando for _interpolatedSprite.
+      sourceSprite.imageCanvas = masterCanvas;
+
+      return updated;
+    }
+
+    /* ============================================================
+       MINI PAINT — EDIÇÃO PIXEL A PIXEL DAS PARTES IMPORTADAS
+       ============================================================ */
+    let paintTarget = null;
+    let paintOriginalData = null;
+    let paintUndoStack = [];
+    let paintRedoStack = [];
+    let paintTool = 'pencil';
+    let paintDrawing = false;
+    let paintLast = null;
+    let paintStart = null;
+    let paintZoom = 1;
+    const PAINT_MIN_ZOOM = 0.25;
+    const PAINT_MAX_ZOOM = 8;
+
+    const paintCanvas = document.getElementById('paint-canvas');
+    const paintCtx = paintCanvas.getContext('2d', { willReadFrequently: true });
+    applySmoothing(paintCtx);
+
+    function paintSnapshot() {
+      if (!paintCanvas.width || !paintCanvas.height) return null;
+      return paintCtx.getImageData(0, 0, paintCanvas.width, paintCanvas.height);
+    }
+
+    function paintPushUndo() {
+      const snap = paintSnapshot();
+      if (!snap) return;
+      paintUndoStack.push(snap);
+      if (paintUndoStack.length > 40) paintUndoStack.shift();
+      paintRedoStack = [];
+    }
+
+    function paintRestoreSnapshot(snap) {
+      if (!snap) return;
+      paintCtx.putImageData(snap, 0, 0);
+      paintUpdateStatus();
+    }
+
+    function paintUpdateStatus() {
+      const el = document.getElementById('paint-status');
+      if (!el) return;
+      const name = paintTarget ? (paintTarget.name || 'Imagem') : 'Nenhuma imagem';
+      el.textContent = paintTarget
+        ? `${name} • ${paintCanvas.width} × ${paintCanvas.height}px • ${paintTool === 'eraser' ? 'Borracha' : paintTool === 'picker' ? 'Conta-gotas' : 'Lápis'}`
+        : 'Nenhuma imagem em edição.';
+    }
+
+    function openSpritePaint(imgObj) {
+      if (!imgObj || !imgObj.imageCanvas) return;
+
+      ensureSpriteAssetId(imgObj);
+      paintTarget = imgObj;
+      paintCanvas.width = Math.max(1, imgObj.imageCanvas.width);
+      paintCanvas.height = Math.max(1, imgObj.imageCanvas.height);
+      paintCtx.clearRect(0, 0, paintCanvas.width, paintCanvas.height);
+      paintCtx.drawImage(imgObj.imageCanvas, 0, 0);
+      paintOriginalData = paintSnapshot();
+      paintUndoStack = [];
+      paintRedoStack = [];
+      paintDrawing = false;
+      paintLast = null;
+      paintStart = null;
+      paintZoom = 1;
+      applyPaintZoom();
+
+      const modal = document.getElementById('paint-modal');
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      paintUpdateStatus();
+    }
+
+    function closeSpritePaint() {
+      const modal = document.getElementById('paint-modal');
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+      paintDrawing = false;
+      paintTarget = null;
+      paintOriginalData = null;
+      paintUndoStack = [];
+      paintRedoStack = [];
+    }
+
+    function setPaintZoom(value) {
+      if (!paintCanvas.width || !paintCanvas.height) return;
+      const oldZoom = paintZoom;
+      paintZoom = Math.max(PAINT_MIN_ZOOM, Math.min(PAINT_MAX_ZOOM, Number(value) || 1));
+      applyPaintZoom(oldZoom);
+    }
+
+    function applyPaintZoom(oldZoom = paintZoom) {
+      const wrap = document.getElementById('paint-canvas-wrap');
+      const label = document.getElementById('paint-zoom-value');
+      if (!wrap || !paintCanvas.width || !paintCanvas.height) return;
+
+      const oldW = paintCanvas.getBoundingClientRect().width;
+      const oldH = paintCanvas.getBoundingClientRect().height;
+      paintCanvas.style.width = `${Math.max(1, paintCanvas.width * paintZoom)}px`;
+      paintCanvas.style.height = `${Math.max(1, paintCanvas.height * paintZoom)}px`;
+
+      if (label) label.textContent = `${Math.round(paintZoom * 100)}%`;
+
+      // Mantém aproximadamente o ponto central visível ao alterar o zoom.
+      if (oldZoom !== paintZoom && oldW > 0 && oldH > 0) {
+        const centerX = wrap.scrollLeft + wrap.clientWidth / 2;
+        const centerY = wrap.scrollTop + wrap.clientHeight / 2;
+        const ratio = paintZoom / oldZoom;
+        wrap.scrollLeft = Math.max(0, centerX * ratio - wrap.clientWidth / 2);
+        wrap.scrollTop = Math.max(0, centerY * ratio - wrap.clientHeight / 2);
+      }
+    }
+
+    function resetPaintZoom() {
+      setPaintZoom(1);
+      const wrap = document.getElementById('paint-canvas-wrap');
+      if (wrap) {
+        wrap.scrollLeft = Math.max(0, (wrap.scrollWidth - wrap.clientWidth) / 2);
+        wrap.scrollTop = Math.max(0, (wrap.scrollHeight - wrap.clientHeight) / 2);
+      }
+    }
+
+    function setPaintTool(tool) {
+      paintTool = tool;
+      ['pencil', 'eraser', 'picker', 'fill'].forEach(t => {
+        const el = document.getElementById(`paint-tool-${t}`);
+        if (el) el.classList.toggle('active', t === tool);
+      });
+      paintCanvas.style.cursor = tool === 'picker' ? 'copy' : tool === 'fill' ? 'cell' : 'crosshair';
+      paintUpdateStatus();
+    }
+
+    function paintGetPoint(e) {
+      const rect = paintCanvas.getBoundingClientRect();
+      const scaleX = paintCanvas.width / rect.width;
+      const scaleY = paintCanvas.height / rect.height;
+      return {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY
+      };
+    }
+
+    function paintBrushSize() {
+      return Math.max(1, Number(document.getElementById('paint-size').value) || 12);
+    }
+
+    function paintColor() {
+      return document.getElementById('paint-color').value || '#ff0055';
+    }
+
+    function paintTolerance() {
+      return Math.max(0, Math.min(100, Number(document.getElementById('paint-tolerance')?.value) || 0));
+    }
+
+    function paintHexToRgba(hex) {
+      const h = String(hex || '#000000').replace('#', '');
+      const value = h.length === 3 ? h.split('').map(ch => ch + ch).join('') : h.padEnd(6, '0').slice(0, 6);
+      return [
+        parseInt(value.slice(0, 2), 16),
+        parseInt(value.slice(2, 4), 16),
+        parseInt(value.slice(4, 6), 16),
+        255
+      ];
+    }
+
+    // Preenche apenas a região contígua à qual o pixel clicado pertence.
+    // Funciona também em áreas transparentes e respeita a tolerância para
+    // absorver pequenas variações de cor/anti-aliasing.
+    function paintFloodFill(startX, startY) {
+      if (!paintTarget || !paintCanvas.width || !paintCanvas.height) return;
+
+      const w = paintCanvas.width;
+      const h = paintCanvas.height;
+      const image = paintCtx.getImageData(0, 0, w, h);
+      const data = image.data;
+      const startIndex = (startY * w + startX) * 4;
+      const sr = data[startIndex];
+      const sg = data[startIndex + 1];
+      const sb = data[startIndex + 2];
+      const sa = data[startIndex + 3];
+      const [tr, tg, tb, ta] = paintHexToRgba(paintColor());
+      const tolerance = paintTolerance() * 2.55;
+
+      function matches(index) {
+        const dr = data[index] - sr;
+        const dg = data[index + 1] - sg;
+        const db = data[index + 2] - sb;
+        const da = data[index + 3] - sa;
+        // Distância média simples RGBA.
+        return Math.sqrt((dr * dr + dg * dg + db * db + da * da) / 4) <= tolerance;
+      }
+
+      function sameTarget(index) {
+        return data[index] === tr && data[index + 1] === tg && data[index + 2] === tb && data[index + 3] === ta;
+      }
+
+      if (sameTarget(startIndex)) return;
+
+      const visited = new Uint8Array(w * h);
+      const stack = [startX + startY * w];
+      visited[startX + startY * w] = 1;
+      let changed = 0;
+
+      while (stack.length) {
+        const pos = stack.pop();
+        const x = pos % w;
+        const y = Math.floor(pos / w);
+        const index = pos * 4;
+
+        if (!matches(index)) continue;
+
+        data[index] = tr;
+        data[index + 1] = tg;
+        data[index + 2] = tb;
+        data[index + 3] = ta;
+        changed++;
+
+        if (x > 0) {
+          const n = pos - 1;
+          if (!visited[n]) { visited[n] = 1; stack.push(n); }
+        }
+        if (x < w - 1) {
+          const n = pos + 1;
+          if (!visited[n]) { visited[n] = 1; stack.push(n); }
+        }
+        if (y > 0) {
+          const n = pos - w;
+          if (!visited[n]) { visited[n] = 1; stack.push(n); }
+        }
+        if (y < h - 1) {
+          const n = pos + w;
+          if (!visited[n]) { visited[n] = 1; stack.push(n); }
+        }
+      }
+
+      if (changed > 0) {
+        paintCtx.putImageData(image, 0, 0);
+      }
+    }
+
+    function paintDrawSegment(a, b) {
+      paintCtx.save();
+      paintCtx.lineCap = 'round';
+      paintCtx.lineJoin = 'round';
+      paintCtx.lineWidth = paintBrushSize();
+
+      if (paintTool === 'eraser') {
+        paintCtx.globalCompositeOperation = 'destination-out';
+        paintCtx.strokeStyle = 'rgba(0,0,0,1)';
+      } else {
+        paintCtx.globalCompositeOperation = 'source-over';
+        paintCtx.strokeStyle = paintColor();
+      }
+
+      paintCtx.beginPath();
+      paintCtx.moveTo(a.x, a.y);
+      paintCtx.lineTo(b.x, b.y);
+      paintCtx.stroke();
+      paintCtx.restore();
+    }
+
+    paintCanvas.addEventListener('pointerdown', (e) => {
+      if (!paintTarget || e.button !== 0) return;
+      e.preventDefault();
+      const p = paintGetPoint(e);
+
+      const x = Math.max(0, Math.min(paintCanvas.width - 1, Math.floor(p.x)));
+      const y = Math.max(0, Math.min(paintCanvas.height - 1, Math.floor(p.y)));
+
+      if (paintTool === 'picker') {
+        const px = paintCtx.getImageData(x, y, 1, 1).data;
+        if (px[3] > 0) {
+          const hex = '#' + [px[0], px[1], px[2]].map(v => v.toString(16).padStart(2, '0')).join('');
+          document.getElementById('paint-color').value = hex;
+          setPaintTool('pencil');
+        }
+        return;
+      }
+
+      if (paintTool === 'fill') {
+        paintPushUndo();
+        paintFloodFill(x, y);
+        paintUpdateStatus();
+        return;
+      }
+
+      paintPushUndo();
+      paintDrawing = true;
+      paintLast = p;
+      paintStart = p;
+      paintCanvas.setPointerCapture?.(e.pointerId);
+    });
+
+    paintCanvas.addEventListener('pointermove', (e) => {
+      if (!paintDrawing) return;
+      e.preventDefault();
+      const p = paintGetPoint(e);
+
+      if (e.shiftKey && paintStart) {
+        // Prévia simples: restaura o último snapshot e desenha uma linha reta.
+        const base = paintUndoStack[paintUndoStack.length - 1];
+        if (base) paintCtx.putImageData(base, 0, 0);
+        paintDrawSegment(paintStart, p);
+      } else if (paintLast) {
+        paintDrawSegment(paintLast, p);
+      }
+      paintLast = p;
+    });
+
+    paintCanvas.addEventListener('pointerup', (e) => {
+      if (!paintDrawing) return;
+      paintDrawing = false;
+      paintLast = null;
+      paintStart = null;
+      try { paintCanvas.releasePointerCapture?.(e.pointerId); } catch (_) {}
+      paintUpdateStatus();
+    });
+
+    paintCanvas.addEventListener('pointercancel', () => {
+      paintDrawing = false;
+      paintLast = null;
+      paintStart = null;
+    });
+
+    // Zoom do Mini Paint com a roda do mouse. O desenho continua sendo
+    // editado nas dimensões reais do canvas; somente a visualização é ampliada.
+    paintCanvas.addEventListener('wheel', (e) => {
+      if (!paintTarget) return;
+      e.preventDefault();
+      const oldZoom = paintZoom;
+      const direction = e.deltaY < 0 ? 1 : -1;
+      const factor = direction > 0 ? 1.15 : 1 / 1.15;
+
+      const wrap = document.getElementById('paint-canvas-wrap');
+      const rect = paintCanvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const contentX = wrap.scrollLeft + mouseX;
+      const contentY = wrap.scrollTop + mouseY;
+
+      paintZoom = Math.max(PAINT_MIN_ZOOM, Math.min(PAINT_MAX_ZOOM, paintZoom * factor));
+      applyPaintZoom(oldZoom);
+
+      // Mantém o pixel sob o cursor na mesma posição da tela.
+      const ratio = paintZoom / oldZoom;
+      wrap.scrollLeft = Math.max(0, contentX * ratio - mouseX);
+      wrap.scrollTop = Math.max(0, contentY * ratio - mouseY);
+    }, { passive: false });
+
+    document.getElementById('paint-size').addEventListener('input', (e) => {
+      document.getElementById('paint-size-value').textContent = `${e.target.value} px`;
+    });
+
+    document.getElementById('paint-tolerance').addEventListener('input', (e) => {
+      document.getElementById('paint-tolerance-value').textContent = e.target.value;
+    });
+
+    function paintUndo() {
+      if (!paintUndoStack.length) return;
+      const current = paintSnapshot();
+      if (current) paintRedoStack.push(current);
+      paintRestoreSnapshot(paintUndoStack.pop());
+    }
+
+    function paintRedo() {
+      if (!paintRedoStack.length) return;
+      const current = paintSnapshot();
+      if (current) paintUndoStack.push(current);
+      paintRestoreSnapshot(paintRedoStack.pop());
+    }
+
+    function paintClear() {
+      if (!paintTarget) return;
+      paintPushUndo();
+      paintCtx.clearRect(0, 0, paintCanvas.width, paintCanvas.height);
+      paintUpdateStatus();
+    }
+
+    function paintResetOriginal() {
+      if (!paintTarget || !paintOriginalData) return;
+      paintPushUndo();
+      paintRestoreSnapshot(paintOriginalData);
+    }
+
+    function applySpritePaint() {
+      if (!paintTarget) return;
+
+      // Uma edição deve poder ser desfeita pelo Ctrl+Z do editor principal.
+      saveState();
+
+      const targetCanvas = paintTarget.imageCanvas;
+      if (!targetCanvas) return;
+      targetCanvas.width = paintCanvas.width;
+      targetCanvas.height = paintCanvas.height;
+      const targetCtx = targetCanvas.getContext('2d', { willReadFrequently: true });
+      applySmoothing(targetCtx);
+      targetCtx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
+      targetCtx.drawImage(paintCanvas, 0, 0);
+
+      // Propaga a alteração para TODAS as referências do mesmo asset nos
+      // keyframes, no osso, na bandeja e nas imagens soltas.
+      // As transformações de cada referência permanecem independentes.
+      propagateSpriteImageToAllReferences(paintTarget);
+
+      renderAssetTray();
+      updateUI();
+      render();
+      closeSpritePaint();
+    }
+
+    document.getElementById('paint-modal').addEventListener('mousedown', (e) => {
+      if (e.target.id === 'paint-modal') closeSpritePaint();
+    });
+
+    window.addEventListener('keydown', (e) => {
+      const modal = document.getElementById('paint-modal');
+      if (!modal.classList.contains('open')) return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault(); paintUndo();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault(); paintRedo();
+      } else if (e.key === 'Escape') {
+        closeSpritePaint();
+      } else if (e.key.toLowerCase() === 'e') {
+        setPaintTool('eraser');
+      } else if (e.key.toLowerCase() === 'p') {
+        setPaintTool('pencil');
+      } else if (e.key.toLowerCase() === 'g') {
+        setPaintTool('fill');
+      }
+    });
+
+    /* Carrega a configuração depois que o DOM já foi criado. */
+    setTimeout(() => {
+      loadLayoutPreferences();
+      syncLayoutControls();
+    }, 0);
+
+     
+
+    /* ============================================================
+       CAMADA DE COMPATIBILIDADE TOUCH PARA TABLETS
+       Converte toque de um dedo em eventos de mouse para preservar
+       as ferramentas existentes, sem alterar a lógica do editor.
+       ============================================================ */
+    (function enableTabletTouchSupport() {
+      let activeTouch = null;
+      let lastTouchTime = 0;
+      let lastTouchX = 0;
+      let lastTouchY = 0;
+
+      const interactiveSelectors = [
+        '#stage', '#timeline-canvas', '#crop-canvas',
+        '.floating-header', '#paint-canvas'
+      ];
+
+      function isInteractive(target) {
+        return !!target.closest?.(interactiveSelectors.join(','));
+      }
+
+      function pointFromTouch(t) {
+        return { clientX: t.clientX, clientY: t.clientY };
+      }
+
+      function dispatchMouse(type, target, point, button = 0) {
+        const ev = new MouseEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          view: window,
+          clientX: point.clientX,
+          clientY: point.clientY,
+          screenX: point.clientX,
+          screenY: point.clientY,
+          button,
+          buttons: type === 'mouseup' ? 0 : 1
+        });
+        target.dispatchEvent(ev);
+      }
+
+      document.addEventListener('touchstart', (e) => {
+        if (!e.touches.length || e.touches.length > 1) {
+          if (e.touches.length > 1) activeTouch = null;
+          return;
+        }
+
+        const target = e.target;
+        if (!isInteractive(target)) return;
+
+        const t = e.touches[0];
+        const now = Date.now();
+        const dx = Math.abs(t.clientX - lastTouchX);
+        const dy = Math.abs(t.clientY - lastTouchY);
+
+        activeTouch = { target, identifier: t.identifier };
+
+        /* Duplo toque: permite abrir itens da bandeja no tablet. */
+        if (now - lastTouchTime < 350 && dx < 30 && dy < 30) {
+          const dbl = new MouseEvent('dblclick', {
+            bubbles: true,
+            cancelable: true,
+            view: window,
+            clientX: t.clientX,
+            clientY: t.clientY,
+            button: 0
+          });
+          target.dispatchEvent(dbl);
+        }
+
+        lastTouchTime = now;
+        lastTouchX = t.clientX;
+        lastTouchY = t.clientY;
+
+        e.preventDefault();
+        dispatchMouse('mousedown', target, pointFromTouch(t), 0);
+      }, { passive: false });
+
+      document.addEventListener('touchmove', (e) => {
+        if (!activeTouch || !e.touches.length) return;
+        const t = Array.from(e.touches).find(x => x.identifier === activeTouch.identifier);
+        if (!t) return;
+        if (!isInteractive(activeTouch.target)) return;
+
+        e.preventDefault();
+        dispatchMouse('mousemove', activeTouch.target, pointFromTouch(t), 0);
+      }, { passive: false });
+
+      document.addEventListener('touchend', (e) => {
+        if (!activeTouch) return;
+        const t = Array.from(e.changedTouches).find(x => x.identifier === activeTouch.identifier);
+        if (t) {
+          dispatchMouse('mouseup', activeTouch.target, pointFromTouch(t), 0);
+        }
+        activeTouch = null;
+      }, { passive: false });
+
+      document.addEventListener('touchcancel', () => {
+        if (activeTouch) {
+          dispatchMouse('mouseup', activeTouch.target, {
+            clientX: lastTouchX,
+            clientY: lastTouchY
+          }, 0);
+        }
+        activeTouch = null;
+      }, { passive: false });
+
+      /* Fecha menus/modais com toque fora deles. */
+      document.addEventListener('touchstart', (e) => {
+        const menu = document.getElementById('image-context-menu');
+        if (menu && menu.style.display !== 'none' && !menu.contains(e.target)) {
+          menu.style.display = 'none';
+        }
+      }, { passive: true });
+    })();
+
+  </script>
+</body>
+</html>
