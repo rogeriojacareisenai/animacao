@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#171923">
+<title>Mini Paint Tablet</title>
+<style>
+:root{
+  --bg:#171923; --panel:#232634; --panel2:#11131b; --line:#3a4054;
+  --text:#f3f5fb; --muted:#aeb5c7; --accent:#00d2ff; --btn:#303548;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-user-select:none;user-select:none}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+body{touch-action:none}
+button,input,select{font:inherit}
+button{
+  min-height:46px;border:1px solid var(--line);border-radius:9px;background:var(--btn);
+  color:var(--text);padding:8px 12px;cursor:pointer;touch-action:manipulation
+}
+button:active{transform:scale(.98)}
+button.active{background:var(--accent);color:#071016;border-color:var(--accent);font-weight:800}
+input[type=color]{width:46px;height:42px;padding:2px;border-radius:8px;border:1px solid var(--line);background:var(--panel2)}
+input[type=range]{accent-color:var(--accent);min-width:100px}
+select{
+  min-height:44px;background:var(--panel2);color:var(--text);border:1px solid var(--line);
+  border-radius:8px;padding:7px;max-width:260px
+}
+#app{width:100%;height:100%;display:flex;flex-direction:column}
+#topbar{
+  flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:8px 10px;
+  padding-top:max(8px,env(safe-area-inset-top));background:var(--panel2);
+  border-bottom:1px solid var(--line);z-index:20;flex-wrap:wrap
+}
+.brand{font-weight:900;color:var(--accent);font-size:1.05rem;margin-right:4px}
+.group{display:flex;align-items:center;gap:6px}
+.label{font-size:.78rem;color:var(--muted)}
+.spacer{flex:1}
+#status{font-size:.75rem;color:var(--muted);white-space:nowrap}
+#workspace{
+  position:relative;flex:1;min-height:0;overflow:hidden;
+  background:#202027;
+  background-image:
+    linear-gradient(45deg,#303038 25%,transparent 25%),
+    linear-gradient(-45deg,#303038 25%,transparent 25%),
+    linear-gradient(45deg,transparent 75%,#303038 75%),
+    linear-gradient(-45deg,transparent 75%,#303038 75%);
+  background-size:24px 24px;
+  background-position:0 0,0 12px,12px -12px,-12px 0;
+}
+#canvasViewport{
+  position:absolute;inset:0;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+  touch-action:none;
+}
+#paintCanvas{
+  display:block;background:transparent;box-shadow:0 0 0 1px rgba(255,255,255,.2),0 8px 30px rgba(0,0,0,.5);
+  touch-action:none;transform-origin:0 0;
+}
+#bottom{
+  flex:0 0 auto;background:var(--panel2);border-top:1px solid var(--line);
+  padding:7px 10px;padding-bottom:max(7px,env(safe-area-inset-bottom));
+  display:flex;gap:9px;align-items:center;flex-wrap:wrap
+}
+.sliderBox{display:flex;align-items:center;gap:7px}
+.value{min-width:48px;text-align:center;color:var(--muted);font-size:.78rem}
+#newSize{width:78px}
+#message{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  background:rgba(10,12,18,.92);border:1px solid var(--accent);border-radius:12px;
+  padding:18px 22px;z-index:30;display:none;text-align:center;max-width:90vw
+}
+#help{
+  position:absolute;right:12px;top:12px;background:rgba(10,12,18,.82);
+  border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--muted);
+  font-size:.74rem;z-index:10;pointer-events:none
+}
+@media (max-width:800px){
+  #topbar{gap:5px;padding-left:6px;padding-right:6px}
+  button{min-height:48px;padding:8px 9px}
+  select{max-width:190px}
+  #status{display:none}
+  .desktopOnly{display:none}
+  #help{display:none}
+}
+@media (orientation:landscape) and (max-height:600px){
+  #topbar{padding-top:4px;padding-bottom:4px}
+  #bottom{padding-top:4px;padding-bottom:4px}
+  button{min-height:40px}
+  select{min-height:38px}
+}
+
+/* Navegação para tablet: o navegador não deve interpretar o gesto do canvas
+   como scroll/zoom da página enquanto o usuário desenha ou navega. */
+#paintCanvasWrap {
+  touch-action: none;
+  overscroll-behavior: contain;
+  overflow: hidden;
+  cursor: crosshair;
+}
+#paintCanvasWrap.pan-active {
+  cursor: grab;
+}
+#paintCanvasWrap.pan-active.panning {
+  cursor: grabbing;
+}
+#paintPanToggle.active {
+  font-weight: 700;
+  outline: 3px solid rgba(0, 120, 255, .35);
+}
+
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <div class="brand">🖌️ Mini Paint Tablet</div>
+
+    <div class="group">
+      <select id="brush">
+        <optgroup label="Lápis / Esboço">
+          <option value="pencil" selected>✏️ Lápis Cartoon</option>
+          <option value="pencil-soft">✏️ Grafite macio</option>
+          <option value="pencil-hard">✏️ Grafite duro</option>
+          <option value="pencil-real">✏️ Lápis sensível</option>
+          <option value="mechanical">🖊️ Lapiseira</option>
+        </optgroup>
+        <optgroup label="Line Art / Tinta">
+          <option value="fineliner">🖋️ Caneta técnica</option>
+          <option value="ink">🖊️ Nanquim</option>
+          <option value="brush-pen">🖌️ Caneta Brush</option>
+          <option value="marker">🖍️ Marcador</option>
+        </optgroup>
+        <optgroup label="Pincéis">
+          <option value="hard-brush">● Pincel duro</option>
+          <option value="soft-brush">◉ Pincel suave</option>
+          <option value="watercolor">💧 Aquarela</option>
+          <option value="chalk">▰ Giz</option>
+        </optgroup>
+      </select>
+    </div>
+
+    <button id="eraser">🧽 Borracha</button>
+    <button id="picker">💧 Conta-gotas</button>
+    <button id="fill">🪣 Balde</button>
+    <input id="color" type="color" value="#ff0055" title="Cor">
+
+    <div class="sliderBox">
+      <span class="label">Tamanho</span>
+      <input id="size" type="range" min="1" max="100" value="12">
+      <span id="sizeValue" class="value">12 px</span>
+    </div>
+
+    <div class="sliderBox desktopOnly">
+      <span class="label">Pressão</span>
+      <input id="pressure" type="range" min="0" max="100" value="85">
+      <span id="pressureValue" class="value">85%</span>
+    </div>
+
+    <div class="spacer"></div>
+    <span id="status">Novo desenho</span>
+  </div>
+
+  <div id="workspace">
+    <div id="canvasViewport">
+      <canvas id="paintCanvas"></canvas>
+    </div>
+    <div id="help">1 dedo/caneta: desenhar • 2 dedos: mover/zoom • roda: zoom</div>
+    <div id="message"></div>
+  </div>
+
+  <div id="bottom">
+    <button id="undo">↶ Desfazer</button>
+    <button id="redo">↷ Refazer</button>
+    <button id="clear">🗑️ Limpar</button>
+    <button id="original">↺ Restaurar</button>
+    <button id="new">＋ Novo</button>
+    <button id="save">💾 Salvar</button>
+    <button id="load">📂 Carregar</button>
+    <button id="export">⬇️ PNG</button>
+    <input id="file" type="file" accept="image/*" hidden>
+
+    <div class="spacer"></div>
+    <button id="zoomOut">−</button>
+    <span id="zoomValue" class="value">100%</span>
+    <button id="zoomIn">＋</button>
+    <button id="zoomReset">🔍 100%</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/*
+  Mini Paint Tablet
+  Baseado no módulo "Mini Paint" do arquivo original:
+  - Pointer Events para mouse, toque e caneta
+  - pressão da caneta
+  - pincéis e ferramentas do Mini Paint
+  - desfazer/refazer
+  - zoom
+  - balde de tinta
+  - conta-gotas
+  - transparência com borracha
+*/
+
+const canvas = document.getElementById("paintCanvas");
+const ctx = canvas.getContext("2d", {willReadFrequently:true});
+const viewport = document.getElementById("canvasViewport");
+
+let tool = "pencil";
+let drawing = false;
+let last = null;
+let start = null;
+let pointerId = null;
+let pointerType = "touch";
+let pressureValue = .5;
+let zoom = 1;
+
+const MIN_ZOOM=.25, MAX_ZOOM=8;
+let undoStack=[], redoStack=[];
+let originalData=null;
+
+// Multi-touch para zoom/pan
+const pointers = new Map();
+let gestureStart = null;
+
+function smoothing(c){
+  c.imageSmoothingEnabled=true;
+  c.imageSmoothingQuality="high";
+}
+smoothing(ctx);
+
+function setCanvasSize(w,h,copy=true){
+  w=Math.max(1,Math.floor(w)); h=Math.max(1,Math.floor(h));
+  let old = null;
+  if(copy && canvas.width && canvas.height){
+    old=document.createElement("canvas");
+    old.width=canvas.width; old.height=canvas.height;
+    old.getContext("2d").drawImage(canvas,0,0);
+  }
+  canvas.width=w; canvas.height=h;
+  smoothing(ctx);
+  if(old) ctx.drawImage(old,0,0);
+  originalData=snapshot();
+  undoStack=[]; redoStack=[];
+  fitCanvas();
+  updateStatus();
+}
+
+function snapshot(){
+  return canvas.width && canvas.height ? ctx.getImageData(0,0,canvas.width,canvas.height) : null;
+}
+function pushUndo(){
+  const s=snapshot();
+  if(!s)return;
+  undoStack.push(s);
+  if(undoStack.length>40)undoStack.shift();
+  redoStack=[];
+}
+function restore(s){
+  if(!s)return;
+  ctx.putImageData(s,0,0);
+  updateStatus();
+}
+function undo(){
+  if(!undoStack.length)return;
+  const cur=snapshot();
+  if(cur)redoStack.push(cur);
+  restore(undoStack.pop());
+}
+function redo(){
+  if(!redoStack.length)return;
+  const cur=snapshot();
+  if(cur)undoStack.push(cur);
+  restore(redoStack.pop());
+}
+
+function showMessage(text){
+  const el=document.getElementById("message");
+  el.textContent=text; el.style.display="block";
+  clearTimeout(showMessage.timer);
+  showMessage.timer=setTimeout(()=>el.style.display="none",1500);
+}
+
+function updateStatus(){
+  const names={
+    pencil:"Lápis Cartoon","pencil-soft":"Grafite macio","pencil-hard":"Grafite duro",
+    "pencil-real":"Lápis sensível",mechanical:"Lapiseira",fineliner:"Caneta técnica",
+    ink:"Nanquim","brush-pen":"Caneta Brush",marker:"Marcador",
+    "hard-brush":"Pincel duro","soft-brush":"Pincel suave",
+    watercolor:"Aquarela",chalk:"Giz",eraser:"Borracha",picker:"Conta-gotas",fill:"Balde"
+  };
+  document.getElementById("status").textContent =
+    `${canvas.width} × ${canvas.height}px • ${names[tool]||tool} • ${Math.round(zoom*100)}%`;
+}
+
+function setTool(t){
+  tool=t;
+  document.getElementById("brush").value =
+    ["eraser","picker","fill"].includes(t) ? "pencil" : t;
+  ["eraser","picker","fill"].forEach(id=>{
+    document.getElementById(id).classList.toggle("active",id===t);
+  });
+  canvas.style.cursor=t==="picker"?"copy":t==="fill"?"cell":"crosshair";
+  updateStatus();
+}
+
+function color(){
+  return document.getElementById("color").value || "#ff0055";
+}
+function size(){
+  return Math.max(1,Number(document.getElementById("size").value)||12);
+}
+function pressureFactor(){
+  const influence=Number(document.getElementById("pressure").value)/100;
+  return 1-influence+pressureValue*influence;
+}
+function settings(){
+  const base=size(), f=pressureFactor();
+  switch(tool){
+    case "pencil-soft": return {size:base*(.38+f),alpha:.14+f*.48,blur:Math.max(.45,base*.075)};
+    case "pencil-hard": return {size:base*(.34+f*.78),alpha:.38+f*.56,blur:0};
+    case "pencil-real": return {size:base*(.18+f*1.10),alpha:.08+f*.86,blur:Math.max(0,base*.018)};
+    case "mechanical": return {size:base*(.22+f*.55),alpha:.72+f*.28,blur:0};
+    case "fineliner": return {size:base*(.28+f*.34),alpha:.82+f*.18,blur:0};
+    case "ink": return {size:base*(.18+f*1.02),alpha:.78+f*.22,blur:0};
+    case "brush-pen": return {size:base*(.20+f*1.45),alpha:.62+f*.38,blur:0};
+    case "marker": return {size:base*(.72+f*.70),alpha:.20+f*.34,blur:.2};
+    case "hard-brush": return {size:base*(.40+f),alpha:.72+f*.28,blur:0};
+    case "soft-brush": return {size:base*(.65+f*.90),alpha:.10+f*.48,blur:Math.max(1,base*.16)};
+    case "watercolor": return {size:base*(.75+f*.85),alpha:.06+f*.24,blur:Math.max(.7,base*.10)};
+    case "chalk": return {size:base*(.55+f*.95),alpha:.22+f*.42,blur:.35};
+    default: return {size:base*(.28+f*.92),alpha:.30+f*.62,blur:Math.max(0,base*.012)};
+  }
+}
+function drawSegment(a,b){
+  const s=tool==="eraser"
+    ? {size:size(),alpha:1,blur:0}
+    : settings();
+  ctx.save();
+  ctx.lineCap="round"; ctx.lineJoin="round"; ctx.lineWidth=s.size;
+  if(tool==="eraser"){
+    ctx.globalCompositeOperation="destination-out";
+    ctx.strokeStyle="rgba(0,0,0,1)";
+  }else{
+    ctx.globalCompositeOperation="source-over";
+    ctx.strokeStyle=color();
+    ctx.globalAlpha=s.alpha;
+    if(s.blur>0)ctx.filter=`blur(${s.blur}px)`;
+  }
+  ctx.beginPath();
+  ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+  ctx.restore();
+}
+
+function point(e){
+  const r=canvas.getBoundingClientRect();
+  return {
+    x:(e.clientX-r.left)*(canvas.width/r.width),
+    y:(e.clientY-r.top)*(canvas.height/r.height)
+  };
+}
+function updatePressure(e){
+  pressureValue=Number.isFinite(e.pressure)&&e.pressure>0?e.pressure:.5;
+  pointerType=e.pointerType||"mouse";
+}
+
+function hexRGBA(hex){
+  const h=String(hex).replace("#","");
+  const v=h.length===3?h.split("").map(x=>x+x).join(""):h.padEnd(6,"0").slice(0,6);
+  return [parseInt(v.slice(0,2),16),parseInt(v.slice(2,4),16),parseInt(v.slice(4,6),16),255];
+}
+
+function floodFill(sx,sy){
+  const w=canvas.width,h=canvas.height;
+  const img=ctx.getImageData(0,0,w,h), d=img.data;
+  const start=(sy*w+sx)*4;
+  const sr=d[start],sg=d[start+1],sb=d[start+2],sa=d[start+3];
+  const [tr,tg,tb,ta]=hexRGBA(color());
+  const tolerance=18*2.55;
+
+  const matches=i=>{
+    const dr=d[i]-sr,dg=d[i+1]-sg,db=d[i+2]-sb,da=d[i+3]-sa;
+    return Math.sqrt((dr*dr+dg*dg+db*db+da*da)/4)<=tolerance;
+  };
+  if(sr===tr&&sg===tg&&sb===tb&&sa===ta)return;
+
+  const visited=new Uint8Array(w*h);
+  const stack=[sx+sy*w];
+  visited[sx+sy*w]=1;
+
+  while(stack.length){
+    const pos=stack.pop(),x=pos%w,y=Math.floor(pos/w),i=pos*4;
+    if(!matches(i))continue;
+    d[i]=tr;d[i+1]=tg;d[i+2]=tb;d[i+3]=ta;
+    if(x>0){let n=pos-1;if(!visited[n]){visited[n]=1;stack.push(n)}}
+    if(x<w-1){let n=pos+1;if(!visited[n]){visited[n]=1;stack.push(n)}}
+    if(y>0){let n=pos-w;if(!visited[n]){visited[n]=1;stack.push(n)}}
+    if(y<h-1){let n=pos+w;if(!visited[n]){visited[n]=1;stack.push(n)}}
+  }
+  ctx.putImageData(img,0,0);
+}
+
+function pointerDown(e){
+  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pointers.size>1){
+    drawing=false;
+    startGesture();
+    return;
+  }
+  if(e.pointerType==="mouse" && e.button!==0)return;
+  e.preventDefault();
+  updatePressure(e);
+  const p=point(e);
+  const x=Math.max(0,Math.min(canvas.width-1,Math.floor(p.x)));
+  const y=Math.max(0,Math.min(canvas.height-1,Math.floor(p.y)));
+
+  if(tool==="picker"){
+    const px=ctx.getImageData(x,y,1,1).data;
+    if(px[3]>0){
+      document.getElementById("color").value="#"+[px[0],px[1],px[2]]
+        .map(v=>v.toString(16).padStart(2,"0")).join("");
+      setTool("pencil");
+    }
+    return;
+  }
+  if(tool==="fill"){
+    pushUndo(); floodFill(x,y); updateStatus(); return;
+  }
+
+  pushUndo();
+  drawing=true;last=p;start=p;pointerId=e.pointerId;
+  canvas.setPointerCapture?.(e.pointerId);
+}
+function pointerMove(e){
+  if(pointers.has(e.pointerId))
+    pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+
+  if(pointers.size>1){
+    if(!gestureStart)startGesture();
+    updateGesture();
+    return;
+  }
+  if(!drawing)return;
+  e.preventDefault();
+  updatePressure(e);
+  const p=point(e);
+  if(e.shiftKey && start){
+    const base=undoStack[undoStack.length-1];
+    if(base)ctx.putImageData(base,0,0);
+    drawSegment(start,p);
+  }else if(last){
+    drawSegment(last,p);
+  }
+  last=p;
+}
+function pointerUp(e){
+  pointers.delete(e.pointerId);
+  if(pointers.size===0){
+    drawing=false;last=null;start=null;pointerId=null;
+    try{canvas.releasePointerCapture?.(e.pointerId)}catch(_){}
+  }else if(pointers.size===1){
+    gestureStart=null;
+  }
+}
+
+canvas.addEventListener("pointerdown",pointerDown);
+canvas.addEventListener("pointermove",pointerMove);
+canvas.addEventListener("pointerup",pointerUp);
+canvas.addEventListener("pointercancel",pointerUp);
+
+function distance(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+function midpoint(a,b){return {x:(a.x+b.x)/2,y:(a.y+b.y)/2}}
+function startGesture(){
+  const ps=[...pointers.values()];
+  if(ps.length<2)return;
+  const a=ps[0],b=ps[1],m=midpoint(a,b);
+  gestureStart={dist:distance(a,b),mid:m,zoom,tx:currentTX,ty:currentTY};
+}
+let currentTX=0,currentTY=0;
+function updateTransform(){
+  canvas.style.transform=`translate(${currentTX}px,${currentTY}px) scale(${zoom})`;
+  updateStatus();
+}
+function updateGesture(){
+  const ps=[...pointers.values()];
+  if(ps.length<2||!gestureStart)return;
+  const a=ps[0],b=ps[1],m=midpoint(a,b);
+  const ratio=distance(a,b)/Math.max(1,gestureStart.dist);
+  zoom=Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,gestureStart.zoom*ratio));
+  currentTX=gestureStart.tx+(m.x-gestureStart.mid.x);
+  currentTY=gestureStart.ty+(m.y-gestureStart.mid.y);
+  updateTransform();
+}
+function setZoom(z){
+  zoom=Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,z));
+  updateTransform();
+}
+function fitCanvas(){
+  // Centraliza e ajusta a visualização para caber no tablet.
+  const w=viewport.clientWidth,h=viewport.clientHeight;
+  const zx=(w*.88)/canvas.width, zy=(h*.82)/canvas.height;
+  zoom=Math.max(MIN_ZOOM,Math.min(1,Math.min(zx,zy)));
+  currentTX=(w-canvas.width*zoom)/2;
+  currentTY=(h-canvas.height*zoom)/2;
+  updateTransform();
+}
+canvas.addEventListener("wheel",e=>{
+  e.preventDefault();
+  setZoom(zoom*(e.deltaY<0?1.15:1/1.15));
+},{passive:false});
+
+document.getElementById("brush").onchange=e=>setTool(e.target.value);
+document.getElementById("eraser").onclick=()=>setTool("eraser");
+document.getElementById("picker").onclick=()=>setTool("picker");
+document.getElementById("fill").onclick=()=>setTool("fill");
+
+document.getElementById("size").oninput=e=>{
+  document.getElementById("sizeValue").textContent=e.target.value+" px";
+};
+document.getElementById("pressure").oninput=e=>{
+  document.getElementById("pressureValue").textContent=e.target.value+"%";
+};
+
+document.getElementById("undo").onclick=undo;
+document.getElementById("redo").onclick=redo;
+document.getElementById("clear").onclick=()=>{
+  pushUndo();ctx.clearRect(0,0,canvas.width,canvas.height);updateStatus();
+};
+document.getElementById("original").onclick=()=>{
+  if(!originalData)return;pushUndo();restore(originalData);
+};
+document.getElementById("zoomOut").onclick=()=>setZoom(zoom-.25);
+document.getElementById("zoomIn").onclick=()=>setZoom(zoom+.25);
+document.getElementById("zoomReset").onclick=fitCanvas;
+
+document.getElementById("new").onclick=()=>{
+  const w=Number(prompt("Largura do desenho em pixels:",canvas.width))||canvas.width;
+  const h=Number(prompt("Altura do desenho em pixels:",canvas.height))||canvas.height;
+  setCanvasSize(w,h,false);
+  ctx.clearRect(0,0,w,h);
+  originalData=snapshot();
+  showMessage("Novo desenho criado");
+};
+
+document.getElementById("save").onclick=()=>{
+  localStorage.setItem("miniPaintTablet",JSON.stringify({
+    width:canvas.width,height:canvas.height,data:canvas.toDataURL("image/png")
+  }));
+  showMessage("Desenho salvo no tablet");
+};
+document.getElementById("load").onclick=()=>{
+  const raw=localStorage.getItem("miniPaintTablet");
+  if(!raw){showMessage("Nenhum desenho salvo");return}
+  const obj=JSON.parse(raw),img=new Image();
+  img.onload=()=>{
+    setCanvasSize(obj.width,obj.height,false);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(img,0,0);originalData=snapshot();fitCanvas();
+    showMessage("Desenho carregado");
+  };
+  img.src=obj.data;
+};
+document.getElementById("export").onclick=()=>{
+  canvas.toBlob(blob=>{
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);a.download="desenho-mini-paint.png";a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  },"image/png");
+};
+
+document.getElementById("file").onchange=e=>{
+  const file=e.target.files[0];if(!file)return;
+  const img=new Image();
+  img.onload=()=>{
+    setCanvasSize(img.naturalWidth,img.naturalHeight,false);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(img,0,0);
+    originalData=snapshot();fitCanvas();showMessage("Imagem aberta");
+  };
+  img.src=URL.createObjectURL(file);
+};
+document.getElementById("new").ondblclick=()=>document.getElementById("file").click();
+
+// Atalhos físicos quando houver teclado/capa.
+window.addEventListener("keydown",e=>{
+  if(e.ctrlKey&&e.key.toLowerCase()==="z"){e.preventDefault();undo()}
+  else if(e.ctrlKey&&(e.key.toLowerCase()==="y"||e.ctrlKey&&e.key.toLowerCase()==="z"&&e.shiftKey)){e.preventDefault();redo()}
+  else if(e.key==="e"||e.key==="E")setTool("eraser");
+});
+
+window.addEventListener("resize",()=>{
+  if(pointers.size===0)fitCanvas();
+});
+
+// Documento novo inicial: 1600 × 1000, transparente.
+setCanvasSize(1600,1000,false);
+ctx.clearRect(0,0,canvas.width,canvas.height);
+originalData=snapshot();
+fitCanvas();
+</script>
+</body>
+</html>
