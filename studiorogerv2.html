@@ -527,6 +527,7 @@ let gestureStart = null;
 
 /* VARIÁVEIS PARA SELEÇÃO / CLIPBOARD E ITEM FLUTUANTE */
 let selectionRect = null; // {x, y, w, h}
+let lastSelectionCoords = null; // {x, y, w, h}
 let clipboardData = null; // ImageData
 let isSelecting = false;
 let selectionStart = null;
@@ -611,6 +612,13 @@ function updateStatus(){
 
 function setTool(t){
   if(floatingItem) dropFloatingItem();
+
+  // Se trocar de ferramenta e não for "select", esquece o processo de recorte atual
+  if(t !== "select") {
+    selectionRect = null;
+    isSelecting = false;
+    selectionStart = null;
+  }
 
   tool = t;
   document.getElementById("brush").value =
@@ -770,13 +778,9 @@ function renderFrameBaseOnly(){
     }
   }
 
+  // O frame atual só exibe seu próprio desenho se possuir keyframe. Caso contrário, fica em branco.
   if(keyframes.has(currentFrame)){
     drawOnionLayer(keyframes.get(currentFrame), 1.0);
-  } else {
-    const prevData = getLatestKeyframeBefore(currentFrame);
-    if(prevData){
-      drawOnionLayer(prevData, 1.0);
-    }
   }
 }
 
@@ -822,11 +826,10 @@ function copySelectionArea() {
   const h = Math.min(canvas.height - y, Math.floor(selectionRect.h));
 
   if(w > 0 && h > 0) {
-    const extractedData = ctx.getImageData(x, y, w, h);
-    clipboardData = extractedData;
-    
-    startFloatingFromImageData(extractedData, x, y);
-    selectionRect = null;
+    clipboardData = ctx.getImageData(x, y, w, h);
+    lastSelectionCoords = {x, y, w, h};
+    selectionRect = null; // Retira o retângulo informando área de recorte
+    redrawCanvasWithFloating();
     updateStatus();
     showMessage("Área copiada para a memória!");
   }
@@ -838,8 +841,9 @@ function pasteSelectionArea() {
     showMessage("Área de transferência vazia!");
     return;
   }
-  const px = Math.floor((canvas.width - clipboardData.width) / 2);
-  const py = Math.floor((canvas.height - clipboardData.height) / 2);
+  // Cola na mesma área do recorte original
+  const px = lastSelectionCoords ? lastSelectionCoords.x : Math.floor((canvas.width - clipboardData.width) / 2);
+  const py = lastSelectionCoords ? lastSelectionCoords.y : Math.floor((canvas.height - clipboardData.height) / 2);
   startFloatingFromImageData(clipboardData, px, py);
 }
 
@@ -1049,7 +1053,7 @@ canvas.addEventListener("wheel", e => {
 function getLatestKeyframeBefore(frameNum){
   let lastFrame = 0;
   for(let [f] of keyframes){
-    if(f <= frameNum && f > lastFrame){
+    if(f < frameNum && f > lastFrame){
       lastFrame = f;
     }
   }
@@ -1090,8 +1094,10 @@ function renderTimeline(){
 }
 
 function autoSaveKeyframe(){
-  keyframes.set(currentFrame, snapshot());
-  renderTimeline();
+  if(keyframes.has(currentFrame)){
+    keyframes.set(currentFrame, snapshot());
+    renderTimeline();
+  }
 }
 
 function setKeyframe(){
@@ -1100,6 +1106,9 @@ function setKeyframe(){
     const prevData = getLatestKeyframeBefore(currentFrame);
     if(prevData){
       ctx.putImageData(prevData, 0, 0);
+    } else {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
   }
   keyframes.set(currentFrame, snapshot());
