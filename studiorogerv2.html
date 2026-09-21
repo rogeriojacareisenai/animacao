@@ -8,7 +8,7 @@
 <!-- JSZip para exportar arquivos em ZIP -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
-/* TEMAS DE LAYOUT PREDEFINIDOS */
+/* TEMAS DE LAYOUT PREDEFINIDOS (12 OPÇÕES) */
 :root, [data-theme="dark"] {
   --bg:#171923; --panel:#232634; --panel2:#11131b; --line:#3a4054;
   --text:#f3f5fb; --muted:#aeb5c7; --accent:#00d2ff; --btn:#303548;
@@ -32,6 +32,31 @@
 [data-theme="sunset"] {
   --bg:#2b1e2a; --panel:#3a2838; --panel2:#20151f; --line:#5e3a5a;
   --text:#fff0f5; --muted:#d8a7ca; --accent:#ff7b54; --btn:#4a3248;
+}
+/* 6 NOVOS TEMAS */
+[data-theme="dracula"] {
+  --bg:#282a36; --panel:#44475a; --panel2:#1e1f29; --line:#6272a4;
+  --text:#f8f8f2; --muted:#94a3b8; --accent:#bd93f9; --btn:#44475a;
+}
+[data-theme="solarized"] {
+  --bg:#fdf6e3; --panel:#eee8d5; --panel2:#e0da2e; --line:#93a1a1;
+  --text:#073642; --muted:#657b83; --accent:#b58900; --btn:#eee8d5;
+}
+[data-theme="neongreen"] {
+  --bg:#051408; --panel:#0b2910; --panel2:#020a04; --line:#155220;
+  --text:#e6ffe8; --muted:#48a257; --accent:#00ff38; --btn:#0f3816;
+}
+[data-theme="monochrome"] {
+  --bg:#121212; --panel:#1e1e1e; --panel2:#000000; --line:#333333;
+  --text:#ffffff; --muted:#888888; --accent:#ffffff; --btn:#2a2a2a;
+}
+[data-theme="pastel"] {
+  --bg:#fbf0f5; --panel:#f3d7e5; --panel2:#ead0dd; --line:#d8a3be;
+  --text:#4a2e39; --muted:#8c6577; --accent:#d9658b; --btn:#f3d7e5;
+}
+[data-theme="midnight"] {
+  --bg:#0f172a; --panel:#1e293b; --panel2:#0a0f1d; --line:#334155;
+  --text:#f8fafc; --muted:#94a3b8; --accent:#38bdf8; --btn:#1e293b;
 }
 
 *{box-sizing:border-box;margin:0;padding:0;-webkit-user-select:none;user-select:none}
@@ -82,11 +107,51 @@ select{
   overflow:visible;
   touch-action:none;
 }
+
+/* CONTAINER DA FOLHA DE ANIMAÇÃO DISNEY */
+#canvasWrapper {
+  position: absolute;
+  left: 0; top: 0;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.15), 0 12px 35px rgba(0,0,0,.35);
+  transform-origin: 0 0;
+  border-radius: 18px; /* Bordas arredondadas na folha */
+  overflow: hidden;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
+
 #paintCanvas{
-  display:block;position:absolute;left:0;top:0;
-  background:#ffffff;
-  box-shadow:0 0 0 1px rgba(0,0,0,.2),0 8px 30px rgba(0,0,0,.25);
-  touch-action:none;transform-origin:0 0;
+  display:block;
+  touch-action:none;
+}
+
+/* BARRA DE PERFURAÇÕES (PEG BAR) ESTILO DISNEY NO RODAPÉ DA FOLHA */
+.disneyPegBar {
+  height: 48px;
+  width: 100%;
+  background: #f8f9fa;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 36px;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+.pegHole {
+  background: #171923;
+  box-shadow: inset 1px 1px 2px rgba(0,0,0,0.6);
+}
+.pegHole.circle {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+.pegHole.rect {
+  width: 32px;
+  height: 12px;
+  border-radius: 3px;
 }
 
 /* TIMELINE CONTAINER */
@@ -139,11 +204,11 @@ select{
 /* ESTILOS DE ABRANGÊNCIA NA LINHA DO TEMPO */
 .frameCell.onion-prev {
   border-left: 3px solid #ff4757 !important;
-  background: rgba(255, 71, 87, 0.15) !important;
+  background: rgba(255, 71, 87, 0.18) !important;
 }
 .frameCell.onion-next {
   border-right: 3px solid #2ed573 !important;
-  background: rgba(46, 213, 115, 0.15) !important;
+  background: rgba(46, 213, 115, 0.18) !important;
 }
 
 /* MODAL DE PRÉ-VISUALIZAÇÃO DE LAYOUTS */
@@ -154,7 +219,7 @@ select{
 }
 .modalContent {
   background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
-  padding: 20px; width: 90%; max-width: 600px; max-height: 85vh; overflow-y: auto;
+  padding: 20px; width: 90%; max-width: 650px; max-height: 85vh; overflow-y: auto;
   box-shadow: 0 10px 25px rgba(0,0,0,0.5);
 }
 .themeGrid {
@@ -245,7 +310,7 @@ select{
       <span id="pressureValue" class="value">85%</span>
     </div>
 
-    <!-- SELETOR E PRÉ-VISUALIZADOR DE TEMAS PREDEFINIDOS -->
+    <!-- SELETOR E PRÉ-VISUALIZADOR DE TEMAS PREDEFINIDOS (12 TEMAS) -->
     <div class="group">
       <span class="label">Tema:</span>
       <select id="themeSelect">
@@ -255,6 +320,12 @@ select{
         <option value="nordic">❄️ Nordic Slate</option>
         <option value="forest">🌲 Forest Organic</option>
         <option value="sunset">🌅 Sunset Pastel</option>
+        <option value="dracula">🧛 Dracula Gothic</option>
+        <option value="solarized">🌾 Solarized Light</option>
+        <option value="neongreen">⚡ Cyber Neon Green</option>
+        <option value="monochrome">🏁 Monochrome Ink</option>
+        <option value="pastel">🌸 Pastel Dream</option>
+        <option value="midnight">🌌 Midnight Blue</option>
       </select>
       <button id="btnPreviewThemes" title="Visualizar opções de temas">🖼️ Opções</button>
     </div>
@@ -265,7 +336,15 @@ select{
 
   <div id="workspace">
     <div id="canvasViewport">
-      <canvas id="paintCanvas"></canvas>
+      <!-- CONTAINER DA FOLHA ESTILO ANIMAÇÃO DISNEY COM PERFURAÇÕES -->
+      <div id="canvasWrapper">
+        <canvas id="paintCanvas"></canvas>
+        <div class="disneyPegBar">
+          <div class="pegHole circle"></div>
+          <div class="pegHole rect"></div>
+          <div class="pegHole circle"></div>
+        </div>
+      </div>
     </div>
     <div id="help">1 dedo/caneta: desenhar • 2 dedos: mover/zoom • roda: zoom</div>
     <div id="message"></div>
@@ -342,7 +421,7 @@ select{
   </div>
 </div>
 
-<!-- MODAL DE PRÉ-VISUALIZAÇÃO DE TEMAS -->
+<!-- MODAL DE PRÉ-VISUALIZAÇÃO DE LAYOUTS -->
 <div id="themePreviewModal">
   <div class="modalContent">
     <h3>Opções Prévias de Layout</h3>
@@ -358,6 +437,7 @@ select{
 "use strict";
 
 const canvas = document.getElementById("paintCanvas");
+const wrapper = document.getElementById("canvasWrapper");
 const ctx = canvas.getContext("2d", {willReadFrequently:true});
 const viewport = document.getElementById("canvasViewport");
 
@@ -659,8 +739,9 @@ function updateViewportSize(){
   const workspace = viewport.parentElement;
   const w = workspace.clientWidth;
   const h = workspace.clientHeight;
+  const wrapperHeight = canvas.height + 48; // Altura incluindo a Disney Peg Bar
   const scaledW = Math.max(1, canvas.width * zoom);
-  const scaledH = Math.max(1, canvas.height * zoom);
+  const scaledH = Math.max(1, wrapperHeight * zoom);
 
   const marginX = Math.max(40, (w - scaledW) / 2);
   const marginY = Math.max(40, (h - scaledH) / 2);
@@ -676,7 +757,7 @@ function updateTransform(){
   if(metrics.scaledW <= metrics.w){ currentTX = (metrics.w - metrics.scaledW) / 2; }
   if(metrics.scaledH <= metrics.h){ currentTY = (metrics.h - metrics.scaledH) / 2; }
 
-  canvas.style.transform = `translate(${currentTX}px,${currentTY}px) scale(${zoom})`;
+  wrapper.style.transform = `translate(${currentTX}px,${currentTY}px) scale(${zoom})`;
   document.getElementById("zoomValue").textContent = Math.round(zoom * 100) + "%";
   updateStatus();
 }
@@ -690,9 +771,10 @@ function fitCanvas(){
   const workspace = viewport.parentElement;
   const w = workspace.clientWidth;
   const h = workspace.clientHeight;
+  const wrapperHeight = canvas.height + 48;
 
   const zx = (w * .88) / Math.max(1, canvas.width);
-  const zy = (h * .82) / Math.max(1, canvas.height);
+  const zy = (h * .82) / Math.max(1, wrapperHeight);
 
   zoom = Math.max(MIN_ZOOM, Math.min(1, Math.min(zx, zy)));
   currentTX = 0; currentTY = 0;
@@ -709,7 +791,6 @@ canvas.addEventListener("wheel", e => {
 
 /* LÓGICA DA LINHA DO TEMPO, ONION SKIN E SCRUBBING */
 
-// Retorna o último ImageData de keyframe anterior ao quadro atual
 function getLatestKeyframeBefore(frameNum){
   let lastFrame = 0;
   for(let [f] of keyframes){
@@ -724,7 +805,7 @@ function renderTimeline(){
   const track = document.getElementById("timelineTrack");
   track.innerHTML = "";
 
-  const useOnion = document.getElementById("chkOnion").checked && !isPlaying;
+  const useOnion = document.getElementById("chkOnion").checked;
   const prevCount = useOnion ? Math.max(0, parseInt(document.getElementById("onionPrev").value) || 0) : 0;
   const nextCount = useOnion ? Math.max(0, parseInt(document.getElementById("onionNext").value) || 0) : 0;
 
@@ -783,7 +864,7 @@ function renderFrame(){
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  const useOnion = document.getElementById("chkOnion").checked && !isPlaying;
+  const useOnion = document.getElementById("chkOnion").checked;
   if(useOnion){
     const prevCount = Math.max(0, parseInt(document.getElementById("onionPrev").value) || 0);
     const nextCount = Math.max(0, parseInt(document.getElementById("onionNext").value) || 0);
@@ -852,7 +933,7 @@ function togglePlay(){
   }
 }
 
-/* LÓGICA DE ARRASTAR NA TIMELINE (SCRUBBING) */
+/* SCRUBBING NA TIMELINE */
 
 const track = document.getElementById("timelineTrack");
 let isScrubbing = false;
@@ -910,7 +991,6 @@ async function exportAnimationToZip(){
 
   for(let frameNum = 1; frameNum <= totalFrames; frameNum++){
     let frameData = keyframes.get(frameNum);
-    
     if(!frameData){
       frameData = getLatestKeyframeBefore(frameNum);
     }
@@ -938,7 +1018,7 @@ async function exportAnimationToZip(){
   showMessage("ZIP gerado com sucesso!");
 }
 
-/* GERENCIAMENTO E PRÉ-VISUALIZAÇÃO DE TEMAS */
+/* GERENCIAMENTO E PRÉ-VISUALIZAÇÃO DE TEMAS (12 TEMAS) */
 
 const themeData = [
   { id: "dark", name: "Dark Classic", bg: "#171923", panel: "#232634", accent: "#00d2ff" },
@@ -946,7 +1026,13 @@ const themeData = [
   { id: "cyberpunk", name: "Cyberpunk Neon", bg: "#0d0221", panel: "#0f051d", accent: "#ff007f" },
   { id: "nordic", name: "Nordic Slate", bg: "#2e3440", panel: "#3b4252", accent: "#88c0d0" },
   { id: "forest", name: "Forest Organic", bg: "#1a231d", panel: "#243028", accent: "#52b788" },
-  { id: "sunset", name: "Sunset Pastel", bg: "#2b1e2a", panel: "#3a2838", accent: "#ff7b54" }
+  { id: "sunset", name: "Sunset Pastel", bg: "#2b1e2a", panel: "#3a2838", accent: "#ff7b54" },
+  { id: "dracula", name: "Dracula Gothic", bg: "#282a36", panel: "#44475a", accent: "#bd93f9" },
+  { id: "solarized", name: "Solarized Light", bg: "#fdf6e3", panel: "#eee8d5", accent: "#b58900" },
+  { id: "neongreen", name: "Cyber Neon Green", bg: "#051408", panel: "#0b2910", accent: "#00ff38" },
+  { id: "monochrome", name: "Monochrome Ink", bg: "#121212", panel: "#1e1e1e", accent: "#ffffff" },
+  { id: "pastel", name: "Pastel Dream", bg: "#fbf0f5", panel: "#f3d7e5", accent: "#d9658b" },
+  { id: "midnight", name: "Midnight Blue", bg: "#0f172a", panel: "#1e293b", accent: "#38bdf8" }
 ];
 
 function applyTheme(themeId) {
