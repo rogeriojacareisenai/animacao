@@ -33,7 +33,6 @@
   --bg:#2b1e2a; --panel:#3a2838; --panel2:#20151f; --line:#5e3a5a;
   --text:#fff0f5; --muted:#d8a7ca; --accent:#ff7b54; --btn:#4a3248;
 }
-/* 6 NOVOS TEMAS */
 [data-theme="dracula"] {
   --bg:#282a36; --panel:#44475a; --panel2:#1e1f29; --line:#6272a4;
   --text:#f8f8f2; --muted:#94a3b8; --accent:#bd93f9; --btn:#44475a;
@@ -79,7 +78,7 @@ select{
 }
 #app{width:100%;height:100%;display:flex;flex-direction:column}
 
-/* BARRA FLUTUANTE / MENU SUSPENSO VERTICAL (DRAGGABLE & MINIMIZABLE) */
+/* BARRA FLUTUANTE / MENU SUSPENSO VERTICAL */
 #topbar{
   position: absolute;
   top: 15px;
@@ -165,7 +164,6 @@ select{
   touch-action:none;
 }
 
-/* CONTAINER DA FOLHA DE ANIMAÇÃO DISNEY */
 #canvasWrapper {
   position: absolute;
   left: 0; top: 0;
@@ -183,7 +181,6 @@ select{
   touch-action:none;
 }
 
-/* BARRA DE PERFURAÇÕES (PEG BAR) ESTILO DISNEY NO RODAPÉ DA FOLHA */
 .disneyPegBar {
   height: 48px;
   width: 100%;
@@ -211,7 +208,6 @@ select{
   border-radius: 3px;
 }
 
-/* TIMELINE CONTAINER */
 #timelinePanel{
   flex:0 0 auto;background:var(--panel);border-top:1px solid var(--line);
   padding:6px 10px;display:flex;flex-direction:column;gap:6px;z-index:15;
@@ -239,7 +235,6 @@ select{
   position:relative;
 }
 
-/* Células da Timeline */
 .frameCell{
   min-width:32px;height:44px;background:var(--panel2);border:1px solid var(--line);
   border-radius:6px;display:flex;flex-direction:column;align-items:center;
@@ -267,7 +262,6 @@ select{
   background: rgba(46, 213, 115, 0.18) !important;
 }
 
-/* MODAL DE PRÉ-VISUALIZAÇÃO DE LAYOUTS */
 #themePreviewModal {
   position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
   background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center;
@@ -354,9 +348,16 @@ select{
       </div>
 
       <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:4px;">
-        <button id="eraser" style="width:100%">🧽</button>
-        <button id="picker" style="width:100%">💧</button>
-        <button id="fill" style="width:100%">🪣</button>
+        <button id="eraser" style="width:100%" title="Borracha">🧽</button>
+        <button id="picker" style="width:100%" title="Conta-gotas">💧</button>
+        <button id="fill" style="width:100%" title="Balde de tinta">🪣</button>
+      </div>
+      
+      <!-- BOTÕES DE SELEÇÃO RETANGULAR PONTILHADA, COPIAR E COLAR -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:4px;">
+        <button id="select" title="Seleção Retangular Pontilhada">⌖</button>
+        <button id="copySelection" title="Copiar área selecionada">📋</button>
+        <button id="pasteSelection" title="Colar área copiada">📥</button>
       </div>
       
       <input id="color" type="color" value="#ff0055" title="Cor">
@@ -377,7 +378,7 @@ select{
         <input id="pressure" type="range" min="0" max="100" value="85">
       </div>
 
-      <!-- SELETOR E PRÉ-VISUALIZADOR DE TEMAS PREDEFINIDOS (12 TEMAS) -->
+      <!-- SELETOR E PRÉ-VISUALIZADOR DE TEMAS (12 TEMAS) -->
       <div class="group">
         <span class="label">Tema:</span>
         <select id="themeSelect">
@@ -524,6 +525,13 @@ let originalData = null;
 const pointers = new Map();
 let gestureStart = null;
 
+/* VARIÁVEIS PARA SELEÇÃO / CLIPBOARD E ITEM FLUTUANTE */
+let selectionRect = null; // {x, y, w, h}
+let clipboardData = null; // ImageData
+let isSelecting = false;
+let selectionStart = null;
+let floatingItem = null; // { canvas: HTMLCanvasElement, x: number, y: number }
+
 /* ESTRUTURA DE ANIMAÇÃO */
 let currentFrame = 1;
 let totalFrames = 24;
@@ -595,20 +603,34 @@ function updateStatus(){
     "pencil-real":"Lápis sensível", mechanical:"Lapiseira", fineliner:"Caneta técnica",
     ink:"Nanquim", "brush-pen":"Caneta Brush", marker:"Marcador",
     "hard-brush":"Pincel duro", "soft-brush":"Pincel suave",
-    watercolor:"Aquarela", chalk:"Giz", eraser:"Borracha", picker:"Conta-gotas", fill:"Balde"
+    watercolor:"Aquarela", chalk:"Giz", eraser:"Borracha", picker:"Conta-gotas", fill:"Balde", select:"Seleção Retangular"
   };
   document.getElementById("status").textContent =
     `${canvas.width} × ${canvas.height}px • ${names[tool]||tool} • ${Math.round(zoom*100)}%`;
 }
 
 function setTool(t){
+  if(floatingItem) dropFloatingItem();
+
   tool = t;
   document.getElementById("brush").value =
-    ["eraser", "picker", "fill"].includes(t) ? "ink" : t;
-  ["eraser", "picker", "fill"].forEach(id => {
-    document.getElementById(id).classList.toggle("active", id === t);
+    ["eraser", "picker", "fill", "select"].includes(t) ? "ink" : t;
+  ["eraser", "picker", "fill", "select"].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.classList.toggle("active", id === t);
   });
-  canvas.style.cursor = t === "picker" ? "copy" : t === "fill" ? "cell" : "crosshair";
+  
+  if (t === "picker") {
+    canvas.style.cursor = "copy";
+  } else if (t === "fill") {
+    canvas.style.cursor = "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M19 11l-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11z\"></path><path d=\"M5 2l5 5\"></path><path d=\"M2 22h20\"></path></svg>') 0 24, auto";
+  } else if (t === "eraser") {
+    canvas.style.cursor = "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21H7z\"></path><path d=\"M22 21H7\"></path><path d=\"m5 11 9 9\"></path></svg>') 0 24, auto";
+  } else if (t === "select") {
+    canvas.style.cursor = "crosshair";
+  } else {
+    canvas.style.cursor = "crosshair";
+  }
   updateStatus();
 }
 
@@ -704,11 +726,128 @@ function floodFill(sx, sy){
   ctx.putImageData(img, 0, 0);
 }
 
+/* SISTEMA DE ITEM FLUTUANTE E RENDERIZAÇÃO COM SELEÇÃO PONTILHADA */
+
+function redrawCanvasWithFloating(){
+  renderFrameBaseOnly();
+  if(floatingItem){
+    ctx.drawImage(floatingItem.canvas, floatingItem.x, floatingItem.y);
+  }
+  if(selectionRect && selectionRect.w > 0 && selectionRect.h > 0){
+    ctx.save();
+    ctx.strokeStyle = "#00d2ff";
+    ctx.lineWidth = 2 / zoom;
+    ctx.setLineDash([6 / zoom, 6 / zoom]);
+    ctx.strokeRect(selectionRect.x, selectionRect.y, selectionRect.w, selectionRect.h);
+    ctx.fillStyle = "rgba(0, 210, 255, 0.1)";
+    ctx.fillRect(selectionRect.x, selectionRect.y, selectionRect.w, selectionRect.h);
+    ctx.restore();
+  }
+}
+
+function renderFrameBaseOnly(){
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const useOnion = document.getElementById("chkOnion").checked;
+  if(useOnion){
+    const prevCount = Math.max(0, parseInt(document.getElementById("onionPrev").value) || 0);
+    const nextCount = Math.max(0, parseInt(document.getElementById("onionNext").value) || 0);
+    const baseOpacity = (parseInt(document.getElementById("onionOpacity").value) || 30) / 100;
+
+    for(let i = prevCount; i >= 1; i--){
+      const f = currentFrame - i;
+      if(keyframes.has(f)){
+        drawOnionLayer(keyframes.get(f), baseOpacity / i);
+      }
+    }
+
+    for(let i = 1; i <= nextCount; i++){
+      const f = currentFrame + i;
+      if(keyframes.has(f)){
+        drawOnionLayer(keyframes.get(f), baseOpacity / i);
+      }
+    }
+  }
+
+  if(keyframes.has(currentFrame)){
+    drawOnionLayer(keyframes.get(currentFrame), 1.0);
+  } else {
+    const prevData = getLatestKeyframeBefore(currentFrame);
+    if(prevData){
+      drawOnionLayer(prevData, 1.0);
+    }
+  }
+}
+
+function dropFloatingItem(){
+  if(!floatingItem) return;
+  pushUndo();
+  ctx.drawImage(floatingItem.canvas, floatingItem.x, floatingItem.y);
+  floatingItem = null;
+  autoSaveKeyframe();
+  updateStatus();
+  showMessage("Item fixado no canvas!");
+}
+
+function startFloatingFromImageData(imgData, targetX, targetY) {
+  if(floatingItem) dropFloatingItem();
+  pushUndo();
+
+  const tempCvs = document.createElement("canvas");
+  tempCvs.width = imgData.width;
+  tempCvs.height = imgData.height;
+  tempCvs.getContext("2d").putImageData(imgData, 0, 0);
+
+  floatingItem = {
+    canvas: tempCvs,
+    x: Math.floor(targetX),
+    y: Math.floor(targetY)
+  };
+  redrawCanvasWithFloating();
+  showMessage("Arraste para posicionar e clique fora para fixar!");
+}
+
+/* FUNÇÕES DE COPIAR E COLAR A SELEÇÃO */
+function copySelectionArea() {
+  if(floatingItem) dropFloatingItem();
+
+  if(!selectionRect || selectionRect.w === 0 || selectionRect.h === 0) {
+    showMessage("Nenhuma área selecionada!");
+    return;
+  }
+  const x = Math.max(0, Math.floor(selectionRect.x));
+  const y = Math.max(0, Math.floor(selectionRect.y));
+  const w = Math.min(canvas.width - x, Math.floor(selectionRect.w));
+  const h = Math.min(canvas.height - y, Math.floor(selectionRect.h));
+
+  if(w > 0 && h > 0) {
+    const extractedData = ctx.getImageData(x, y, w, h);
+    clipboardData = extractedData;
+    
+    startFloatingFromImageData(extractedData, x, y);
+    selectionRect = null;
+    updateStatus();
+    showMessage("Área copiada para a memória!");
+  }
+}
+
+function pasteSelectionArea() {
+  if(floatingItem) dropFloatingItem();
+  if(!clipboardData) {
+    showMessage("Área de transferência vazia!");
+    return;
+  }
+  const px = Math.floor((canvas.width - clipboardData.width) / 2);
+  const py = Math.floor((canvas.height - clipboardData.height) / 2);
+  startFloatingFromImageData(clipboardData, px, py);
+}
+
 function pointerDown(e){
   if(isPlaying) return;
   pointers.set(e.pointerId, {x: e.clientX, y: e.clientY});
   if(pointers.size > 1){
-    drawing = false;
+    drawing = false; isSelecting = false;
     startGesture();
     return;
   }
@@ -718,6 +857,23 @@ function pointerDown(e){
   const p = point(e);
   const x = Math.max(0, Math.min(canvas.width - 1, Math.floor(p.x)));
   const y = Math.max(0, Math.min(canvas.height - 1, Math.floor(p.y)));
+
+  if(floatingItem){
+    const fx = floatingItem.x;
+    const fy = floatingItem.y;
+    const fw = floatingItem.canvas.width;
+    const fh = floatingItem.canvas.height;
+
+    if(p.x >= fx && p.x <= fx + fw && p.y >= fy && p.y <= fy + fh){
+      drawing = true;
+      last = p;
+      pointerId = e.pointerId;
+      canvas.setPointerCapture?.(e.pointerId);
+      return;
+    } else {
+      dropFloatingItem();
+    }
+  }
 
   if(tool === "picker"){
     const px = ctx.getImageData(x, y, 1, 1).data;
@@ -730,6 +886,12 @@ function pointerDown(e){
   }
   if(tool === "fill"){
     pushUndo(); floodFill(x, y); autoSaveKeyframe(); updateStatus(); return;
+  }
+  if(tool === "select"){
+    isSelecting = true;
+    selectionStart = p;
+    selectionRect = {x: p.x, y: p.y, w: 0, h: 0};
+    return;
   }
 
   pushUndo();
@@ -746,10 +908,34 @@ function pointerMove(e){
     updateGesture();
     return;
   }
+
+  const p = point(e);
+
+  if(floatingItem && drawing && pointerId === e.pointerId){
+    e.preventDefault();
+    const dx = p.x - last.x;
+    const dy = p.y - last.y;
+    floatingItem.x += dx;
+    floatingItem.y += dy;
+    last = p;
+    redrawCanvasWithFloating();
+    return;
+  }
+
+  if(isSelecting && selectionStart){
+    e.preventDefault();
+    selectionRect = {
+      x: Math.min(selectionStart.x, p.x),
+      y: Math.min(selectionStart.y, p.y),
+      w: Math.abs(p.x - selectionStart.x),
+      h: Math.abs(p.y - selectionStart.y)
+    };
+    redrawCanvasWithFloating();
+    return;
+  }
   if(!drawing) return;
   e.preventDefault();
   updatePressure(e);
-  const p = point(e);
   if(e.shiftKey && start){
     const base = undoStack[undoStack.length - 1];
     if(base) ctx.putImageData(base, 0, 0);
@@ -763,9 +949,13 @@ function pointerMove(e){
 function pointerUp(e){
   pointers.delete(e.pointerId);
   if(pointers.size === 0){
+    if(isSelecting){
+      isSelecting = false;
+      showMessage("Área delimitada com sucesso!");
+    }
     if(drawing){
       drawing = false;
-      autoSaveKeyframe();
+      if(!floatingItem) autoSaveKeyframe();
     }
     last = null; start = null; pointerId = null;
     try{ canvas.releasePointerCapture?.(e.pointerId); }catch(_){}
@@ -856,8 +1046,6 @@ canvas.addEventListener("wheel", e => {
   setZoom(zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15));
 }, {passive: false});
 
-/* LÓGICA DA LINHA DO TEMPO, ONION SKIN E SCRUBBING */
-
 function getLatestKeyframeBefore(frameNum){
   let lastFrame = 0;
   for(let [f] of keyframes){
@@ -907,6 +1095,7 @@ function autoSaveKeyframe(){
 }
 
 function setKeyframe(){
+  if(floatingItem) dropFloatingItem();
   if(!keyframes.has(currentFrame)){
     const prevData = getLatestKeyframeBefore(currentFrame);
     if(prevData){
@@ -919,6 +1108,7 @@ function setKeyframe(){
 }
 
 function removeKeyframe(){
+  if(floatingItem) dropFloatingItem();
   if(keyframes.has(currentFrame)){
     keyframes.delete(currentFrame);
     renderTimeline();
@@ -928,39 +1118,8 @@ function removeKeyframe(){
 }
 
 function renderFrame(){
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  const useOnion = document.getElementById("chkOnion").checked;
-  if(useOnion){
-    const prevCount = Math.max(0, parseInt(document.getElementById("onionPrev").value) || 0);
-    const nextCount = Math.max(0, parseInt(document.getElementById("onionNext").value) || 0);
-    const baseOpacity = (parseInt(document.getElementById("onionOpacity").value) || 30) / 100;
-
-    for(let i = prevCount; i >= 1; i--){
-      const f = currentFrame - i;
-      if(keyframes.has(f)){
-        drawOnionLayer(keyframes.get(f), baseOpacity / i);
-      }
-    }
-
-    for(let i = 1; i <= nextCount; i++){
-      const f = currentFrame + i;
-      if(keyframes.has(f)){
-        drawOnionLayer(keyframes.get(f), baseOpacity / i);
-      }
-    }
-  }
-
-  if(keyframes.has(currentFrame)){
-    drawOnionLayer(keyframes.get(currentFrame), 1.0);
-  } else {
-    const prevData = getLatestKeyframeBefore(currentFrame);
-    if(prevData){
-      drawOnionLayer(prevData, 1.0);
-    }
-  }
-
+  if(floatingItem) dropFloatingItem();
+  renderFrameBaseOnly();
   undoStack = []; redoStack = [];
 }
 
@@ -977,6 +1136,7 @@ function drawOnionLayer(imgData, alpha){
 }
 
 function gotoFrame(f){
+  if(floatingItem) dropFloatingItem();
   if(f < 1) f = totalFrames;
   if(f > totalFrames) f = 1;
   currentFrame = f;
@@ -985,6 +1145,7 @@ function gotoFrame(f){
 }
 
 function togglePlay(){
+  if(floatingItem) dropFloatingItem();
   isPlaying = !isPlaying;
   const btn = document.getElementById("btnPlay");
   if(isPlaying){
@@ -999,8 +1160,6 @@ function togglePlay(){
     renderFrame();
   }
 }
-
-/* SCRUBBING NA TIMELINE */
 
 const track = document.getElementById("timelineTrack");
 let isScrubbing = false;
@@ -1039,9 +1198,8 @@ track.addEventListener('pointercancel', (e) => {
   isScrubbing = false;
 });
 
-/* EXPORTAÇÃO ZIP DA ANIMAÇÃO */
-
 async function exportAnimationToZip(){
+  if(floatingItem) dropFloatingItem();
   if(typeof JSZip === "undefined"){
     showMessage("Carregando biblioteca ZIP...");
     return;
@@ -1084,8 +1242,6 @@ async function exportAnimationToZip(){
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   showMessage("ZIP gerado com sucesso!");
 }
-
-/* GERENCIAMENTO E PRÉ-VISUALIZAÇÃO DE TEMAS (12 TEMAS) */
 
 const themeData = [
   { id: "dark", name: "Dark Classic", bg: "#171923", panel: "#232634", accent: "#00d2ff" },
@@ -1145,7 +1301,6 @@ function initThemeSystem() {
   };
 }
 
-/* LÓGICA DE DRAG & DROP E MINIMIZAÇÃO DO MENU SUSPENSO */
 const topbar = document.getElementById("topbar");
 const topbarHeader = document.getElementById("topbarHeader");
 const btnMinimize = document.getElementById("btnMinimize");
@@ -1186,8 +1341,6 @@ btnMinimize.onclick = () => {
   btnMinimize.textContent = topbar.classList.contains("minimized") ? "🗖" : "🗕";
 };
 
-/* EVENTOS DE BARRA E CONTROLES */
-
 document.getElementById("btnPlay").onclick = togglePlay;
 document.getElementById("btnPrevFrame").onclick = () => gotoFrame(currentFrame - 1);
 document.getElementById("btnNextFrame").onclick = () => gotoFrame(currentFrame + 1);
@@ -1213,6 +1366,10 @@ document.getElementById("brush").onchange = e => setTool(e.target.value);
 document.getElementById("eraser").onclick = () => setTool("eraser");
 document.getElementById("picker").onclick = () => setTool("picker");
 document.getElementById("fill").onclick = () => setTool("fill");
+document.getElementById("select").onclick = () => setTool("select");
+
+document.getElementById("copySelection").onclick = copySelectionArea;
+document.getElementById("pasteSelection").onclick = pasteSelectionArea;
 
 document.getElementById("size").oninput = e => {
   document.getElementById("sizeValue").textContent = e.target.value + " px";
@@ -1221,12 +1378,14 @@ document.getElementById("pressure").oninput = e => {
   document.getElementById("pressureValue").textContent = e.target.value + "%";
 };
 
-document.getElementById("undo").onclick = undo;
-document.getElementById("redo").onclick = redo;
+document.getElementById("undo").onclick = () => { if(floatingItem) dropFloatingItem(); undo(); };
+document.getElementById("redo").onclick = () => { if(floatingItem) dropFloatingItem(); redo(); };
 document.getElementById("clear").onclick = () => {
+  if(floatingItem) dropFloatingItem();
   pushUndo(); ctx.clearRect(0, 0, canvas.width, canvas.height); autoSaveKeyframe(); updateStatus();
 };
 document.getElementById("original").onclick = () => {
+  if(floatingItem) dropFloatingItem();
   if(!originalData) return; pushUndo(); restore(originalData); autoSaveKeyframe();
 };
 
@@ -1235,6 +1394,7 @@ document.getElementById("zoomIn").onclick = () => setZoom(zoom * 1.25);
 document.getElementById("zoomReset").onclick = () => setZoom(1);
 
 document.getElementById("newDrawing").onchange = e => {
+  if(floatingItem) dropFloatingItem();
   const type = e.target.value;
   if(!type) return;
 
@@ -1268,6 +1428,7 @@ document.getElementById("newDrawing").onchange = e => {
 };
 
 document.getElementById("save").onclick = () => {
+  if(floatingItem) dropFloatingItem();
   localStorage.setItem("miniPaintTablet", JSON.stringify({
     width: canvas.width, height: canvas.height, data: canvas.toDataURL("image/png")
   }));
@@ -1275,6 +1436,7 @@ document.getElementById("save").onclick = () => {
 };
 
 document.getElementById("load").onclick = () => {
+  if(floatingItem) dropFloatingItem();
   const raw = localStorage.getItem("miniPaintTablet");
   if(!raw){ showMessage("Nenhum desenho salvo"); return; }
   const obj = JSON.parse(raw), img = new Image();
@@ -1292,6 +1454,7 @@ document.getElementById("load").onclick = () => {
 };
 
 document.getElementById("export").onclick = () => {
+  if(floatingItem) dropFloatingItem();
   canvas.toBlob(blob => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob); a.download = "animacao-frame.png"; a.click();
@@ -1302,8 +1465,10 @@ document.getElementById("export").onclick = () => {
 document.getElementById("exportZip").onclick = exportAnimationToZip;
 
 window.addEventListener("keydown", e => {
-  if(e.ctrlKey && e.key.toLowerCase() === "z"){ e.preventDefault(); undo(); }
-  else if(e.ctrlKey && (e.key.toLowerCase() === "y" || (e.key.toLowerCase() === "z" && e.shiftKey))){ e.preventDefault(); redo(); }
+  if(e.ctrlKey && e.key.toLowerCase() === "z"){ e.preventDefault(); if(floatingItem) dropFloatingItem(); undo(); }
+  else if(e.ctrlKey && (e.key.toLowerCase() === "y" || (e.key.toLowerCase() === "z" && e.shiftKey))){ e.preventDefault(); if(floatingItem) dropFloatingItem(); redo(); }
+  else if(e.ctrlKey && e.key.toLowerCase() === "c"){ e.preventDefault(); copySelectionArea(); }
+  else if(e.ctrlKey && e.key.toLowerCase() === "v"){ e.preventDefault(); pasteSelectionArea(); }
   else if(e.key === "e" || e.key === "E") setTool("eraser");
 });
 
@@ -1312,7 +1477,6 @@ window.addEventListener("resize", () => {
   else updateTransform();
 });
 
-// Inicialização
 initThemeSystem();
 setCanvasSize(1600, 1000, false);
 ctx.fillStyle = "#ffffff";
