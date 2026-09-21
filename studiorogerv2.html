@@ -122,7 +122,7 @@ select{
   min-width:32px;height:44px;background:var(--panel2);border:1px solid var(--line);
   border-radius:6px;display:flex;flex-direction:column;align-items:center;
   justify-content:space-between;cursor:pointer;font-size:0.75rem;position:relative;
-  padding-bottom:4px;overflow:hidden;flex-shrink:0;
+  padding-bottom:4px;overflow:hidden;flex-shrink:0;transition:all 0.15s ease;
 }
 .frameCell.active{border-color:var(--accent);background:var(--btn);font-weight:bold}
 
@@ -135,6 +135,40 @@ select{
 .frameCell.hasKeyframe::before{
   background:var(--accent);
 }
+
+/* ESTILOS DE ABRANGÊNCIA NA LINHA DO TEMPO */
+.frameCell.onion-prev {
+  border-left: 3px solid #ff4757 !important;
+  background: rgba(255, 71, 87, 0.15) !important;
+}
+.frameCell.onion-next {
+  border-right: 3px solid #2ed573 !important;
+  background: rgba(46, 213, 115, 0.15) !important;
+}
+
+/* MODAL DE PRÉ-VISUALIZAÇÃO DE LAYOUTS */
+#themePreviewModal {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center;
+  z-index: 100; backdrop-filter: blur(4px);
+}
+.modalContent {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  padding: 20px; width: 90%; max-width: 600px; max-height: 85vh; overflow-y: auto;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+}
+.themeGrid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-top: 15px;
+}
+.themeCard {
+  border: 2px solid var(--line); border-radius: 8px; padding: 10px; cursor: pointer;
+  background: var(--panel2); text-align: center; transition: transform 0.2s, border-color 0.2s;
+}
+.themeCard:hover { transform: translateY(-3px); border-color: var(--accent); }
+.themePreviewBox {
+  height: 40px; border-radius: 6px; margin-bottom: 8px; display: flex; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);
+}
+.themeColorSample { flex: 1; height: 100%; }
 
 #bottom{
   flex:0 0 auto;background:var(--panel2);border-top:1px solid var(--line);
@@ -211,7 +245,7 @@ select{
       <span id="pressureValue" class="value">85%</span>
     </div>
 
-    <!-- SELETOR DE TEMAS PREDEFINIDOS -->
+    <!-- SELETOR E PRÉ-VISUALIZADOR DE TEMAS PREDEFINIDOS -->
     <div class="group">
       <span class="label">Tema:</span>
       <select id="themeSelect">
@@ -222,6 +256,7 @@ select{
         <option value="forest">🌲 Forest Organic</option>
         <option value="sunset">🌅 Sunset Pastel</option>
       </select>
+      <button id="btnPreviewThemes" title="Visualizar opções de temas">🖼️ Opções</button>
     </div>
 
     <div class="spacer"></div>
@@ -304,6 +339,18 @@ select{
     <span id="zoomValue" class="value">100%</span>
     <button id="zoomIn">＋</button>
     <button id="zoomReset">🔍 100%</button>
+  </div>
+</div>
+
+<!-- MODAL DE PRÉ-VISUALIZAÇÃO DE TEMAS -->
+<div id="themePreviewModal">
+  <div class="modalContent">
+    <h3>Opções Prévias de Layout</h3>
+    <p class="label" style="margin-top:4px">Escolha o estilo visual para o seu workspace:</p>
+    <div class="themeGrid" id="themeGrid"></div>
+    <div style="margin-top:16px; text-align:right">
+      <button id="btnCloseModal">Fechar</button>
+    </div>
   </div>
 </div>
 
@@ -676,9 +723,26 @@ function getLatestKeyframeBefore(frameNum){
 function renderTimeline(){
   const track = document.getElementById("timelineTrack");
   track.innerHTML = "";
+
+  const useOnion = document.getElementById("chkOnion").checked && !isPlaying;
+  const prevCount = useOnion ? Math.max(0, parseInt(document.getElementById("onionPrev").value) || 0) : 0;
+  const nextCount = useOnion ? Math.max(0, parseInt(document.getElementById("onionNext").value) || 0) : 0;
+
   for(let i = 1; i <= totalFrames; i++){
     const cell = document.createElement("div");
-    cell.className = "frameCell" + (i === currentFrame ? " active" : "") + (keyframes.has(i) ? " hasKeyframe" : "");
+    let classes = ["frameCell"];
+
+    if (i === currentFrame) {
+      classes.push("active");
+    } else if (useOnion && i >= currentFrame - prevCount && i < currentFrame) {
+      classes.push("onion-prev");
+    } else if (useOnion && i > currentFrame && i <= currentFrame + nextCount) {
+      classes.push("onion-next");
+    }
+
+    if (keyframes.has(i)) classes.push("hasKeyframe");
+
+    cell.className = classes.join(" ");
     cell.dataset.frame = i;
     
     const num = document.createElement("span");
@@ -695,7 +759,6 @@ function autoSaveKeyframe(){
 }
 
 function setKeyframe(){
-  // Se não existir keyframe no quadro atual, busca e copia a última anterior
   if(!keyframes.has(currentFrame)){
     const prevData = getLatestKeyframeBefore(currentFrame);
     if(prevData){
@@ -717,18 +780,15 @@ function removeKeyframe(){
 }
 
 function renderFrame(){
-  // Fundo branco limpo base
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Renderizar Onion Skin se ativo e não estiver tocando a animação
   const useOnion = document.getElementById("chkOnion").checked && !isPlaying;
   if(useOnion){
     const prevCount = Math.max(0, parseInt(document.getElementById("onionPrev").value) || 0);
     const nextCount = Math.max(0, parseInt(document.getElementById("onionNext").value) || 0);
     const baseOpacity = (parseInt(document.getElementById("onionOpacity").value) || 30) / 100;
 
-    // Quadros Anteriores
     for(let i = prevCount; i >= 1; i--){
       const f = currentFrame - i;
       if(keyframes.has(f)){
@@ -736,7 +796,6 @@ function renderFrame(){
       }
     }
 
-    // Quadros Posteriores
     for(let i = 1; i <= nextCount; i++){
       const f = currentFrame + i;
       if(keyframes.has(f)){
@@ -745,11 +804,9 @@ function renderFrame(){
     }
   }
 
-  // Se o quadro atual possui keyframe, exibe ele
   if(keyframes.has(currentFrame)){
     drawOnionLayer(keyframes.get(currentFrame), 1.0);
   } else {
-    // Se não possui keyframe próprio, exibe a cópia da última keyframe anterior
     const prevData = getLatestKeyframeBefore(currentFrame);
     if(prevData){
       drawOnionLayer(prevData, 1.0);
@@ -851,11 +908,9 @@ async function exportAnimationToZip(){
   tempCanvas.height = canvas.height;
   const tempCtx = tempCanvas.getContext("2d");
 
-  // Exporta a animação contínua resolvendo a sustentação (hold) das keyframes
   for(let frameNum = 1; frameNum <= totalFrames; frameNum++){
     let frameData = keyframes.get(frameNum);
     
-    // Se o quadro atual não for keyframe, usa o conteúdo mantido do anterior
     if(!frameData){
       frameData = getLatestKeyframeBefore(frameNum);
     }
@@ -883,11 +938,59 @@ async function exportAnimationToZip(){
   showMessage("ZIP gerado com sucesso!");
 }
 
-/* TROCA DE TEMAS */
+/* GERENCIAMENTO E PRÉ-VISUALIZAÇÃO DE TEMAS */
 
-document.getElementById("themeSelect").addEventListener("change", (e) => {
-  document.documentElement.setAttribute("data-theme", e.target.value);
-});
+const themeData = [
+  { id: "dark", name: "Dark Classic", bg: "#171923", panel: "#232634", accent: "#00d2ff" },
+  { id: "light", name: "Light Clean", bg: "#e2e8f0", panel: "#ffffff", accent: "#2563eb" },
+  { id: "cyberpunk", name: "Cyberpunk Neon", bg: "#0d0221", panel: "#0f051d", accent: "#ff007f" },
+  { id: "nordic", name: "Nordic Slate", bg: "#2e3440", panel: "#3b4252", accent: "#88c0d0" },
+  { id: "forest", name: "Forest Organic", bg: "#1a231d", panel: "#243028", accent: "#52b788" },
+  { id: "sunset", name: "Sunset Pastel", bg: "#2b1e2a", panel: "#3a2838", accent: "#ff7b54" }
+];
+
+function applyTheme(themeId) {
+  document.documentElement.setAttribute("data-theme", themeId);
+  document.getElementById("themeSelect").value = themeId;
+  localStorage.setItem("miniPaintTabletTheme", themeId);
+}
+
+function initThemeSystem() {
+  const savedTheme = localStorage.getItem("miniPaintTabletTheme") || "dark";
+  applyTheme(savedTheme);
+
+  document.getElementById("themeSelect").addEventListener("change", (e) => {
+    applyTheme(e.target.value);
+  });
+
+  const grid = document.getElementById("themeGrid");
+  grid.innerHTML = "";
+  themeData.forEach(t => {
+    const card = document.createElement("div");
+    card.className = "themeCard";
+    card.onclick = () => {
+      applyTheme(t.id);
+      document.getElementById("themePreviewModal").style.display = "none";
+    };
+    
+    card.innerHTML = `
+      <div class="themePreviewBox">
+        <div class="themeColorSample" style="background:${t.bg}"></div>
+        <div class="themeColorSample" style="background:${t.panel}"></div>
+        <div class="themeColorSample" style="background:${t.accent}"></div>
+      </div>
+      <div style="font-size:0.85rem; font-weight:bold">${t.name}</div>
+    `;
+    grid.appendChild(card);
+  });
+
+  document.getElementById("btnPreviewThemes").onclick = () => {
+    document.getElementById("themePreviewModal").style.display = "flex";
+  };
+  document.getElementById("btnCloseModal").onclick = () => {
+    document.getElementById("themePreviewModal").style.display = "none";
+  };
+}
 
 /* EVENTOS DE BARRA E CONTROLES */
 
@@ -897,9 +1000,9 @@ document.getElementById("btnNextFrame").onclick = () => gotoFrame(currentFrame +
 document.getElementById("btnAddKeyframe").onclick = setKeyframe;
 document.getElementById("btnRemoveKeyframe").onclick = removeKeyframe;
 
-document.getElementById("chkOnion").onchange = renderFrame;
-document.getElementById("onionPrev").onchange = renderFrame;
-document.getElementById("onionNext").onchange = renderFrame;
+document.getElementById("chkOnion").onchange = () => { renderFrame(); renderTimeline(); };
+document.getElementById("onionPrev").onchange = () => { renderFrame(); renderTimeline(); };
+document.getElementById("onionNext").onchange = () => { renderFrame(); renderTimeline(); };
 
 document.getElementById("onionOpacity").oninput = (e) => {
   document.getElementById("onionOpacityValue").textContent = e.target.value + "%";
@@ -1016,6 +1119,7 @@ window.addEventListener("resize", () => {
 });
 
 // Inicialização
+initThemeSystem();
 setCanvasSize(1600, 1000, false);
 ctx.fillStyle = "#ffffff";
 ctx.fillRect(0, 0, canvas.width, canvas.height);
