@@ -71,19 +71,46 @@ select{
   padding:6px 10px;display:flex;flex-direction:column;gap:6px;z-index:15;
 }
 .timelineControls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.timelineTrack{
-  display:flex;gap:4px;overflow-x:auto;padding:4px 0;
-  scrollbar-width:thin;scrollbar-color:var(--line) transparent;
+
+.timelineDivider{
+  width:100%;
+  height:1px;
+  background-color:var(--line);
+  margin:2px 0;
 }
+
+/* TRACK E REGUA DA TIMELINE CONJUNTA COM SCRUBBER */
+.timelineTrackContainer{
+  position:relative;
+  width:100%;
+  display:flex;
+  flex-direction:column;
+}
+
+.timelineTrack{
+  display:flex;gap:4px;overflow-x:auto;padding:8px 0;
+  scrollbar-width:thin;scrollbar-color:var(--line) transparent;
+  cursor:ew-resize;
+  position:relative;
+}
+
+/* Células da Timeline */
 .frameCell{
-  min-width:32px;height:40px;background:var(--panel2);border:1px solid var(--line);
+  min-width:32px;height:44px;background:var(--panel2);border:1px solid var(--line);
   border-radius:6px;display:flex;flex-direction:column;align-items:center;
-  justify-content:center;cursor:pointer;font-size:0.75rem;position:relative;
+  justify-content:space-between;cursor:pointer;font-size:0.75rem;position:relative;
+  padding-bottom:4px;overflow:hidden;flex-shrink:0;
 }
 .frameCell.active{border-color:var(--accent);background:var(--btn);font-weight:bold}
-.frameCell.hasKeyframe::after{
-  content:"";width:8px;height:8px;background:var(--accent);border-radius:50%;
-  position:absolute;bottom:4px;
+
+.frameCell::before{
+  content:"";
+  width:100%;
+  height:8px;
+  background:#4a5068;
+}
+.frameCell.hasKeyframe::before{
+  background:#00d2ff; /* Destaque para o Keyframe */
 }
 
 #bottom{
@@ -191,6 +218,9 @@ select{
         <input type="number" id="onionPrev" value="1" min="0" max="5">
         <span class="label">Post:</span>
         <input type="number" id="onionNext" value="1" min="0" max="5">
+        <span class="label">Opacidade:</span>
+        <input id="onionOpacity" type="range" min="0" max="100" value="30">
+        <span id="onionOpacityValue" class="value">30%</span>
       </div>
 
       <div class="sliderBox">
@@ -201,8 +231,12 @@ select{
       </div>
     </div>
 
-    <div class="timelineTrack" id="timelineTrack">
-      <!-- Células geradas via Javascript -->
+    <div class="timelineDivider"></div>
+
+    <div class="timelineTrackContainer">
+      <div class="timelineTrack" id="timelineTrack">
+        <!-- Células geradas via Javascript -->
+      </div>
     </div>
   </div>
 
@@ -263,7 +297,7 @@ let gestureStart = null;
 /* ESTRUTURA DE ANIMAÇÃO */
 let currentFrame = 1;
 let totalFrames = 24;
-let keyframes = new Map(); // Guarda ImageData por índice de frame (1-based)
+let keyframes = new Map();
 let isPlaying = false;
 let playInterval = null;
 
@@ -590,7 +624,7 @@ canvas.addEventListener("wheel", e => {
   setZoom(zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15));
 }, {passive: false});
 
-/* LÓGICA DA LINHA DO TEMPO E ONION SKIN */
+/* LÓGICA DA LINHA DO TEMPO, ONION SKIN E SCRUBBING */
 
 function renderTimeline(){
   const track = document.getElementById("timelineTrack");
@@ -598,8 +632,12 @@ function renderTimeline(){
   for(let i = 1; i <= totalFrames; i++){
     const cell = document.createElement("div");
     cell.className = "frameCell" + (i === currentFrame ? " active" : "") + (keyframes.has(i) ? " hasKeyframe" : "");
-    cell.textContent = i;
-    cell.onclick = () => gotoFrame(i);
+    cell.dataset.frame = i;
+    
+    const num = document.createElement("span");
+    num.textContent = i;
+    cell.appendChild(num);
+
     track.appendChild(cell);
   }
 }
@@ -625,43 +663,43 @@ function removeKeyframe(){
 }
 
 function renderFrame(){
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // 1. Fundo branco limpo para o canvas inteiro
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Renderizar Onion Skin se ativo e se não estiver reproduzindo
+  // 2. Renderizar Onion Skin se ativado e não estiver em reprodução
   const useOnion = document.getElementById("chkOnion").checked && !isPlaying;
   if(useOnion){
     const prevCount = Math.max(0, parseInt(document.getElementById("onionPrev").value) || 0);
     const nextCount = Math.max(0, parseInt(document.getElementById("onionNext").value) || 0);
+    const baseOpacity = (parseInt(document.getElementById("onionOpacity").value) || 30) / 100;
 
-    // Quadros Anteriores (Vermelho/Rosa)
+    // Quadros Anteriores
     for(let i = prevCount; i >= 1; i--){
       const f = currentFrame - i;
       if(keyframes.has(f)){
-        drawOnionLayer(keyframes.get(f), "rgba(255, 0, 80, ", 0.25 / i);
+        drawOnionLayer(keyframes.get(f), baseOpacity / i);
       }
     }
 
-    // Quadros Posteriores (Azul/Verde)
+    // Quadros Posteriores
     for(let i = 1; i <= nextCount; i++){
       const f = currentFrame + i;
       if(keyframes.has(f)){
-        drawOnionLayer(keyframes.get(f), "rgba(0, 200, 255, ", 0.25 / i);
+        drawOnionLayer(keyframes.get(f), baseOpacity / i);
       }
     }
   }
 
-  // Desenhar Quadro Atual (se houver keyframe)
+  // 3. Desenhar o conteúdo do quadro atual por cima do Onion Skin
   if(keyframes.has(currentFrame)){
-    ctx.putImageData(keyframes.get(currentFrame), 0, 0);
-  } else {
-    // Se não for um keyframe, mantém fundo branco base
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    drawOnionLayer(keyframes.get(currentFrame), 1.0);
   }
+
   undoStack = []; redoStack = [];
 }
 
-function drawOnionLayer(imgData, colorPrefix, alpha){
+function drawOnionLayer(imgData, alpha){
   const tempCanvas = document.createElement("canvas");
   tempCanvas.width = canvas.width; tempCanvas.height = canvas.height;
   const tCtx = tempCanvas.getContext("2d");
@@ -697,6 +735,45 @@ function togglePlay(){
   }
 }
 
+/* LÓGICA DE ARRASTAR NA TIMELINE (SCRUBBING) */
+
+const track = document.getElementById("timelineTrack");
+let isScrubbing = false;
+
+function updateFrameFromPointer(e){
+  const element = document.elementFromPoint(e.clientX, e.clientY);
+  const cell = element ? element.closest('.frameCell') : null;
+  if(cell && cell.dataset.frame){
+    const f = parseInt(cell.dataset.frame);
+    if(f !== currentFrame){
+      gotoFrame(f);
+    }
+  }
+}
+
+track.addEventListener('pointerdown', (e) => {
+  isScrubbing = true;
+  track.setPointerCapture(e.pointerId);
+  updateFrameFromPointer(e);
+});
+
+track.addEventListener('pointermove', (e) => {
+  if(isScrubbing){
+    updateFrameFromPointer(e);
+  }
+});
+
+track.addEventListener('pointerup', (e) => {
+  if(isScrubbing){
+    isScrubbing = false;
+    try{ track.releasePointerCapture(e.pointerId); }catch(_){}
+  }
+});
+
+track.addEventListener('pointercancel', (e) => {
+  isScrubbing = false;
+});
+
 /* EVENTOS DE BARRA E CONTROLES */
 
 document.getElementById("btnPlay").onclick = togglePlay;
@@ -708,6 +785,11 @@ document.getElementById("btnRemoveKeyframe").onclick = removeKeyframe;
 document.getElementById("chkOnion").onchange = renderFrame;
 document.getElementById("onionPrev").onchange = renderFrame;
 document.getElementById("onionNext").onchange = renderFrame;
+
+document.getElementById("onionOpacity").oninput = (e) => {
+  document.getElementById("onionOpacityValue").textContent = e.target.value + "%";
+  renderFrame();
+};
 
 document.getElementById("totalFramesInput").onchange = (e) => {
   totalFrames = Math.max(1, parseInt(e.target.value) || 1);
