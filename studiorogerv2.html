@@ -70,24 +70,81 @@ button{
 }
 button:active{transform:scale(.98)}
 button.active{background:var(--accent);color:#071016;border-color:var(--accent);font-weight:800}
-input[type=color]{width:42px;height:38px;padding:2px;border-radius:8px;border:1px solid var(--line);background:var(--panel2)}
-input[type=range]{accent-color:var(--accent);min-width:80px}
+input[type=color]{width:100%;height:38px;padding:2px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);cursor:pointer}
+input[type=range]{accent-color:var(--accent);width:100%}
 input[type=number]{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:4px 6px;width:55px;text-align:center}
 select{
   min-height:38px;background:var(--panel2);color:var(--text);border:1px solid var(--line);
-  border-radius:8px;padding:6px;max-width:220px
+  border-radius:8px;padding:6px;width:100%
 }
 #app{width:100%;height:100%;display:flex;flex-direction:column}
+
+/* BARRA FLUTUANTE / MENU SUSPENSO VERTICAL (DRAGGABLE & MINIMIZABLE) */
 #topbar{
-  flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:6px 10px;
-  padding-top:max(6px,env(safe-area-inset-top));background:var(--panel2);
-  border-bottom:1px solid var(--line);z-index:20;flex-wrap:wrap
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  z-index: 40;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  backdrop-filter: blur(6px);
+  width: 240px;
 }
+
+.topbar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--panel);
+  border-top-left-radius: 11px;
+  border-top-right-radius: 11px;
+  border-bottom: 1px solid var(--line);
+  cursor: move;
+  user-select: none;
+}
+
+.topbar-content {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding: 12px;
+}
+
+#topbar.minimized .topbar-content {
+  display: none;
+}
+
+.topbar-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.window-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 2px 6px;
+  min-height: auto;
+  border-radius: 4px;
+}
+.window-btn:hover {
+  background: var(--line);
+  color: var(--text);
+}
+
 .brand{font-weight:900;color:var(--accent);font-size:1.05rem;margin-right:4px}
-.group{display:flex;align-items:center;gap:6px}
+.group{display:flex;flex-direction:column;align-items:stretch;gap:6px;width:100%}
 .label{font-size:.78rem;color:var(--muted)}
-.spacer{flex:1}
-#status{font-size:.75rem;color:var(--muted);white-space:nowrap}
+.spacer{display:none}
+#status{font-size:.75rem;color:var(--muted);text-align:center;margin-top:4px}
 
 #workspace{
   position:relative;flex:1;min-height:0;overflow:auto;
@@ -114,7 +171,7 @@ select{
   left: 0; top: 0;
   box-shadow: 0 0 0 1px rgba(0,0,0,.15), 0 12px 35px rgba(0,0,0,.35);
   transform-origin: 0 0;
-  border-radius: 18px; /* Bordas arredondadas na folha */
+  border-radius: 18px;
   overflow: hidden;
   background: #ffffff;
   display: flex;
@@ -201,7 +258,6 @@ select{
   background:var(--accent);
 }
 
-/* ESTILOS DE ABRANGÊNCIA NA LINHA DO TEMPO */
 .frameCell.onion-prev {
   border-left: 3px solid #ff4757 !important;
   background: rgba(255, 71, 87, 0.18) !important;
@@ -240,10 +296,10 @@ select{
   padding:6px 10px;padding-bottom:max(6px,env(safe-area-inset-bottom));
   display:flex;gap:8px;align-items:center;flex-wrap:wrap
 }
-.sliderBox{display:flex;align-items:center;gap:6px}
-.value{min-width:42px;text-align:center;color:var(--muted);font-size:.78rem}
-.newDrawingGroup{display:flex;align-items:center}
-#newDrawing{min-height:38px;max-width:200px}
+.sliderBox{display:flex;flex-direction:column;gap:4px;width:100%}
+.value{text-align:right;color:var(--muted);font-size:.78rem}
+.newDrawingGroup{display:flex;align-items:center;width:100%}
+#newDrawing{min-height:38px;width:100%}
 #message{
   position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
   background:var(--panel2);border:1px solid var(--accent);border-radius:12px;
@@ -255,9 +311,7 @@ select{
   font-size:.74rem;z-index:10;pointer-events:none
 }
 @media (max-width:800px){
-  #topbar{gap:4px;padding-left:6px;padding-right:6px}
   button{min-height:42px;padding:6px 8px}
-  select{max-width:160px}
   #status{display:none}
   .desktopOnly{display:none}
   #help{display:none}
@@ -266,72 +320,85 @@ select{
 </head>
 <body>
 <div id="app">
+  <!-- MENU PRINCIPAL FLUTUANTE VERTICAL -->
   <div id="topbar">
-    <div class="brand">🖌️ Mini Paint Tablet</div>
-
-    <div class="group">
-      <select id="brush">
-        <optgroup label="Lápis / Esboço">
-          <option value="pencil">✏️ Lápis Cartoon</option>
-          <option value="pencil-soft">✏️ Grafite macio</option>
-          <option value="pencil-hard">✏️ Grafite duro</option>
-          <option value="pencil-real">✏️ Lápis sensível</option>
-          <option value="mechanical">🖊️ Lapiseira</option>
-        </optgroup>
-        <optgroup label="Line Art / Tinta">
-          <option value="fineliner">🖋️ Caneta técnica</option>
-          <option value="ink" selected>🖊️ Nanquim</option>
-          <option value="brush-pen">🖌️ Caneta Brush</option>
-          <option value="marker">🖍️ Marcador</option>
-        </optgroup>
-        <optgroup label="Pincéis">
-          <option value="hard-brush">● Pincel duro</option>
-          <option value="soft-brush">◉ Pincel suave</option>
-          <option value="watercolor">💧 Aquarela</option>
-          <option value="chalk">▰ Giz</option>
-        </optgroup>
-      </select>
+    <div class="topbar-header" id="topbarHeader">
+      <div class="brand">🖌️ Mini Paint Tablet</div>
+      <div class="topbar-actions">
+        <button class="window-btn" id="btnMinimize" title="Minimizar/Expandir">🗕</button>
+      </div>
     </div>
+    <div class="topbar-content">
+      <div class="group">
+        <select id="brush">
+          <optgroup label="Lápis / Esboço">
+            <option value="pencil">✏️ Lápis Cartoon</option>
+            <option value="pencil-soft">✏️ Grafite macio</option>
+            <option value="pencil-hard">✏️ Grafite duro</option>
+            <option value="pencil-real">✏️ Lápis sensível</option>
+            <option value="mechanical">🖊️ Lapiseira</option>
+          </optgroup>
+          <optgroup label="Line Art / Tinta">
+            <option value="fineliner">🖋️ Caneta técnica</option>
+            <option value="ink" selected>🖊️ Nanquim</option>
+            <option value="brush-pen">🖌️ Caneta Brush</option>
+            <option value="marker">🖍️ Marcador</option>
+          </optgroup>
+          <optgroup label="Pincéis">
+            <option value="hard-brush">● Pincel duro</option>
+            <option value="soft-brush">◉ Pincel suave</option>
+            <option value="watercolor">💧 Aquarela</option>
+            <option value="chalk">▰ Giz</option>
+          </optgroup>
+        </select>
+      </div>
 
-    <button id="eraser">🧽 Borracha</button>
-    <button id="picker">💧 Conta-gotas</button>
-    <button id="fill">🪣 Balde</button>
-    <input id="color" type="color" value="#ff0055" title="Cor">
+      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:4px;">
+        <button id="eraser" style="width:100%">🧽</button>
+        <button id="picker" style="width:100%">💧</button>
+        <button id="fill" style="width:100%">🪣</button>
+      </div>
+      
+      <input id="color" type="color" value="#ff0055" title="Cor">
 
-    <div class="sliderBox">
-      <span class="label">Tamanho</span>
-      <input id="size" type="range" min="1" max="100" value="12">
-      <span id="sizeValue" class="value">12 px</span>
+      <div class="sliderBox">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span class="label">Tamanho</span>
+          <span id="sizeValue" class="value">12 px</span>
+        </div>
+        <input id="size" type="range" min="1" max="100" value="12">
+      </div>
+
+      <div class="sliderBox desktopOnly">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span class="label">Pressão</span>
+          <span id="pressureValue" class="value">85%</span>
+        </div>
+        <input id="pressure" type="range" min="0" max="100" value="85">
+      </div>
+
+      <!-- SELETOR E PRÉ-VISUALIZADOR DE TEMAS PREDEFINIDOS (12 TEMAS) -->
+      <div class="group">
+        <span class="label">Tema:</span>
+        <select id="themeSelect">
+          <option value="dark">🌙 Dark Classic</option>
+          <option value="light">☀️ Light Clean</option>
+          <option value="cyberpunk">👾 Cyberpunk Neon</option>
+          <option value="nordic">❄️ Nordic Slate</option>
+          <option value="forest">🌲 Forest Organic</option>
+          <option value="sunset">🌅 Sunset Pastel</option>
+          <option value="dracula">🧛 Dracula Gothic</option>
+          <option value="solarized">🌾 Solarized Light</option>
+          <option value="neongreen">⚡ Cyber Neon Green</option>
+          <option value="monochrome">🏁 Monochrome Ink</option>
+          <option value="pastel">🌸 Pastel Dream</option>
+          <option value="midnight">🌌 Midnight Blue</option>
+        </select>
+        <button id="btnPreviewThemes" title="Visualizar opções de temas">🖼️ Opções</button>
+      </div>
+
+      <span id="status">Novo desenho</span>
     </div>
-
-    <div class="sliderBox desktopOnly">
-      <span class="label">Pressão</span>
-      <input id="pressure" type="range" min="0" max="100" value="85">
-      <span id="pressureValue" class="value">85%</span>
-    </div>
-
-    <!-- SELETOR E PRÉ-VISUALIZADOR DE TEMAS PREDEFINIDOS (12 TEMAS) -->
-    <div class="group">
-      <span class="label">Tema:</span>
-      <select id="themeSelect">
-        <option value="dark">🌙 Dark Classic</option>
-        <option value="light">☀️ Light Clean</option>
-        <option value="cyberpunk">👾 Cyberpunk Neon</option>
-        <option value="nordic">❄️ Nordic Slate</option>
-        <option value="forest">🌲 Forest Organic</option>
-        <option value="sunset">🌅 Sunset Pastel</option>
-        <option value="dracula">🧛 Dracula Gothic</option>
-        <option value="solarized">🌾 Solarized Light</option>
-        <option value="neongreen">⚡ Cyber Neon Green</option>
-        <option value="monochrome">🏁 Monochrome Ink</option>
-        <option value="pastel">🌸 Pastel Dream</option>
-        <option value="midnight">🌌 Midnight Blue</option>
-      </select>
-      <button id="btnPreviewThemes" title="Visualizar opções de temas">🖼️ Opções</button>
-    </div>
-
-    <div class="spacer"></div>
-    <span id="status">Novo desenho</span>
   </div>
 
   <div id="workspace">
@@ -357,23 +424,23 @@ select{
       <button id="btnPrevFrame">⏮️</button>
       <button id="btnNextFrame">⏭️</button>
       
-      <div class="group">
+      <div class="group" style="flex-direction:row; width:auto;">
         <button id="btnAddKeyframe">➕ Keyframe</button>
         <button id="btnRemoveKeyframe">➖ Keyframe</button>
       </div>
 
-      <div class="sliderBox">
+      <div class="sliderBox" style="width:auto; flex-direction:row; align-items:center;">
         <label><input type="checkbox" id="chkOnion" checked> Onion Skin</label>
         <span class="label">Ant:</span>
         <input type="number" id="onionPrev" value="1" min="0" max="5">
         <span class="label">Post:</span>
         <input type="number" id="onionNext" value="1" min="0" max="5">
         <span class="label">Opacidade:</span>
-        <input id="onionOpacity" type="range" min="0" max="100" value="30">
-        <span id="onionOpacityValue" class="value">30%</span>
+        <input id="onionOpacity" type="range" min="0" max="100" value="30" style="width:80px;">
+        <span id="onionOpacityValue" class="value" style="min-width:35px;">30%</span>
       </div>
 
-      <div class="sliderBox">
+      <div class="sliderBox" style="width:auto; flex-direction:row; align-items:center;">
         <span class="label">FPS:</span>
         <input type="number" id="animFPS" value="12" min="1" max="60">
         <span class="label">Frames:</span>
@@ -395,8 +462,8 @@ select{
     <button id="redo">↷ Refazer</button>
     <button id="clear">🗑️ Limpar</button>
     <button id="original">↺ Restaurar</button>
-    <div class="newDrawingGroup">
-      <select id="newDrawing" title="Escolher novo desenho">
+    <div class="newDrawingGroup" style="width:auto;">
+      <select id="newDrawing" title="Escolher novo desenho" style="width:auto;">
         <option value="">＋ Novo desenho...</option>
         <optgroup label="Formatos comuns">
           <option value="square">Quadrado — 1200 × 1200</option>
@@ -413,9 +480,9 @@ select{
     <button id="export">⬇️ PNG</button>
     <button id="exportZip">📦 Exportar ZIP</button>
 
-    <div class="spacer"></div>
+    <div class="spacer" style="display:block; flex:1;"></div>
     <button id="zoomOut">−</button>
-    <span id="zoomValue" class="value">100%</span>
+    <span id="zoomValue" class="value" style="min-width:42px;">100%</span>
     <button id="zoomIn">＋</button>
     <button id="zoomReset">🔍 100%</button>
   </div>
@@ -739,7 +806,7 @@ function updateViewportSize(){
   const workspace = viewport.parentElement;
   const w = workspace.clientWidth;
   const h = workspace.clientHeight;
-  const wrapperHeight = canvas.height + 48; // Altura incluindo a Disney Peg Bar
+  const wrapperHeight = canvas.height + 48;
   const scaledW = Math.max(1, canvas.width * zoom);
   const scaledH = Math.max(1, wrapperHeight * zoom);
 
@@ -1077,6 +1144,47 @@ function initThemeSystem() {
     document.getElementById("themePreviewModal").style.display = "none";
   };
 }
+
+/* LÓGICA DE DRAG & DROP E MINIMIZAÇÃO DO MENU SUSPENSO */
+const topbar = document.getElementById("topbar");
+const topbarHeader = document.getElementById("topbarHeader");
+const btnMinimize = document.getElementById("btnMinimize");
+
+let isDraggingMenu = false;
+let menuStartX = 0, menuStartY = 0;
+let menuPosX = 15, menuPosY = 15;
+
+topbarHeader.addEventListener("pointerdown", (e) => {
+  if (e.target.closest('#btnMinimize')) return;
+  isDraggingMenu = true;
+  menuStartX = e.clientX - topbar.offsetLeft;
+  menuStartY = e.clientY - topbar.offsetTop;
+  topbarHeader.setPointerCapture(e.pointerId);
+});
+
+topbarHeader.addEventListener("pointermove", (e) => {
+  if (!isDraggingMenu) return;
+  menuPosX = e.clientX - menuStartX;
+  menuPosY = e.clientY - menuStartY;
+  
+  const maxW = window.innerWidth - topbar.offsetWidth;
+  const maxH = window.innerHeight - topbar.offsetHeight;
+  menuPosX = Math.max(0, Math.min(menuPosX, maxW));
+  menuPosY = Math.max(0, Math.min(menuPosY, maxH));
+
+  topbar.style.left = menuPosX + "px";
+  topbar.style.top = menuPosY + "px";
+});
+
+topbarHeader.addEventListener("pointerup", (e) => {
+  isDraggingMenu = false;
+  try { topbarHeader.releasePointerCapture(e.pointerId); } catch(_) {}
+});
+
+btnMinimize.onclick = () => {
+  topbar.classList.toggle("minimized");
+  btnMinimize.textContent = topbar.classList.contains("minimized") ? "🗖" : "🗕";
+};
 
 /* EVENTOS DE BARRA E CONTROLES */
 
