@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#171923">
-<title>Mini Paint Tablet</title>
+<title>Mini Paint Tablet + Animação</title>
 <style>
 :root{
   --bg:#171923; --panel:#232634; --panel2:#11131b; --line:#3a4054;
@@ -15,21 +15,23 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 body{touch-action:none}
 button,input,select{font:inherit}
 button{
-  min-height:46px;border:1px solid var(--line);border-radius:9px;background:var(--btn);
-  color:var(--text);padding:8px 12px;cursor:pointer;touch-action:manipulation
+  min-height:38px;border:1px solid var(--line);border-radius:8px;background:var(--btn);
+  color:var(--text);padding:6px 10px;cursor:pointer;touch-action:manipulation;
+  display:inline-flex;align-items:center;justify-content:center;gap:4px;
 }
 button:active{transform:scale(.98)}
 button.active{background:var(--accent);color:#071016;border-color:var(--accent);font-weight:800}
-input[type=color]{width:46px;height:42px;padding:2px;border-radius:8px;border:1px solid var(--line);background:var(--panel2)}
-input[type=range]{accent-color:var(--accent);min-width:100px}
+input[type=color]{width:42px;height:38px;padding:2px;border-radius:8px;border:1px solid var(--line);background:var(--panel2)}
+input[type=range]{accent-color:var(--accent);min-width:80px}
+input[type=number]{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:4px 6px;width:55px;text-align:center}
 select{
-  min-height:44px;background:var(--panel2);color:var(--text);border:1px solid var(--line);
-  border-radius:8px;padding:7px;max-width:260px
+  min-height:38px;background:var(--panel2);color:var(--text);border:1px solid var(--line);
+  border-radius:8px;padding:6px;max-width:220px
 }
 #app{width:100%;height:100%;display:flex;flex-direction:column}
 #topbar{
-  flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:8px 10px;
-  padding-top:max(8px,env(safe-area-inset-top));background:var(--panel2);
+  flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:6px 10px;
+  padding-top:max(6px,env(safe-area-inset-top));background:var(--panel2);
   border-bottom:1px solid var(--line);z-index:20;flex-wrap:wrap
 }
 .brand{font-weight:900;color:var(--accent);font-size:1.05rem;margin-right:4px}
@@ -37,6 +39,7 @@ select{
 .label{font-size:.78rem;color:var(--muted)}
 .spacer{flex:1}
 #status{font-size:.75rem;color:var(--muted);white-space:nowrap}
+
 #workspace{
   position:relative;flex:1;min-height:0;overflow:auto;
   background:#202027;
@@ -61,56 +64,54 @@ select{
   box-shadow:0 0 0 1px rgba(0,0,0,.2),0 8px 30px rgba(0,0,0,.25);
   touch-action:none;transform-origin:0 0;
 }
+
+/* TIMELINE CONTAINER */
+#timelinePanel{
+  flex:0 0 auto;background:var(--panel);border-top:1px solid var(--line);
+  padding:6px 10px;display:flex;flex-direction:column;gap:6px;z-index:15;
+}
+.timelineControls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.timelineTrack{
+  display:flex;gap:4px;overflow-x:auto;padding:4px 0;
+  scrollbar-width:thin;scrollbar-color:var(--line) transparent;
+}
+.frameCell{
+  min-width:32px;height:40px;background:var(--panel2);border:1px solid var(--line);
+  border-radius:6px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;cursor:pointer;font-size:0.75rem;position:relative;
+}
+.frameCell.active{border-color:var(--accent);background:var(--btn);font-weight:bold}
+.frameCell.hasKeyframe::after{
+  content:"";width:8px;height:8px;background:var(--accent);border-radius:50%;
+  position:absolute;bottom:4px;
+}
+
 #bottom{
   flex:0 0 auto;background:var(--panel2);border-top:1px solid var(--line);
-  padding:7px 10px;padding-bottom:max(7px,env(safe-area-inset-bottom));
-  display:flex;gap:9px;align-items:center;flex-wrap:wrap
+  padding:6px 10px;padding-bottom:max(6px,env(safe-area-inset-bottom));
+  display:flex;gap:8px;align-items:center;flex-wrap:wrap
 }
-.sliderBox{display:flex;align-items:center;gap:7px}
-.value{min-width:48px;text-align:center;color:var(--muted);font-size:.78rem}
-#newSize{width:78px}
+.sliderBox{display:flex;align-items:center;gap:6px}
+.value{min-width:42px;text-align:center;color:var(--muted);font-size:.78rem}
 .newDrawingGroup{display:flex;align-items:center}
-#newDrawing{min-height:44px;max-width:220px}
+#newDrawing{min-height:38px;max-width:200px}
 #message{
   position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
   background:rgba(10,12,18,.92);border:1px solid var(--accent);border-radius:12px;
-  padding:18px 22px;z-index:30;display:none;text-align:center;max-width:90vw
+  padding:16px 20px;z-index:30;display:none;text-align:center;max-width:90vw
 }
 #help{
   position:absolute;right:12px;top:12px;background:rgba(10,12,18,.82);
-  border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--muted);
+  border:1px solid var(--line);border-radius:10px;padding:8px 12px;color:var(--muted);
   font-size:.74rem;z-index:10;pointer-events:none
 }
 @media (max-width:800px){
-  #topbar{gap:5px;padding-left:6px;padding-right:6px}
-  button{min-height:48px;padding:8px 9px}
-  select{max-width:190px}
+  #topbar{gap:4px;padding-left:6px;padding-right:6px}
+  button{min-height:42px;padding:6px 8px}
+  select{max-width:160px}
   #status{display:none}
   .desktopOnly{display:none}
   #help{display:none}
-}
-@media (orientation:landscape) and (max-height:600px){
-  #topbar{padding-top:4px;padding-bottom:4px}
-  #bottom{padding-top:4px;padding-bottom:4px}
-  button{min-height:40px}
-  select{min-height:38px}
-}
-
-#paintCanvasWrap {
-  touch-action: none;
-  overscroll-behavior: contain;
-  overflow: hidden;
-  cursor: crosshair;
-}
-#paintCanvasWrap.pan-active {
-  cursor: grab;
-}
-#paintCanvasWrap.pan-active.panning {
-  cursor: grabbing;
-}
-#paintPanToggle.active {
-  font-weight: 700;
-  outline: 3px solid rgba(0, 120, 255, .35);
 }
 </style>
 </head>
@@ -172,6 +173,39 @@ select{
     <div id="message"></div>
   </div>
 
+  <!-- LINHA DO TEMPO / ANIMAÇÃO -->
+  <div id="timelinePanel">
+    <div class="timelineControls">
+      <button id="btnPlay">▶️ Tocar</button>
+      <button id="btnPrevFrame">⏮️</button>
+      <button id="btnNextFrame">⏭️</button>
+      
+      <div class="group">
+        <button id="btnAddKeyframe">➕ Keyframe</button>
+        <button id="btnRemoveKeyframe">➖ Keyframe</button>
+      </div>
+
+      <div class="sliderBox">
+        <label><input type="checkbox" id="chkOnion" checked> Onion Skin</label>
+        <span class="label">Ant:</span>
+        <input type="number" id="onionPrev" value="1" min="0" max="5">
+        <span class="label">Post:</span>
+        <input type="number" id="onionNext" value="1" min="0" max="5">
+      </div>
+
+      <div class="sliderBox">
+        <span class="label">FPS:</span>
+        <input type="number" id="animFPS" value="12" min="1" max="60">
+        <span class="label">Frames:</span>
+        <input type="number" id="totalFramesInput" value="24" min="1" max="100">
+      </div>
+    </div>
+
+    <div class="timelineTrack" id="timelineTrack">
+      <!-- Células geradas via Javascript -->
+    </div>
+  </div>
+
   <div id="bottom">
     <button id="undo">↶ Desfazer</button>
     <button id="redo">↷ Refazer</button>
@@ -188,25 +222,6 @@ select{
           <option value="fullhd">Full HD 16:9 — 1920 × 1080</option>
           <option value="4k">4K 16:9 — 3840 × 2160</option>
         </optgroup>
-        <optgroup label="Impressão">
-          <option value="a5">A5 — 1748 × 2480</option>
-          <option value="a4">A4 — 2480 × 3508</option>
-          <option value="a3">A3 — 3508 × 4961</option>
-          <option value="letter">Carta — 2550 × 3300</option>
-        </optgroup>
-        <optgroup label="Ilustração / HQ">
-          <option value="comic">HQ — 2550 × 3300</option>
-          <option value="comicland">HQ horizontal — 3300 × 2550</option>
-          <option value="webcomic">Webcomic — 1600 × 2560</option>
-          <option value="character">Personagem — 2000 × 3000</option>
-        </optgroup>
-        <optgroup label="Telas / Redes">
-          <option value="instagram">Instagram quadrado — 1080 × 1080</option>
-          <option value="story">Story / Reels — 1080 × 1920</option>
-          <option value="presentation">Apresentação 16:9 — 1920 × 1080</option>
-          <option value="wallpaper">Wallpaper — 2560 × 1440</option>
-        </optgroup>
-        <option value="custom">⚙️ Personalizado...</option>
       </select>
     </div>
     <button id="save">💾 Salvar</button>
@@ -244,6 +259,13 @@ let originalData = null;
 
 const pointers = new Map();
 let gestureStart = null;
+
+/* ESTRUTURA DE ANIMAÇÃO */
+let currentFrame = 1;
+let totalFrames = 24;
+let keyframes = new Map(); // Guarda ImageData por índice de frame (1-based)
+let isPlaying = false;
+let playInterval = null;
 
 function smoothing(c){
   c.imageSmoothingEnabled = true;
@@ -326,16 +348,13 @@ function setTool(t){
   updateStatus();
 }
 
-function color(){
-  return document.getElementById("color").value || "#ff0055";
-}
-function size(){
-  return Math.max(1, Number(document.getElementById("size").value) || 12);
-}
+function color(){ return document.getElementById("color").value || "#ff0055"; }
+function size(){ return Math.max(1, Number(document.getElementById("size").value) || 12); }
 function pressureFactor(){
   const influence = Number(document.getElementById("pressure").value) / 100;
   return 1 - influence + pressureValue * influence;
 }
+
 function settings(){
   const base = size(), f = pressureFactor();
   switch(tool){
@@ -354,10 +373,9 @@ function settings(){
     default: return {size:base*(.28+f*.92), alpha:.30+f*.62, blur:Math.max(0, base*.012)};
   }
 }
+
 function drawSegment(a, b){
-  const s = tool === "eraser"
-    ? {size:size(), alpha:1, blur:0}
-    : settings();
+  const s = tool === "eraser" ? {size:size(), alpha:1, blur:0} : settings();
   ctx.save();
   ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.lineWidth = s.size;
   if(tool === "eraser"){
@@ -423,6 +441,7 @@ function floodFill(sx, sy){
 }
 
 function pointerDown(e){
+  if(isPlaying) return;
   pointers.set(e.pointerId, {x: e.clientX, y: e.clientY});
   if(pointers.size > 1){
     drawing = false;
@@ -446,7 +465,7 @@ function pointerDown(e){
     return;
   }
   if(tool === "fill"){
-    pushUndo(); floodFill(x, y); updateStatus(); return;
+    pushUndo(); floodFill(x, y); autoSaveKeyframe(); updateStatus(); return;
   }
 
   pushUndo();
@@ -480,7 +499,11 @@ function pointerMove(e){
 function pointerUp(e){
   pointers.delete(e.pointerId);
   if(pointers.size === 0){
-    drawing = false; last = null; start = null; pointerId = null;
+    if(drawing){
+      drawing = false;
+      autoSaveKeyframe();
+    }
+    last = null; start = null; pointerId = null;
     try{ canvas.releasePointerCapture?.(e.pointerId); }catch(_){}
   }else if(pointers.size === 1){
     gestureStart = null;
@@ -533,17 +556,11 @@ function updateViewportSize(){
 
 function updateTransform(){
   const metrics = updateViewportSize();
-
-  if(metrics.scaledW <= metrics.w){
-    currentTX = (metrics.w - metrics.scaledW) / 2;
-  }
-  if(metrics.scaledH <= metrics.h){
-    currentTY = (metrics.h - metrics.scaledH) / 2;
-  }
+  if(metrics.scaledW <= metrics.w){ currentTX = (metrics.w - metrics.scaledW) / 2; }
+  if(metrics.scaledH <= metrics.h){ currentTY = (metrics.h - metrics.scaledH) / 2; }
 
   canvas.style.transform = `translate(${currentTX}px,${currentTY}px) scale(${zoom})`;
   document.getElementById("zoomValue").textContent = Math.round(zoom * 100) + "%";
-
   updateStatus();
 }
 
@@ -561,9 +578,7 @@ function fitCanvas(){
   const zy = (h * .82) / Math.max(1, canvas.height);
 
   zoom = Math.max(MIN_ZOOM, Math.min(1, Math.min(zx, zy)));
-
-  currentTX = 0;
-  currentTY = 0;
+  currentTX = 0; currentTY = 0;
   updateTransform();
 
   workspace.scrollLeft = 0;
@@ -574,6 +589,131 @@ canvas.addEventListener("wheel", e => {
   e.preventDefault();
   setZoom(zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15));
 }, {passive: false});
+
+/* LÓGICA DA LINHA DO TEMPO E ONION SKIN */
+
+function renderTimeline(){
+  const track = document.getElementById("timelineTrack");
+  track.innerHTML = "";
+  for(let i = 1; i <= totalFrames; i++){
+    const cell = document.createElement("div");
+    cell.className = "frameCell" + (i === currentFrame ? " active" : "") + (keyframes.has(i) ? " hasKeyframe" : "");
+    cell.textContent = i;
+    cell.onclick = () => gotoFrame(i);
+    track.appendChild(cell);
+  }
+}
+
+function autoSaveKeyframe(){
+  keyframes.set(currentFrame, snapshot());
+  renderTimeline();
+}
+
+function setKeyframe(){
+  keyframes.set(currentFrame, snapshot());
+  renderTimeline();
+  showMessage(`Keyframe salvo no quadro ${currentFrame}`);
+}
+
+function removeKeyframe(){
+  if(keyframes.has(currentFrame)){
+    keyframes.delete(currentFrame);
+    renderTimeline();
+    renderFrame();
+    showMessage(`Keyframe removido do quadro ${currentFrame}`);
+  }
+}
+
+function renderFrame(){
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Renderizar Onion Skin se ativo e se não estiver reproduzindo
+  const useOnion = document.getElementById("chkOnion").checked && !isPlaying;
+  if(useOnion){
+    const prevCount = Math.max(0, parseInt(document.getElementById("onionPrev").value) || 0);
+    const nextCount = Math.max(0, parseInt(document.getElementById("onionNext").value) || 0);
+
+    // Quadros Anteriores (Vermelho/Rosa)
+    for(let i = prevCount; i >= 1; i--){
+      const f = currentFrame - i;
+      if(keyframes.has(f)){
+        drawOnionLayer(keyframes.get(f), "rgba(255, 0, 80, ", 0.25 / i);
+      }
+    }
+
+    // Quadros Posteriores (Azul/Verde)
+    for(let i = 1; i <= nextCount; i++){
+      const f = currentFrame + i;
+      if(keyframes.has(f)){
+        drawOnionLayer(keyframes.get(f), "rgba(0, 200, 255, ", 0.25 / i);
+      }
+    }
+  }
+
+  // Desenhar Quadro Atual (se houver keyframe)
+  if(keyframes.has(currentFrame)){
+    ctx.putImageData(keyframes.get(currentFrame), 0, 0);
+  } else {
+    // Se não for um keyframe, mantém fundo branco base
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  undoStack = []; redoStack = [];
+}
+
+function drawOnionLayer(imgData, colorPrefix, alpha){
+  const tempCanvas = document.createElement("canvas");
+  tempCanvas.width = canvas.width; tempCanvas.height = canvas.height;
+  const tCtx = tempCanvas.getContext("2d");
+  tCtx.putImageData(imgData, 0, 0);
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(tempCanvas, 0, 0);
+  ctx.restore();
+}
+
+function gotoFrame(f){
+  if(f < 1) f = totalFrames;
+  if(f > totalFrames) f = 1;
+  currentFrame = f;
+  renderTimeline();
+  renderFrame();
+}
+
+function togglePlay(){
+  isPlaying = !isPlaying;
+  const btn = document.getElementById("btnPlay");
+  if(isPlaying){
+    btn.textContent = "⏸️ Pausar";
+    const fps = Math.max(1, parseInt(document.getElementById("animFPS").value) || 12);
+    playInterval = setInterval(() => {
+      gotoFrame(currentFrame + 1);
+    }, 1000 / fps);
+  } else {
+    btn.textContent = "▶️ Tocar";
+    clearInterval(playInterval);
+    renderFrame();
+  }
+}
+
+/* EVENTOS DE BARRA E CONTROLES */
+
+document.getElementById("btnPlay").onclick = togglePlay;
+document.getElementById("btnPrevFrame").onclick = () => gotoFrame(currentFrame - 1);
+document.getElementById("btnNextFrame").onclick = () => gotoFrame(currentFrame + 1);
+document.getElementById("btnAddKeyframe").onclick = setKeyframe;
+document.getElementById("btnRemoveKeyframe").onclick = removeKeyframe;
+
+document.getElementById("chkOnion").onchange = renderFrame;
+document.getElementById("onionPrev").onchange = renderFrame;
+document.getElementById("onionNext").onchange = renderFrame;
+
+document.getElementById("totalFramesInput").onchange = (e) => {
+  totalFrames = Math.max(1, parseInt(e.target.value) || 1);
+  if(currentFrame > totalFrames) currentFrame = totalFrames;
+  renderTimeline();
+};
 
 document.getElementById("brush").onchange = e => setTool(e.target.value);
 document.getElementById("eraser").onclick = () => setTool("eraser");
@@ -590,13 +730,12 @@ document.getElementById("pressure").oninput = e => {
 document.getElementById("undo").onclick = undo;
 document.getElementById("redo").onclick = redo;
 document.getElementById("clear").onclick = () => {
-  pushUndo(); ctx.clearRect(0, 0, canvas.width, canvas.height); updateStatus();
+  pushUndo(); ctx.clearRect(0, 0, canvas.width, canvas.height); autoSaveKeyframe(); updateStatus();
 };
 document.getElementById("original").onclick = () => {
-  if(!originalData) return; pushUndo(); restore(originalData);
+  if(!originalData) return; pushUndo(); restore(originalData); autoSaveKeyframe();
 };
 
-// Eventos de Zoom vinculados aos botões corretos do HTML
 document.getElementById("zoomOut").onclick = () => setZoom(zoom / 1.25);
 document.getElementById("zoomIn").onclick = () => setZoom(zoom * 1.25);
 document.getElementById("zoomReset").onclick = () => setZoom(1);
@@ -606,30 +745,14 @@ document.getElementById("newDrawing").onchange = e => {
   if(!type) return;
 
   let w = 1600, h = 1000;
-
   if(type === "square"){ w = 1200; h = 1200; }
   else if(type === "landscape"){ w = 1600; h = 1000; }
   else if(type === "portrait"){ w = 1000; h = 1400; }
   else if(type === "hd"){ w = 1600; h = 900; }
   else if(type === "fullhd"){ w = 1920; h = 1080; }
   else if(type === "4k"){ w = 3840; h = 2160; }
-  else if(type === "a5"){ w = 1748; h = 2480; }
-  else if(type === "a4"){ w = 2480; h = 3508; }
-  else if(type === "a3"){ w = 3508; h = 4961; }
-  else if(type === "letter"){ w = 2550; h = 3300; }
-  else if(type === "comic"){ w = 2550; h = 3300; }
-  else if(type === "comicland"){ w = 3300; h = 2550; }
-  else if(type === "webcomic"){ w = 1600; h = 2560; }
-  else if(type === "character"){ w = 2000; h = 3000; }
-  else if(type === "instagram"){ w = 1080; h = 1080; }
-  else if(type === "story"){ w = 1080; h = 1920; }
-  else if(type === "presentation"){ w = 1920; h = 1080; }
-  else if(type === "wallpaper"){ w = 2560; h = 1440; }
-  else if(type === "custom"){
-    w = Number(prompt("Largura do desenho em pixels:", 1600)) || 1600;
-    h = Number(prompt("Altura do desenho em pixels:", 1000)) || 1000;
-  }
 
+  keyframes.clear();
   setCanvasSize(w, h, false);
   ctx.save();
   ctx.globalCompositeOperation = "source-over";
@@ -638,19 +761,16 @@ document.getElementById("newDrawing").onchange = e => {
   ctx.restore();
 
   originalData = snapshot();
+  autoSaveKeyframe();
 
   setTool("ink");
   document.getElementById("color").value = "#0066ff";
   document.getElementById("size").value = 12;
   document.getElementById("sizeValue").textContent = "12 px";
 
-  const workspace = viewport.parentElement;
-  workspace.scrollLeft = 0;
-  workspace.scrollTop = 0;
   fitCanvas();
-
   e.target.value = "";
-  showMessage("Novo desenho criado");
+  showMessage("Novo documento criado");
 };
 
 document.getElementById("save").onclick = () => {
@@ -659,36 +779,30 @@ document.getElementById("save").onclick = () => {
   }));
   showMessage("Desenho salvo no tablet");
 };
+
 document.getElementById("load").onclick = () => {
   const raw = localStorage.getItem("miniPaintTablet");
   if(!raw){ showMessage("Nenhum desenho salvo"); return; }
   const obj = JSON.parse(raw), img = new Image();
   img.onload = () => {
+    keyframes.clear();
     setCanvasSize(obj.width, obj.height, false);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0); originalData = snapshot(); fitCanvas();
+    ctx.drawImage(img, 0, 0); 
+    originalData = snapshot(); 
+    autoSaveKeyframe();
+    fitCanvas();
     showMessage("Desenho carregado");
   };
   img.src = obj.data;
 };
+
 document.getElementById("export").onclick = () => {
   canvas.toBlob(blob => {
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob); a.download = "desenho-mini-paint.png"; a.click();
+    a.href = URL.createObjectURL(blob); a.download = "animacao-frame.png"; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }, "image/png");
-};
-
-document.getElementById("file").onchange = e => {
-  const file = e.target.files[0]; if(!file) return;
-  const img = new Image();
-  img.onload = () => {
-    setCanvasSize(img.naturalWidth, img.naturalHeight, false);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0);
-    originalData = snapshot(); fitCanvas(); showMessage("Imagem aberta");
-  };
-  img.src = URL.createObjectURL(file);
 };
 
 window.addEventListener("keydown", e => {
@@ -698,24 +812,21 @@ window.addEventListener("keydown", e => {
 });
 
 window.addEventListener("resize", () => {
-  if(pointers.size === 0){
-    fitCanvas();
-  }else{
-    updateTransform();
-  }
+  if(pointers.size === 0) fitCanvas();
+  else updateTransform();
 });
 
+// Inicialização
 setCanvasSize(1600, 1000, false);
-ctx.save();
-ctx.globalCompositeOperation = "source-over";
 ctx.fillStyle = "#ffffff";
 ctx.fillRect(0, 0, canvas.width, canvas.height);
-ctx.restore();
 document.getElementById("color").value = "#0066ff";
 document.getElementById("size").value = 12;
 document.getElementById("sizeValue").textContent = "12 px";
 setTool("ink");
 originalData = snapshot();
+autoSaveKeyframe();
+renderTimeline();
 fitCanvas();
 </script>
 </body>
