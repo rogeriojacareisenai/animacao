@@ -299,23 +299,6 @@ select{
         </div>
       </div>
 
-      <!-- GRUPO: ANIMAÇÃO E CAMADAS -->
-      <div class="accordion-section" id="accAnimSection">
-        <div class="accordion-header" onclick="toggleAccordion('accAnimSection')">
-          <span>🎬 Animação e Camadas</span><span>▼</span>
-        </div>
-        <div class="accordion-content">
-          <div class="menuSubTitle">Camadas</div>
-          <div class="layerMenuRow"><span>✏️ Desenho</span><button id="btnMenuDrawVis" title="Ocultar/Exibir desenho">👁️ Visível</button></div>
-          <div class="layerMenuRow"><span>🎬 Referência</span><button id="btnMenuRefVis" title="Ocultar/Exibir referência">👁️ Visível</button></div>
-          <div class="menuSubTitle">Onion Skin</div>
-          <label><input type="checkbox" id="chkOnionMenu" checked> Ativar Onion</label>
-          <div class="sliderBox"><div class="sliderLine"><span class="label">Opacidade</span><span id="onionOpacityMenuValue" class="value">30%</span></div><input id="onionOpacityMenu" type="range" min="0" max="100" value="30"></div>
-          <div class="menuSubTitle">Animação</div>
-          <div class="inlineFields"><label>FPS <input type="number" id="animFPSMenu" value="12" min="1" max="60"></label><label>Frames <input type="number" id="totalFramesMenu" value="24" min="1" max="300"></label></div>
-        </div>
-      </div>
-
       <!-- GRUPO: APARÊNCIA -->
       <div class="accordion-section" id="accThemeSection">
         <div class="accordion-header" onclick="toggleAccordion('accThemeSection')"><span>🖼️ Aparência</span><span>▼</span></div>
@@ -500,7 +483,7 @@ let keyframesRef = new Map();
 let isPlaying = false;
 let playInterval = null;
 
-// 1. Gerenciamento de Visibilidade das camadas por objeto booleano
+// Gerenciamento de Visibilidade das camadas por objeto booleano
 const drawLayerObj = { isVisible: true };
 const refLayerObj = { isVisible: true };
 
@@ -828,7 +811,6 @@ function redrawDisplayCanvas(){
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // 2. Lógica de Exibição: renderiza camada de referência apenas se refLayerObj.isVisible for verdadeiro
   if (refLayerObj.isVisible) {
     const refData = getActiveKeyframeData(keyframesRef, currentFrame);
     if (refData) {
@@ -853,7 +835,6 @@ function redrawDisplayCanvas(){
     }
   }
 
-  // 2. Lógica de Exibição: renderiza camada de desenho principal apenas se drawLayerObj.isVisible for verdadeiro
   if (drawLayerObj.isVisible) {
     ctx.drawImage(drawLayer, 0, 0);
   }
@@ -1153,35 +1134,33 @@ function renderTimeline(){
   const nextCount = useOnion ? Math.max(0, parseInt(document.getElementById("onionNext").value) || 0) : 0;
 
   for(let i = 1; i <= totalFrames; i++){
-    // 2. Lógica de Exibição: Renderiza quadros apenas se drawLayerObj.isVisible for verdadeiro
     if (!drawLayerObj.isVisible) {
-      // Camada oculta: não cria nem desenha os retângulos da timeline.
+      // Camada oculta
     } else {
       const cellD = document.createElement("div");
       let classesD = ["frameCell"];
 
-    if (drawLayerObj.isVisible) {
-      if (i === currentFrame) {
-        classesD.push("active");
-      } else if (useOnion && i >= currentFrame - prevCount && i < currentFrame) {
-        classesD.push("onion-prev");
-      } else if (useOnion && i > currentFrame && i <= currentFrame + nextCount) {
-        classesD.push("onion-next");
+      if (drawLayerObj.isVisible) {
+        if (i === currentFrame) {
+          classesD.push("active");
+        } else if (useOnion && i >= currentFrame - prevCount && i < currentFrame) {
+          classesD.push("onion-prev");
+        } else if (useOnion && i > currentFrame && i <= currentFrame + nextCount) {
+          classesD.push("onion-next");
+        }
+        if (keyframesDraw.has(i)) classesD.push("hasKeyframe");
+      } else {
+        classesD.push("hidden-layer");
       }
-      if (keyframesDraw.has(i)) classesD.push("hasKeyframe");
-    } else {
-      classesD.push("hidden-layer");
+
+      cellD.className = classesD.join(" ");
+      cellD.dataset.frame = i;
+      const numD = document.createElement("span");
+      numD.textContent = i;
+      cellD.appendChild(numD);
+      trackDraw.appendChild(cellD);
     }
 
-    cellD.className = classesD.join(" ");
-    cellD.dataset.frame = i;
-    const numD = document.createElement("span");
-    numD.textContent = i;
-    cellD.appendChild(numD);
-    trackDraw.appendChild(cellD);
-    }
-
-    // A camada de referência também deixa a track completamente vazia quando oculta.
     if (!refLayerObj.isVisible) continue;
     const cellR = document.createElement("div");
     let classesR = ["frameCell", "refCell"];
@@ -1304,21 +1283,10 @@ function togglePlay(){
 const btnToggleDrawVis = document.getElementById("btnToggleDrawVis");
 const btnToggleRefVis = document.getElementById("btnToggleRefVis");
 
-// 3. Atualização de UI no evento de clique do ícone de olho para Camada de Desenho
-// 3. Atualização de UI no evento de clique do ícone de olho para Camada de Referência
-// Atalhos equivalentes dentro do menu reorganizado
-function syncLayerMenu(){
-  const d=document.getElementById("btnMenuDrawVis"), r=document.getElementById("btnMenuRefVis");
-  if(d){ d.textContent=drawLayerObj.isVisible?"👁️ Visível":"🙈 Oculta"; d.classList.toggle("hidden-layer",!drawLayerObj.isVisible); }
-  if(r){ r.textContent=refLayerObj.isVisible?"👁️ Visível":"🙈 Oculta"; r.classList.toggle("hidden-layer",!refLayerObj.isVisible); }
-}
-function setDrawVisibility(v){ drawLayerObj.isVisible=v; btnToggleDrawVis.textContent=v?"👁️":"🙈"; btnToggleDrawVis.classList.toggle("hidden-layer",!v); syncLayerMenu(); renderTimeline(); redrawDisplayCanvas(); }
-function setRefVisibility(v){ refLayerObj.isVisible=v; btnToggleRefVis.textContent=v?"👁️":"🙈"; btnToggleRefVis.classList.toggle("hidden-layer",!v); syncLayerMenu(); renderTimeline(); redrawDisplayCanvas(); }
-document.getElementById("btnMenuDrawVis").onclick=()=>setDrawVisibility(!drawLayerObj.isVisible);
-document.getElementById("btnMenuRefVis").onclick=()=>setRefVisibility(!refLayerObj.isVisible);
+function setDrawVisibility(v){ drawLayerObj.isVisible=v; btnToggleDrawVis.textContent=v?"👁️":"🙈"; btnToggleDrawVis.classList.toggle("hidden-layer",!v); renderTimeline(); redrawDisplayCanvas(); }
+function setRefVisibility(v){ refLayerObj.isVisible=v; btnToggleRefVis.textContent=v?"👁️":"🙈"; btnToggleRefVis.classList.toggle("hidden-layer",!v); renderTimeline(); redrawDisplayCanvas(); }
 btnToggleDrawVis.onclick=()=>setDrawVisibility(!drawLayerObj.isVisible);
 btnToggleRefVis.onclick=()=>setRefVisibility(!refLayerObj.isVisible);
-syncLayerMenu();
 
 function setupTimelineEvents(trackEl) {
   let isScrubbing = false;
@@ -1356,14 +1324,6 @@ function setupTimelineEvents(trackEl) {
   trackEl.addEventListener('pointercancel', () => { isScrubbing = false; });
 }
 
-const menuOnion = document.getElementById("chkOnionMenu");
-const menuOnionOpacity = document.getElementById("onionOpacityMenu");
-const menuFPS = document.getElementById("animFPSMenu");
-const menuFrames = document.getElementById("totalFramesMenu");
-menuOnion.onchange=()=>{ document.getElementById("chkOnion").checked=menuOnion.checked; renderTimeline(); redrawDisplayCanvas(); };
-menuOnionOpacity.oninput=()=>{ document.getElementById("onionOpacity").value=menuOnionOpacity.value; document.getElementById("onionOpacityValue").textContent=menuOnionOpacity.value+"%"; document.getElementById("onionOpacityMenuValue").textContent=menuOnionOpacity.value+"%"; redrawDisplayCanvas(); };
-menuFPS.oninput=()=>{ document.getElementById("animFPS").value=menuFPS.value; };
-menuFrames.onchange=()=>{ const n=Math.max(1,Math.min(300,parseInt(menuFrames.value)||24)); totalFrames=n; document.getElementById("totalFramesInput").value=n; if(currentFrame>n) currentFrame=n; renderTimeline(); renderFrame(); };
 setupTimelineEvents(document.getElementById("timelineTrackDraw"));
 setupTimelineEvents(document.getElementById("timelineTrackRef"));
 
