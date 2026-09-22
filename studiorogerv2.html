@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#171923">
-<title>Mini Paint Tablet + Animação</title>
+<title>Mini Paint Tablet + Animação Multicamadas</title>
 <!-- JSZip para exportar arquivos em ZIP -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
@@ -63,18 +63,19 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 body{touch-action:none}
 button,input,select{font:inherit}
 button{
-  min-height:38px;border:1px solid var(--line);border-radius:8px;background:var(--btn);
-  color:var(--text);padding:6px 10px;cursor:pointer;touch-action:manipulation;
+  min-height:36px;border:1px solid var(--line);border-radius:8px;background:var(--btn);
+  color:var(--text);padding:4px 8px;cursor:pointer;touch-action:manipulation;
   display:inline-flex;align-items:center;justify-content:center;gap:4px;transition:background .2s,border .2s;
+  font-size:0.82rem;
 }
 button:active{transform:scale(.98)}
 button.active{background:var(--accent);color:#071016;border-color:var(--accent);font-weight:800}
-input[type=color]{width:100%;height:38px;padding:2px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);cursor:pointer}
+input[type=color]{width:100%;height:36px;padding:2px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);cursor:pointer}
 input[type=range]{accent-color:var(--accent);width:100%}
 input[type=number]{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:4px 6px;width:55px;text-align:center}
 select{
-  min-height:38px;background:var(--panel2);color:var(--text);border:1px solid var(--line);
-  border-radius:8px;padding:6px;width:100%
+  min-height:36px;background:var(--panel2);color:var(--text);border:1px solid var(--line);
+  border-radius:8px;padding:4px 6px;width:100%;font-size:0.85rem;
 }
 #app{width:100%;height:100%;display:flex;flex-direction:column}
 
@@ -91,7 +92,7 @@ select{
   border-top-left-radius: 11px; border-top-right-radius: 11px;
   border-bottom: 1px solid var(--line); cursor: move; user-select: none;
 }
-.topbar-content { display: flex; flex-direction: column; align-items: stretch; gap: 10px; padding: 12px; }
+.topbar-content { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 12px; }
 #topbar.minimized .topbar-content { display: none; }
 .topbar-actions { display: flex; gap: 4px; }
 .window-btn {
@@ -100,10 +101,10 @@ select{
 }
 .window-btn:hover { background: var(--line); color: var(--text); }
 .brand{font-weight:900;color:var(--accent);font-size:1.05rem;margin-right:4px}
-.group{display:flex;flex-direction:column;align-items:stretch;gap:6px;width:100%}
-.label{font-size:.78rem;color:var(--muted)}
+.group{display:flex;flex-direction:column;align-items:stretch;gap:4px;width:100%}
+.label{font-size:.75rem;color:var(--muted)}
 .spacer{display:none}
-#status{font-size:.75rem;color:var(--muted);text-align:center;margin-top:4px}
+#status{font-size:.72rem;color:var(--muted);text-align:center;margin-top:2px}
 
 #workspace{
   position:relative;flex:1;min-height:0;overflow:auto;
@@ -137,27 +138,37 @@ select{
 .pegHole.circle { width: 14px; height: 14px; border-radius: 50%; }
 .pegHole.rect { width: 32px; height: 12px; border-radius: 3px; }
 
+/* LINHA DO TEMPO MULTICAMADAS */
 #timelinePanel{
   flex:0 0 auto;background:var(--panel);border-top:1px solid var(--line);
   padding:6px 10px;display:flex;flex-direction:column;gap:6px;z-index:15;
 }
-.timelineControls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.timelineDivider{ width:100%; height:1px; background-color:var(--line); margin:2px 0; }
-.timelineTrackContainer{ position:relative; width:100%; display:flex; flex-direction:column; }
-.timelineTrack{
-  display:flex;gap:4px;overflow-x:auto;padding:8px 0;
-  scrollbar-width:thin;scrollbar-color:var(--line) transparent;
-  cursor:ew-resize;position:relative;
+.timelineControls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.timelineDivider{ width:100%; height:1px; background-color:var(--line); margin:1px 0; }
+.timelineContainer{ position:relative; width:100%; display:flex; flex-direction:column; gap:4px; }
+
+.timelineRow { display: flex; align-items: center; gap: 8px; width: 100%; }
+.layerHeader {
+  width: 140px; flex-shrink: 0; font-size: 0.72rem; font-weight: bold;
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--panel2); padding: 4px 6px; border-radius: 6px; border: 1px solid var(--line);
 }
+.timelineTrack{
+  display:flex;gap:4px;overflow-x:auto;padding:2px 0;
+  scrollbar-width:thin;scrollbar-color:var(--line) transparent;
+  cursor:ew-resize;position:relative;flex:1;
+}
+
 .frameCell{
-  min-width:32px;height:44px;background:var(--panel2);border:1px solid var(--line);
-  border-radius:6px;display:flex;flex-direction:column;align-items:center;
-  justify-content:space-between;cursor:pointer;font-size:0.75rem;position:relative;
-  padding-bottom:4px;overflow:hidden;flex-shrink:0;transition:all 0.15s ease;
+  min-width:30px;height:36px;background:var(--panel2);border:1px solid var(--line);
+  border-radius:5px;display:flex;flex-direction:column;align-items:center;
+  justify-content:space-between;cursor:pointer;font-size:0.7rem;position:relative;
+  padding-bottom:2px;overflow:hidden;flex-shrink:0;transition:all 0.15s ease;
 }
 .frameCell.active{border-color:var(--accent);background:var(--btn);font-weight:bold}
-.frameCell::before{ content:""; width:100%; height:8px; background:var(--line); }
+.frameCell::before{ content:""; width:100%; height:6px; background:var(--line); }
 .frameCell.hasKeyframe::before{ background:var(--accent); }
+.frameCell.refCell.hasKeyframe::before{ background:#ff9f43; } /* Cor diferenciada para camada de referência */
 .frameCell.onion-prev { border-left: 3px solid #ff4757 !important; background: rgba(255, 71, 87, 0.18) !important; }
 .frameCell.onion-next { border-right: 3px solid #2ed573 !important; background: rgba(46, 213, 115, 0.18) !important; }
 
@@ -187,10 +198,10 @@ select{
   padding:6px 10px;padding-bottom:max(6px,env(safe-area-inset-bottom));
   display:flex;gap:8px;align-items:center;flex-wrap:wrap
 }
-.sliderBox{display:flex;flex-direction:column;gap:4px;width:100%}
-.value{text-align:right;color:var(--muted);font-size:.78rem}
+.sliderBox{display:flex;flex-direction:column;gap:2px;width:100%}
+.value{text-align:right;color:var(--muted);font-size:.75rem}
 .newDrawingGroup{display:flex;align-items:center;width:100%}
-#newDrawing{min-height:38px;width:100%}
+#newDrawing{min-height:36px;width:100%}
 #message{
   position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
   background:var(--panel2);border:1px solid var(--accent);border-radius:12px;
@@ -202,10 +213,11 @@ select{
   font-size:.74rem;z-index:10;pointer-events:none
 }
 @media (max-width:800px){
-  button{min-height:42px;padding:6px 8px}
+  button{min-height:38px;padding:4px 6px}
   #status{display:none}
   .desktopOnly{display:none}
   #help{display:none}
+  .layerHeader{width:110px; font-size:0.65rem;}
 }
 </style>
 </head>
@@ -222,24 +234,36 @@ select{
     <div class="topbar-content">
       <div class="group">
         <select id="brush">
-          <optgroup label="Lápis / Esboço">
+          <optgroup label="Ferramentas Mantidas">
             <option value="pencil">✏️ Lápis Cartoon</option>
             <option value="pencil-soft">✏️ Grafite macio</option>
             <option value="pencil-hard">✏️ Grafite duro</option>
             <option value="pencil-real">✏️ Lápis sensível</option>
             <option value="mechanical">🖊️ Lapiseira</option>
-          </optgroup>
-          <optgroup label="Line Art / Tinta">
             <option value="fineliner">🖋️ Caneta técnica</option>
             <option value="ink" selected>🖊️ Nanquim</option>
             <option value="brush-pen">🖌️ Caneta Brush</option>
             <option value="marker">🖍️ Marcador</option>
-          </optgroup>
-          <optgroup label="Pincéis">
             <option value="hard-brush">● Pincel duro</option>
             <option value="soft-brush">◉ Pincel suave</option>
             <option value="watercolor">💧 Aquarela</option>
             <option value="chalk">▰ Giz</option>
+          </optgroup>
+          <optgroup label="Animação & Estrutura">
+            <option value="rough-sketch">✏️ Lápis Esboço Rápido</option>
+            <option value="vector-gpen">🖊️ G-Pen Vectorial</option>
+            <option value="color-jitter">🎨 Pincel Color-Jitter</option>
+          </optgroup>
+          <optgroup label="Preenchimento e Cor">
+            <option value="close-fill">🪣 Balde Sem Erro</option>
+            <option value="cell-shading">✒️ Sombra Direcionada</option>
+            <option value="soft-airbrush">💨 Gradiente Suave</option>
+          </optgroup>
+          <optgroup label="Finalização & Pós-Produção">
+            <option value="additive-glow">✨ Luz FX & Glow</option>
+            <option value="dust-particles">░ Poeira e Partículas</option>
+            <option value="film-grain">📺 Ruído e Granulação</option>
+            <option value="motion-blur">💫 Desfocagem de Movimento</option>
           </optgroup>
         </select>
       </div>
@@ -312,7 +336,7 @@ select{
     <div id="message"></div>
   </div>
 
-  <!-- LINHA DO TEMPO / ANIMAÇÃO -->
+  <!-- LINHA DO TEMPO / ANIMAÇÃO MULTICAMADAS -->
   <div id="timelinePanel">
     <div class="timelineControls">
       <button id="btnPlay">▶️ Tocar</button>
@@ -320,41 +344,66 @@ select{
       <button id="btnNextFrame">⏭️</button>
       
       <div class="group" style="flex-direction:row; width:auto;">
-        <button id="btnAddKeyframe">➕ Keyframe</button>
-        <button id="btnAddBlankKeyframe">📄 Branco</button>
-        <button id="btnRemoveKeyframe">➖ Keyframe</button>
+        <button id="btnAddKeyframe" title="Add Quadro de Animação">➕ Desenho</button>
+        <button id="btnAddBlankKeyframe" title="Quadro em Branco">📄 Branco</button>
+        <button id="btnRemoveKeyframe" title="Remover Quadro do Canal Selecionado">➖ Excluir</button>
       </div>
 
-      <div class="sliderBox" style="width:auto; flex-direction:row; align-items:center;">
+      <!-- CONTROLES DA CAMADA DE REFERÊNCIA (SUPORTA IMAGENS E VÍDEOS) -->
+      <div style="display:flex; align-items:center; gap:6px; background:var(--panel2); padding:2px 6px; border-radius:6px; border:1px solid var(--line);">
+        <button id="btnImportRef" title="Importar Imagem(ns) ou Vídeo para a Camada de Referência">🎬 / 🖼️ Importar Ref.</button>
+        <input type="file" id="fileInputRef" accept="image/*,video/*" multiple style="display:none">
+        <label><input type="checkbox" id="chkRefVisible" checked> Visível</label>
+        <span class="label">Opacidade:</span>
+        <input id="refOpacity" type="range" min="0" max="100" value="40" style="width:65px;">
+        <span id="refOpacityValue" class="value" style="min-width:30px;">40%</span>
+        <button id="btnClearRefTrack" style="padding:2px 5px;" title="Limpar todos os frames de referência">🗑️ Ref</button>
+      </div>
+
+      <div class="sliderBox" style="width:auto; flex-direction:row; align-items:center; gap:4px;">
         <label><input type="checkbox" id="chkOnion" checked> Onion Skin</label>
         <span class="label">Ant:</span>
         <input type="number" id="onionPrev" value="1" min="0" max="5">
         <span class="label">Post:</span>
         <input type="number" id="onionNext" value="1" min="0" max="5">
-        <span class="label">Opacidade:</span>
-        <input id="onionOpacity" type="range" min="0" max="100" value="30" style="width:80px;">
-        <span id="onionOpacityValue" class="value" style="min-width:35px;">30%</span>
+        <span class="label">Opac:</span>
+        <input id="onionOpacity" type="range" min="0" max="100" value="30" style="width:60px;">
+        <span id="onionOpacityValue" class="value" style="min-width:30px;">30%</span>
       </div>
 
-      <div class="sliderBox" style="width:auto; flex-direction:row; align-items:center;">
+      <div class="sliderBox" style="width:auto; flex-direction:row; align-items:center; gap:4px;">
         <span class="label">FPS:</span>
         <input type="number" id="animFPS" value="12" min="1" max="60">
         <span class="label">Frames:</span>
-        <input type="number" id="totalFramesInput" value="24" min="1" max="100">
+        <input type="number" id="totalFramesInput" value="24" min="1" max="300">
       </div>
     </div>
 
     <div class="timelineDivider"></div>
 
-    <div class="timelineTrackContainer">
-      <div class="timelineTrack" id="timelineTrack"></div>
+    <!-- PIPELINE DE LINHAS DO TEMPO (Desenho + Referência Paralela) -->
+    <div class="timelineContainer">
+      <!-- LINHA DO TEMPO: DESENHO -->
+      <div class="timelineRow">
+        <div class="layerHeader">
+          <span>✏️ Camada Desenho</span>
+        </div>
+        <div class="timelineTrack" id="timelineTrackDraw"></div>
+      </div>
+      <!-- LINHA DO TEMPO: REFERÊNCIA -->
+      <div class="timelineRow">
+        <div class="layerHeader" style="border-color:#ff9f43; color:#ff9f43;">
+          <span>🎬 Camada Referência</span>
+        </div>
+        <div class="timelineTrack" id="timelineTrackRef"></div>
+      </div>
     </div>
   </div>
 
   <div id="bottom">
     <button id="undo">↶ Desfazer</button>
     <button id="redo">↷ Refazer</button>
-    <button id="clear">🗑️ Limpar</button>
+    <button id="clear">🗑️ Limpar Canvas</button>
     <button id="original">↺ Restaurar</button>
     <div class="newDrawingGroup" style="width:auto;">
       <select id="newDrawing" title="Escolher novo desenho" style="width:auto;">
@@ -429,9 +478,11 @@ let isSelecting = false;
 let selectionStart = null;
 let floatingItem = null;
 
+// ESTRUTURA DE ANIMAÇÃO COM SUPORTE A LINHA DO TEMPO DUPLA (DESENHO E REFERÊNCIA)
 let currentFrame = 1;
 let totalFrames = 24;
-let keyframes = new Map();
+let keyframesDraw = new Map(); // Camada principal de desenho
+let keyframesRef = new Map();  // Camada paralela de imagem/vídeo de referência
 let isPlaying = false;
 let playInterval = null;
 
@@ -505,7 +556,11 @@ function updateStatus(){
     "pencil-real":"Lápis sensível", mechanical:"Lapiseira", fineliner:"Caneta técnica",
     ink:"Nanquim", "brush-pen":"Caneta Brush", marker:"Marcador",
     "hard-brush":"Pincel duro", "soft-brush":"Pincel suave",
-    watercolor:"Aquarela", chalk:"Giz", eraser:"Borracha", picker:"Conta-gotas", fill:"Balde", select:"Seleção Retangular"
+    watercolor:"Aquarela", chalk:"Giz", eraser:"Borracha", picker:"Conta-gotas", fill:"Balde", select:"Seleção Retangular",
+    "rough-sketch":"Lápis Esboço Rápido", "vector-gpen":"G-Pen Vectorial", "color-jitter":"Pincel Color-Jitter",
+    "close-fill":"Balde Sem Erro", "cell-shading":"Sombra Direcionada", "soft-airbrush":"Gradiente Suave",
+    "additive-glow":"Luz FX & Glow", "dust-particles":"Poeira e Partículas", "film-grain":"Ruído e Granulação",
+    "motion-blur":"Desfocagem de Movimento"
   };
   document.getElementById("status").textContent =
     `${canvas.width} × ${canvas.height}px • ${names[tool]||tool} • ${Math.round(zoom*100)}%`;
@@ -527,7 +582,7 @@ function setTool(t){
   });
   
   if (t === "picker") canvas.style.cursor = "copy";
-  else if (t === "fill") canvas.style.cursor = "crosshair";
+  else if (t === "fill" || t === "close-fill") canvas.style.cursor = "crosshair";
   else if (t === "eraser") canvas.style.cursor = "crosshair";
   else canvas.style.cursor = "crosshair";
   updateStatus();
@@ -555,27 +610,122 @@ function settings(){
     case "soft-brush": return {size:base*(.65+f*.90), alpha:.10+f*.48, blur:Math.max(1, base*.16)};
     case "watercolor": return {size:base*(.75+f*.85), alpha:.06+f*.24, blur:Math.max(.7, base*.10)};
     case "chalk": return {size:base*(.55+f*.95), alpha:.22+f*.42, blur:.35};
+    case "rough-sketch": return {size: base*(0.3 + f*0.7), alpha: 0.05 + f*0.35, blur: 0.4};
+    case "vector-gpen": return {size: base*(0.1 + f*1.2), alpha: 1.0, blur: 0};
+    case "color-jitter": return {size: base*(0.5 + f*0.8), alpha: 0.8 + f*0.2, blur: 0};
+    case "cell-shading": return {size: base*(0.5 + f*0.8), alpha: 1.0, blur: 0};
+    case "soft-airbrush": return {size: base*(0.8 + f*1.2), alpha: 0.02 + f*0.15, blur: Math.max(2, base*0.4)};
+    case "additive-glow": return {size: base*(0.6 + f*1.0), alpha: 0.2 + f*0.5, blur: Math.max(1, base*0.2)};
+    case "dust-particles": return {size: base*1.5, alpha: 0.3 + f*0.5, blur: 0};
+    case "film-grain": return {size: base*2.0, alpha: 0.15, blur: 0};
+    case "motion-blur": return {size: base*(0.8 + f*1.2), alpha: 0.4 + f*0.4, blur: Math.max(1, base*0.3)};
     default: return {size:base*(.28+f*.92), alpha:.30+f*.62, blur:Math.max(0, base*.012)};
   }
+}
+
+function hexToRgb(hex) {
+  let c = hex.replace('#', '');
+  if (c.length === 3) c = c.split('').map(x => x + x).join('');
+  const num = parseInt(c, 16);
+  return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+}
+
+function hslToRgb(h, s, l) {
+  let r, g, b;
+  if (s === 0) { r = g = b = l; } else {
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    const hue2rgb = (p, q, t) => {
+      if (t < 0) t += 1; if (t > 1) t -= 1;
+      if (t < 1/6) return p + (q - p) * 6 * t;
+      if (t < 1/2) return q;
+      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      return p;
+    };
+    r = hue2rgb(p, q, h + 1/3); g = hue2rgb(p, q, h); b = hue2rgb(p, q, h - 1/3);
+  }
+  return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
+}
+
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h, s, l = (max + min) / 2;
+  if (max === min) { h = s = 0; } else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h /= 6;
+  }
+  return { h, s, l };
 }
 
 function drawSegment(a, b){
   const s = tool === "eraser" ? {size:size(), alpha:1, blur:0} : settings();
   drawCtx.save();
   drawCtx.lineCap = "round"; drawCtx.lineJoin = "round"; drawCtx.lineWidth = s.size;
+  
   if(tool === "eraser"){
     drawCtx.globalCompositeOperation = "destination-out";
     drawCtx.strokeStyle = "rgba(0,0,0,1)";
-  }else{
+    drawCtx.beginPath(); drawCtx.moveTo(a.x, a.y); drawCtx.lineTo(b.x, b.y); drawCtx.stroke();
+  } else if (tool === "color-jitter") {
+    drawCtx.globalCompositeOperation = "source-over";
+    const rgb = hexToRgb(color());
+    const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+    const jitterH = (hsl.h + (Math.random() * 0.1 - 0.05) + 1) % 1;
+    const jitterL = Math.max(0, Math.min(1, hsl.l + (Math.random() * 0.15 - 0.075)));
+    const cJitter = hslToRgb(jitterH, hsl.s, jitterL);
+    drawCtx.strokeStyle = `rgb(${cJitter.r}, ${cJitter.g}, ${cJitter.b})`;
+    drawCtx.globalAlpha = s.alpha;
+    drawCtx.beginPath(); drawCtx.moveTo(a.x, a.y); drawCtx.lineTo(b.x, b.y); drawCtx.stroke();
+  } else if (tool === "dust-particles") {
+    drawCtx.globalCompositeOperation = "source-over";
+    drawCtx.fillStyle = color();
+    drawCtx.globalAlpha = s.alpha;
+    const dist = Math.hypot(b.x - a.x, b.y - a.y);
+    const steps = Math.max(1, Math.floor(dist / 4));
+    for (let i = 0; i < steps; i++) {
+      const px = a.x + (b.x - a.x) * (i / steps) + (Math.random() - 0.5) * s.size;
+      const py = a.y + (b.y - a.y) * (i / steps) + (Math.random() - 0.5) * s.size;
+      const particleRadius = Math.random() * 2 + 0.5;
+      drawCtx.beginPath(); drawCtx.arc(px, py, particleRadius, 0, Math.PI * 2); drawCtx.fill();
+    }
+  } else if (tool === "film-grain") {
+    drawCtx.globalCompositeOperation = "source-over";
+    drawCtx.globalAlpha = s.alpha;
+    const dist = Math.hypot(b.x - a.x, b.y - a.y);
+    const steps = Math.max(1, Math.floor(dist / 2));
+    for (let i = 0; i < steps; i++) {
+      const px = a.x + (b.x - a.x) * (i / steps) + (Math.random() - 0.5) * s.size;
+      const py = a.y + (b.y - a.y) * (i / steps) + (Math.random() - 0.5) * s.size;
+      const shade = Math.floor(Math.random() * 255);
+      drawCtx.fillStyle = `rgb(${shade},${shade},${shade})`;
+      drawCtx.fillRect(px, py, 1.5, 1.5);
+    }
+  } else if (tool === "motion-blur") {
     drawCtx.globalCompositeOperation = "source-over";
     drawCtx.strokeStyle = color();
     drawCtx.globalAlpha = s.alpha;
+    if (s.blur > 0) drawCtx.filter = `blur(${s.blur}px)`;
+    const dx = b.x - a.x, dy = b.y - a.y;
+    drawCtx.beginPath();
+    drawCtx.moveTo(a.x, a.y); drawCtx.lineTo(b.x, b.y);
+    drawCtx.moveTo(a.x + dx * 0.2, a.y + dy * 0.2); drawCtx.lineTo(b.x + dx * 0.2, b.y + dy * 0.2);
+    drawCtx.stroke();
+  } else {
+    drawCtx.globalCompositeOperation = (tool === "additive-glow") ? "lighter" : "source-over";
+    drawCtx.strokeStyle = color();
+    drawCtx.globalAlpha = s.alpha;
     if(s.blur > 0) drawCtx.filter = `blur(${s.blur}px)`;
+    drawCtx.beginPath(); drawCtx.moveTo(a.x, a.y); drawCtx.lineTo(b.x, b.y); drawCtx.stroke();
   }
-  drawCtx.beginPath();
-  drawCtx.moveTo(a.x, a.y); drawCtx.lineTo(b.x, b.y); drawCtx.stroke();
+  
   drawCtx.restore();
-
   redrawDisplayCanvas();
 }
 
@@ -597,13 +747,13 @@ function hexRGBA(hex){
   return [parseInt(v.slice(0, 2), 16), parseInt(v.slice(2, 4), 16), parseInt(v.slice(4, 6), 16), 255];
 }
 
-function floodFill(sx, sy){
+function floodFill(sx, sy, closeAndFill = false){
   const w = drawLayer.width, h = drawLayer.height;
   const img = drawCtx.getImageData(0, 0, w, h), d = img.data;
   const start = (sy * w + sx) * 4;
   const sr = d[start], sg = d[start+1], sb = d[start+2], sa = d[start+3];
   const [tr, tg, tb, ta] = hexRGBA(color());
-  const tolerance = 18 * 2.55;
+  const tolerance = (closeAndFill ? 45 : 18) * 2.55;
 
   const matches = i => {
     const dr = d[i] - sr, dg = d[i+1] - sg, db = d[i+2] - sb, da = d[i+3] - sa;
@@ -624,30 +774,75 @@ function floodFill(sx, sy){
     if(y > 0){ let n = pos - w; if(!visited[n]){ visited[n] = 1; stack.push(n); } }
     if(y < h - 1){ let n = pos + w; if(!visited[n]){ visited[n] = 1; stack.push(n); } }
   }
+  
+  if (closeAndFill) {
+    const copy = new Uint8ClampedArray(d);
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const idx = (y * w + x) * 4;
+        if (copy[idx] === tr && copy[idx+1] === tg && copy[idx+2] === tb && copy[idx+3] === ta) {
+          const neighbors = [idx - 4, idx + 4, idx - w * 4, idx + w * 4];
+          neighbors.forEach(nIdx => {
+            if (d[nIdx+3] === 0) {
+              d[nIdx] = tr; d[nIdx+1] = tg; d[nIdx+2] = tb; d[nIdx+3] = ta;
+            }
+          });
+        }
+      }
+    }
+  }
+
   drawCtx.putImageData(img, 0, 0);
   redrawDisplayCanvas();
 }
 
-// RENDERIZAÇÃO COMPLETA: Fundo Branco + Onion Skin (Quadro Anterior) + Desenho do Frame Atual
+// OBTÉM O KEYFRAME MAIS RECENTE ANTERIOR OU IGUAL DE UM MAPA ESPECÍFICO
+function getActiveKeyframeData(keyframeMap, frameNum) {
+  let activeFrame = 0;
+  for (let [f] of keyframeMap) {
+    if (f <= frameNum && f > activeFrame) {
+      activeFrame = f;
+    }
+  }
+  return activeFrame > 0 ? keyframeMap.get(activeFrame) : null;
+}
+
+// RENDERIZAÇÃO COMPLETA: Fundo Branco + Camada de Referência (com opacidade própria) + Onion Skin + Desenho Ativo
 function redrawDisplayCanvas(){
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+  // 1. CAMADA DE REFERÊNCIA DE IMAGEM/VÍDEO (OPACIDADE E LINHA DE TEMPO PRÓPRIAS)
+  const refVisible = document.getElementById("chkRefVisible").checked;
+  if (refVisible) {
+    const refData = getActiveKeyframeData(keyframesRef, currentFrame);
+    if (refData) {
+      const refOp = (Number(document.getElementById("refOpacity").value) || 40) / 100;
+      const refCvs = document.createElement("canvas");
+      refCvs.width = canvas.width; refCvs.height = canvas.height;
+      refCvs.getContext("2d").putImageData(refData, 0, 0);
+
+      ctx.save();
+      ctx.globalAlpha = refOp; // Opacidade totalmente isolada da camada principal
+      ctx.drawImage(refCvs, 0, 0);
+      ctx.restore();
+    }
+  }
+
+  // 2. ONION SKIN (Apenas para a camada de desenho)
   const useOnion = document.getElementById("chkOnion").checked;
-  
-  // Renderiza a Onion Skin (Anterior/Posterior) apenas se estiver ativada
   if(useOnion && !isPlaying) {
     const op = (Number(document.getElementById("onionOpacity").value) || 30) / 100;
-    const prevKey = getLatestKeyframeBefore(currentFrame);
+    const prevKey = getLatestKeyframeBefore(keyframesDraw, currentFrame);
     if(prevKey) {
       drawOnionLayer(prevKey, op);
     }
   }
 
-  // Desenha a camada atual por cima
+  // 3. CAMADA DE DESENHO ATUAL
   ctx.drawImage(drawLayer, 0, 0);
 
-  // Renderização de Itens Flutuantes ou Área Selecionada
+  // 4. ELEMENTOS FLUTUANTES E SELEÇÃO
   if(floatingItem){
     ctx.drawImage(floatingItem.canvas, floatingItem.x, floatingItem.y);
   }
@@ -678,8 +873,7 @@ function startFloatingFromImageData(imgData, targetX, targetY) {
   pushUndo();
 
   const tempCvs = document.createElement("canvas");
-  tempCvs.width = imgData.width;
-  tempCvs.height = imgData.height;
+  tempCvs.width = imgData.width; tempCvs.height = imgData.height;
   tempCvs.getContext("2d").putImageData(imgData, 0, 0);
 
   floatingItem = {
@@ -744,9 +938,7 @@ function pointerDown(e){
     const fw = floatingItem.canvas.width, fh = floatingItem.canvas.height;
 
     if(p.x >= fx && p.x <= fx + fw && p.y >= fy && p.y <= fy + fh){
-      drawing = true;
-      last = p;
-      pointerId = e.pointerId;
+      drawing = true; last = p; pointerId = e.pointerId;
       canvas.setPointerCapture?.(e.pointerId);
       return;
     } else {
@@ -763,8 +955,8 @@ function pointerDown(e){
     }
     return;
   }
-  if(tool === "fill"){
-    pushUndo(); floodFill(x, y); autoSaveKeyframe(); updateStatus(); return;
+  if(tool === "fill" || tool === "close-fill"){
+    pushUndo(); floodFill(x, y, tool === "close-fill"); autoSaveKeyframe(); updateStatus(); return;
   }
   if(tool === "select"){
     isSelecting = true;
@@ -925,91 +1117,114 @@ canvas.addEventListener("wheel", e => {
   setZoom(zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15));
 }, {passive: false});
 
-function getLatestKeyframeBefore(frameNum){
+function getLatestKeyframeBefore(map, frameNum){
   let lastFrame = 0;
-  for(let [f] of keyframes){
+  for(let [f] of map){
     if(f < frameNum && f > lastFrame){
       lastFrame = f;
     }
   }
-  return lastFrame > 0 ? keyframes.get(lastFrame) : null;
+  return lastFrame > 0 ? map.get(lastFrame) : null;
 }
 
+// RENDERIZAÇÃO DAS DUAS LINHAS DO TEMPO EM PARALELO
 function renderTimeline(){
-  const track = document.getElementById("timelineTrack");
-  track.innerHTML = "";
+  const trackDraw = document.getElementById("timelineTrackDraw");
+  const trackRef = document.getElementById("timelineTrackRef");
+  trackDraw.innerHTML = "";
+  trackRef.innerHTML = "";
 
   const useOnion = document.getElementById("chkOnion").checked;
   const prevCount = useOnion ? Math.max(0, parseInt(document.getElementById("onionPrev").value) || 0) : 0;
   const nextCount = useOnion ? Math.max(0, parseInt(document.getElementById("onionNext").value) || 0) : 0;
 
   for(let i = 1; i <= totalFrames; i++){
-    const cell = document.createElement("div");
-    let classes = ["frameCell"];
+    // Célula do Canal de Desenho
+    const cellD = document.createElement("div");
+    let classesD = ["frameCell"];
 
     if (i === currentFrame) {
-      classes.push("active");
+      classesD.push("active");
     } else if (useOnion && i >= currentFrame - prevCount && i < currentFrame) {
-      classes.push("onion-prev");
+      classesD.push("onion-prev");
     } else if (useOnion && i > currentFrame && i <= currentFrame + nextCount) {
-      classes.push("onion-next");
+      classesD.push("onion-next");
     }
+    if (keyframesDraw.has(i)) classesD.push("hasKeyframe");
 
-    if (keyframes.has(i)) classes.push("hasKeyframe");
+    cellD.className = classesD.join(" ");
+    cellD.dataset.frame = i;
+    const numD = document.createElement("span");
+    numD.textContent = i;
+    cellD.appendChild(numD);
+    trackDraw.appendChild(cellD);
 
-    cell.className = classes.join(" ");
-    cell.dataset.frame = i;
-    
-    const num = document.createElement("span");
-    num.textContent = i;
-    cell.appendChild(num);
+    // Célula do Canal de Referência
+    const cellR = document.createElement("div");
+    let classesR = ["frameCell", "refCell"];
 
-    track.appendChild(cell);
+    if (i === currentFrame) classesR.push("active");
+    if (keyframesRef.has(i)) classesR.push("hasKeyframe");
+
+    cellR.className = classesR.join(" ");
+    cellR.dataset.frame = i;
+    const numR = document.createElement("span");
+    numR.textContent = i;
+    cellR.appendChild(numR);
+    trackRef.appendChild(cellR);
   }
 }
 
 function autoSaveKeyframe(){
-  keyframes.set(currentFrame, snapshot());
+  keyframesDraw.set(currentFrame, snapshot());
   renderTimeline();
 }
 
 function setKeyframe(){
   if(floatingItem) dropFloatingItem();
-  if(!keyframes.has(currentFrame)){
-    const prevData = getLatestKeyframeBefore(currentFrame);
+  if(!keyframesDraw.has(currentFrame)){
+    const prevData = getLatestKeyframeBefore(keyframesDraw, currentFrame);
     if(prevData){
       drawCtx.putImageData(prevData, 0, 0);
     } else {
       drawCtx.clearRect(0, 0, drawLayer.width, drawLayer.height);
     }
   }
-  keyframes.set(currentFrame, snapshot());
+  keyframesDraw.set(currentFrame, snapshot());
   renderTimeline();
   redrawDisplayCanvas();
-  showMessage(`Keyframe criado no quadro ${currentFrame}`);
+  showMessage(`Keyframe de desenho no quadro ${currentFrame}`);
 }
 
 function addBlankKeyframe(){
   if(floatingItem) dropFloatingItem();
   drawCtx.clearRect(0, 0, drawLayer.width, drawLayer.height);
   const blankData = snapshot();
-  keyframes.set(currentFrame, blankData);
+  keyframesDraw.set(currentFrame, blankData);
   renderTimeline();
   redrawDisplayCanvas();
-  showMessage(`Keyframe em branco no quadro ${currentFrame}`);
+  showMessage(`Quadro em branco no canal de desenho (${currentFrame})`);
 }
 
 function removeKeyframe(){
   if(floatingItem) dropFloatingItem();
-  if(currentFrame === 1 && keyframes.size === 1) {
-    showMessage("O quadro 1 é o keyframe inicial.");
-    return;
+  let removed = false;
+
+  if (keyframesDraw.has(currentFrame)) {
+    keyframesDraw.delete(currentFrame);
+    removed = true;
   }
-  if(keyframes.has(currentFrame)){
-    keyframes.delete(currentFrame);
+  if (keyframesRef.has(currentFrame)) {
+    keyframesRef.delete(currentFrame);
+    removed = true;
+  }
+
+  if (removed) {
     renderTimeline();
     renderFrame();
-    showMessage(`Keyframe removido do quadro ${currentFrame}`);
+    showMessage(`Keyframe(s) removido(s) do quadro ${currentFrame}`);
+  } else {
+    showMessage("Nenhum keyframe para remover neste quadro");
   }
 }
 
@@ -1017,8 +1232,9 @@ function renderFrame(){
   if(floatingItem) dropFloatingItem();
   
   drawCtx.clearRect(0, 0, drawLayer.width, drawLayer.height);
-  if(keyframes.has(currentFrame)){
-    drawCtx.putImageData(keyframes.get(currentFrame), 0, 0);
+  
+  if(keyframesDraw.has(currentFrame)){
+    drawCtx.putImageData(keyframesDraw.get(currentFrame), 0, 0);
   }
 
   redrawDisplayCanvas();
@@ -1062,42 +1278,170 @@ function togglePlay(){
   }
 }
 
-const track = document.getElementById("timelineTrack");
-let isScrubbing = false;
+// SINCRONIZAÇÃO DE NAVEGAÇÃO NAS LINHAS DO TEMPO DUPLAS
+function setupTimelineEvents(trackEl) {
+  let isScrubbing = false;
 
-function updateFrameFromPointer(e){
-  const element = document.elementFromPoint(e.clientX, e.clientY);
-  const cell = element ? element.closest('.frameCell') : null;
-  if(cell && cell.dataset.frame){
-    const f = parseInt(cell.dataset.frame);
-    if(f !== currentFrame){
-      gotoFrame(f);
+  const updateFrameFromPointer = (e) => {
+    const element = document.elementFromPoint(e.clientX, e.clientY);
+    const cell = element ? element.closest('.frameCell') : null;
+    if(cell && cell.dataset.frame){
+      const f = parseInt(cell.dataset.frame);
+      if(f !== currentFrame){
+        gotoFrame(f);
+      }
     }
-  }
+  };
+
+  trackEl.addEventListener('pointerdown', (e) => {
+    isScrubbing = true;
+    trackEl.setPointerCapture(e.pointerId);
+    updateFrameFromPointer(e);
+  });
+
+  trackEl.addEventListener('pointermove', (e) => {
+    if(isScrubbing){
+      updateFrameFromPointer(e);
+    }
+  });
+
+  trackEl.addEventListener('pointerup', (e) => {
+    if(isScrubbing){
+      isScrubbing = false;
+      try{ trackEl.releasePointerCapture(e.pointerId); }catch(_){}
+    }
+  });
+
+  trackEl.addEventListener('pointercancel', () => { isScrubbing = false; });
 }
 
-track.addEventListener('pointerdown', (e) => {
-  isScrubbing = true;
-  track.setPointerCapture(e.pointerId);
-  updateFrameFromPointer(e);
-});
+setupTimelineEvents(document.getElementById("timelineTrackDraw"));
+setupTimelineEvents(document.getElementById("timelineTrackRef"));
 
-track.addEventListener('pointermove', (e) => {
-  if(isScrubbing){
-    updateFrameFromPointer(e);
+// IMPORTAÇÃO DE MÍDIAS (IMAGENS OU VÍDEO) PARA A CAMADA DE REFERÊNCIA
+const fileInputRef = document.getElementById("fileInputRef");
+document.getElementById("btnImportRef").onclick = () => fileInputRef.click();
+
+fileInputRef.onchange = (e) => {
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+
+  const firstFile = files[0];
+
+  // SE FOR UM VÍDEO: Processa e extrai frames por segundo
+  if (firstFile.type.startsWith("video/")) {
+    processVideoForRef(firstFile);
+  } 
+  // SE FOREM IMAGENS: Carrega uma ou várias em sequência
+  else {
+    processImagesForRef(files);
   }
-});
+  fileInputRef.value = "";
+};
 
-track.addEventListener('pointerup', (e) => {
-  if(isScrubbing){
-    isScrubbing = false;
-    try{ track.releasePointerCapture(e.pointerId); }catch(_){}
-  }
-});
+function processImagesForRef(files) {
+  let frameOffset = currentFrame;
 
-track.addEventListener('pointercancel', (e) => {
-  isScrubbing = false;
-});
+  files.forEach((file, index) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const tempCanvas = document.createElement("canvas");
+        tempCanvas.width = canvas.width; tempCanvas.height = canvas.height;
+        const tempCtx = tempCanvas.getContext("2d");
+
+        const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+        const w = img.width * scale;
+        const h = img.height * scale;
+        const x = (canvas.width - w) / 2;
+        const y = (canvas.height - h) / 2;
+
+        tempCtx.drawImage(img, x, y, w, h);
+        const imgData = tempCtx.getImageData(0, 0, canvas.width, canvas.height);
+
+        const targetFrame = frameOffset + index;
+        if (targetFrame > totalFrames) {
+          totalFrames = targetFrame;
+          document.getElementById("totalFramesInput").value = totalFrames;
+        }
+        keyframesRef.set(targetFrame, imgData);
+
+        if (index === files.length - 1) {
+          renderTimeline();
+          redrawDisplayCanvas();
+          showMessage(`${files.length} imagem(ns) importada(s) para a referência!`);
+        }
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function processVideoForRef(videoFile) {
+  showMessage("Processando vídeo de referência...");
+  const video = document.createElement("video");
+  video.src = URL.createObjectURL(videoFile);
+  video.muted = true;
+  video.playsInline = true;
+
+  video.onloadedmetadata = async () => {
+    const fps = Math.max(1, parseInt(document.getElementById("animFPS").value) || 12);
+    const duration = video.duration;
+    const totalVideoFrames = Math.floor(duration * fps);
+
+    let frameIdx = 0;
+    let currentTime = 0;
+    const timeStep = 1 / fps;
+
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = canvas.width; tempCanvas.height = canvas.height;
+    const tempCtx = tempCanvas.getContext("2d");
+
+    let targetFrame = currentFrame;
+
+    while (currentTime < duration) {
+      video.currentTime = currentTime;
+      await new Promise(r => { video.onseeked = r; });
+
+      tempCtx.fillStyle = "#ffffff";
+      tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+      const scale = Math.min(canvas.width / video.videoWidth, canvas.height / video.videoHeight);
+      const w = video.videoWidth * scale;
+      const h = video.videoHeight * scale;
+      const x = (canvas.width - w) / 2;
+      const y = (canvas.height - h) / 2;
+
+      tempCtx.drawImage(video, x, y, w, h);
+      const imgData = tempCtx.getImageData(0, 0, canvas.width, canvas.height);
+
+      keyframesRef.set(targetFrame, imgData);
+
+      targetFrame++;
+      currentTime += timeStep;
+      frameIdx++;
+    }
+
+    if (targetFrame - 1 > totalFrames) {
+      totalFrames = targetFrame - 1;
+      document.getElementById("totalFramesInput").value = totalFrames;
+    }
+
+    URL.revokeObjectURL(video.src);
+    renderTimeline();
+    redrawDisplayCanvas();
+    showMessage(`Vídeo importado: ${frameIdx} frames gerados!`);
+  };
+}
+
+document.getElementById("btnClearRefTrack").onclick = () => {
+  keyframesRef.clear();
+  renderTimeline();
+  redrawDisplayCanvas();
+  showMessage("Camada de referência limpa");
+};
 
 async function exportAnimationToZip(){
   if(floatingItem) dropFloatingItem();
@@ -1111,14 +1455,13 @@ async function exportAnimationToZip(){
   const folder = zip.folder("animacao_frames");
 
   const tempCanvas = document.createElement("canvas");
-  tempCanvas.width = canvas.width;
-  tempCanvas.height = canvas.height;
+  tempCanvas.width = canvas.width; tempCanvas.height = canvas.height;
   const tempCtx = tempCanvas.getContext("2d");
 
   for(let frameNum = 1; frameNum <= totalFrames; frameNum++){
-    let frameData = keyframes.get(frameNum);
+    let frameData = keyframesDraw.get(frameNum);
     if(!frameData){
-      frameData = getLatestKeyframeBefore(frameNum);
+      frameData = getLatestKeyframeBefore(keyframesDraw, frameNum);
     }
 
     tempCtx.fillStyle = "#ffffff";
@@ -1261,6 +1604,12 @@ document.getElementById("onionOpacity").oninput = (e) => {
   redrawDisplayCanvas();
 };
 
+document.getElementById("chkRefVisible").onchange = () => { redrawDisplayCanvas(); };
+document.getElementById("refOpacity").oninput = (e) => {
+  document.getElementById("refOpacityValue").textContent = e.target.value + "%";
+  redrawDisplayCanvas();
+};
+
 document.getElementById("totalFramesInput").onchange = (e) => {
   totalFrames = Math.max(1, parseInt(e.target.value) || 1);
   if(currentFrame > totalFrames) currentFrame = totalFrames;
@@ -1311,13 +1660,14 @@ document.getElementById("newDrawing").onchange = e => {
   else if(type === "fullhd"){ w = 1920; h = 1080; }
   else if(type === "4k"){ w = 3840; h = 2160; }
 
-  keyframes.clear();
+  keyframesDraw.clear();
+  keyframesRef.clear();
   currentFrame = 1;
   setCanvasSize(w, h, false);
   drawCtx.clearRect(0, 0, w, h);
 
   originalData = snapshot();
-  keyframes.set(1, snapshot());
+  keyframesDraw.set(1, snapshot());
 
   setTool("ink");
   document.getElementById("color").value = "#0066ff";
@@ -1343,13 +1693,14 @@ document.getElementById("load").onclick = () => {
   if(!raw){ showMessage("Nenhum desenho salvo"); return; }
   const obj = JSON.parse(raw), img = new Image();
   img.onload = () => {
-    keyframes.clear();
+    keyframesDraw.clear();
+    keyframesRef.clear();
     currentFrame = 1;
     setCanvasSize(obj.width, obj.height, false);
     drawCtx.clearRect(0, 0, canvas.width, canvas.height);
     drawCtx.drawImage(img, 0, 0); 
     originalData = snapshot(); 
-    keyframes.set(1, snapshot());
+    keyframesDraw.set(1, snapshot());
     redrawDisplayCanvas();
     fitCanvas();
     showMessage("Desenho carregado");
@@ -1391,7 +1742,7 @@ setTool("ink");
 originalData = snapshot();
 
 currentFrame = 1;
-keyframes.set(1, snapshot());
+keyframesDraw.set(1, snapshot());
 
 renderTimeline();
 redrawDisplayCanvas();
