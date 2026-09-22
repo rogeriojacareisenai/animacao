@@ -85,12 +85,14 @@ select{
   display: flex; flex-direction: column;
   background: var(--panel2); border: 1px solid var(--line); border-radius: 12px;
   z-index: 40; box-shadow: 0 10px 30px rgba(0,0,0,0.5); backdrop-filter: blur(6px); width: 240px;
+  max-height: calc(100vh - 120px); overflow-y: auto;
 }
 .topbar-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 8px 12px; background: var(--panel);
   border-top-left-radius: 11px; border-top-right-radius: 11px;
   border-bottom: 1px solid var(--line); cursor: move; user-select: none;
+  position: sticky; top: 0; z-index: 2;
 }
 .topbar-content { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 12px; }
 #topbar.minimized .topbar-content { display: none; }
@@ -105,6 +107,20 @@ select{
 .label{font-size:.75rem;color:var(--muted)}
 .spacer{display:none}
 #status{font-size:.72rem;color:var(--muted);text-align:center;margin-top:2px}
+
+/* ACORDION / PAINEL RECOLHÍVEL DAS FERRAMENTAS SECUNDÁRIAS */
+.accordion-header {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+  padding: 6px 8px; font-size: 0.75rem; font-weight: bold; cursor: pointer; color: var(--muted);
+  transition: color 0.2s, background 0.2s;
+}
+.accordion-header:hover { background: var(--btn); color: var(--text); }
+.accordion-content {
+  display: flex; flex-direction: column; gap: 8px; margin-top: 4px;
+  padding: 6px; background: rgba(0,0,0,0.15); border-radius: 8px; border: 1px dashed var(--line);
+}
+.accordion-section.minimized .accordion-content { display: none; }
 
 #workspace{
   position:relative;flex:1;min-height:0;overflow:auto;
@@ -149,10 +165,17 @@ select{
 
 .timelineRow { display: flex; align-items: center; gap: 8px; width: 100%; }
 .layerHeader {
-  width: 140px; flex-shrink: 0; font-size: 0.72rem; font-weight: bold;
+  width: 145px; flex-shrink: 0; font-size: 0.72rem; font-weight: bold;
   display: flex; align-items: center; justify-content: space-between;
   background: var(--panel2); padding: 4px 6px; border-radius: 6px; border: 1px solid var(--line);
 }
+.btnVisibility {
+  background: transparent; border: none; padding: 0 4px; min-height: auto;
+  font-size: 0.85rem; opacity: 0.8; transition: transform 0.1s, opacity 0.1s;
+}
+.btnVisibility:hover { opacity: 1; transform: scale(1.15); }
+.btnVisibility.hidden-layer { opacity: 0.4; filter: grayscale(1); }
+
 .timelineTrack{
   display:flex;gap:4px;overflow-x:auto;padding:2px 0;
   scrollbar-width:thin;scrollbar-color:var(--line) transparent;
@@ -168,7 +191,7 @@ select{
 .frameCell.active{border-color:var(--accent);background:var(--btn);font-weight:bold}
 .frameCell::before{ content:""; width:100%; height:6px; background:var(--line); }
 .frameCell.hasKeyframe::before{ background:var(--accent); }
-.frameCell.refCell.hasKeyframe::before{ background:#ff9f43; } /* Cor diferenciada para camada de referência */
+.frameCell.refCell.hasKeyframe::before{ background:#ff9f43; }
 .frameCell.onion-prev { border-left: 3px solid #ff4757 !important; background: rgba(255, 71, 87, 0.18) !important; }
 .frameCell.onion-next { border-right: 3px solid #2ed573 !important; background: rgba(46, 213, 115, 0.18) !important; }
 
@@ -217,7 +240,7 @@ select{
   #status{display:none}
   .desktopOnly{display:none}
   #help{display:none}
-  .layerHeader{width:110px; font-size:0.65rem;}
+  .layerHeader{width:115px; font-size:0.65rem;}
 }
 </style>
 </head>
@@ -228,11 +251,12 @@ select{
     <div class="topbar-header" id="topbarHeader">
       <div class="brand">🖌️ Mini Paint Tablet</div>
       <div class="topbar-actions">
-        <button class="window-btn" id="btnMinimize" title="Minimizar/Expandir">🗕</button>
+        <button class="window-btn" id="btnMinimize" title="Minimizar/Expandir Menu">🗕</button>
       </div>
     </div>
     <div class="topbar-content">
       <div class="group">
+        <span class="label">Pincéis & Traços:</span>
         <select id="brush">
           <optgroup label="Ferramentas Mantidas">
             <option value="pencil">✏️ Lápis Cartoon</option>
@@ -268,34 +292,43 @@ select{
         </select>
       </div>
 
-      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:4px;">
-        <button id="eraser" style="width:100%" title="Borracha">🧽</button>
-        <button id="picker" style="width:100%" title="Conta-gotas">💧</button>
-        <button id="fill" style="width:100%" title="Balde de tinta">🪣</button>
-      </div>
-      
-      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:4px;">
-        <button id="select" title="Seleção Retangular Pontilhada">⌖</button>
-        <button id="copySelection" title="Copiar área selecionada">📋</button>
-        <button id="pasteSelection" title="Colar área copiada">📥</button>
-      </div>
-      
-      <input id="color" type="color" value="#ff0055" title="Cor">
-
-      <div class="sliderBox">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span class="label">Tamanho</span>
-          <span id="sizeValue" class="value">12 px</span>
+      <!-- MENU SUSPENSO RECOLHÍVEL DE FERRAMENTAS SECUNDÁRIAS -->
+      <div class="accordion-section" id="toolsAccordion">
+        <div class="accordion-header" id="toggleToolsAccordion">
+          <span>🛠️ Ferramentas Secundárias</span>
+          <span id="accordionArrow">▲</span>
         </div>
-        <input id="size" type="range" min="1" max="100" value="12">
-      </div>
+        <div class="accordion-content">
+          <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:4px;">
+            <button id="eraser" style="width:100%" title="Borracha">🧽</button>
+            <button id="picker" style="width:100%" title="Conta-gotas">💧</button>
+            <button id="fill" style="width:100%" title="Balde de tinta">🪣</button>
+          </div>
+          
+          <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:4px;">
+            <button id="select" title="Seleção Retangular Pontilhada">⌖</button>
+            <button id="copySelection" title="Copiar área selecionada">📋</button>
+            <button id="pasteSelection" title="Colar área copiada">📥</button>
+          </div>
+          
+          <input id="color" type="color" value="#ff0055" title="Cor">
 
-      <div class="sliderBox desktopOnly">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span class="label">Pressão</span>
-          <span id="pressureValue" class="value">85%</span>
+          <div class="sliderBox">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span class="label">Tamanho</span>
+              <span id="sizeValue" class="value">12 px</span>
+            </div>
+            <input id="size" type="range" min="1" max="100" value="12">
+          </div>
+
+          <div class="sliderBox desktopOnly">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span class="label">Pressão</span>
+              <span id="pressureValue" class="value">85%</span>
+            </div>
+            <input id="pressure" type="range" min="0" max="100" value="85">
+          </div>
         </div>
-        <input id="pressure" type="range" min="0" max="100" value="85">
       </div>
 
       <div class="group">
@@ -353,7 +386,6 @@ select{
       <div style="display:flex; align-items:center; gap:6px; background:var(--panel2); padding:2px 6px; border-radius:6px; border:1px solid var(--line);">
         <button id="btnImportRef" title="Importar Imagem(ns) ou Vídeo para a Camada de Referência">🎬 / 🖼️ Importar Ref.</button>
         <input type="file" id="fileInputRef" accept="image/*,video/*" multiple style="display:none">
-        <label><input type="checkbox" id="chkRefVisible" checked> Visível</label>
         <span class="label">Opacidade:</span>
         <input id="refOpacity" type="range" min="0" max="100" value="40" style="width:65px;">
         <span id="refOpacityValue" class="value" style="min-width:30px;">40%</span>
@@ -386,14 +418,16 @@ select{
       <!-- LINHA DO TEMPO: DESENHO -->
       <div class="timelineRow">
         <div class="layerHeader">
-          <span>✏️ Camada Desenho</span>
+          <span>✏️ Desenho</span>
+          <button id="btnToggleDrawVis" class="btnVisibility" title="Ocultar/Exibir Camada de Desenho">👁️</button>
         </div>
         <div class="timelineTrack" id="timelineTrackDraw"></div>
       </div>
       <!-- LINHA DO TEMPO: REFERÊNCIA -->
       <div class="timelineRow">
         <div class="layerHeader" style="border-color:#ff9f43; color:#ff9f43;">
-          <span>🎬 Camada Referência</span>
+          <span>🎬 Referência</span>
+          <button id="btnToggleRefVis" class="btnVisibility" title="Ocultar/Exibir Camada de Referência">👁️</button>
         </div>
         <div class="timelineTrack" id="timelineTrackRef"></div>
       </div>
@@ -418,8 +452,10 @@ select{
         </optgroup>
       </select>
     </div>
-    <button id="save">💾 Salvar</button>
-    <button id="load">📂 Carregar</button>
+    <button id="saveProjectFile" title="Exportar projeto completo com imagens e linha do tempo">💾 Salvar Arquivo (.json)</button>
+    <button id="loadProjectFile" title="Carregar projeto completo anteriormente salvo">📂 Abrir Arquivo (.json)</button>
+    <input type="file" id="fileInputProject" accept=".json" style="display:none">
+    
     <button id="export">⬇️ PNG</button>
     <button id="exportZip">📦 Exportar ZIP</button>
 
@@ -485,6 +521,10 @@ let keyframesDraw = new Map(); // Camada principal de desenho
 let keyframesRef = new Map();  // Camada paralela de imagem/vídeo de referência
 let isPlaying = false;
 let playInterval = null;
+
+// VISIBILIDADE DAS CAMADAS NO CANVAS
+let isDrawLayerVisible = true;
+let isRefLayerVisible = true;
 
 function smoothing(c){
   c.imageSmoothingEnabled = true;
@@ -796,7 +836,6 @@ function floodFill(sx, sy, closeAndFill = false){
   redrawDisplayCanvas();
 }
 
-// OBTÉM O KEYFRAME MAIS RECENTE ANTERIOR OU IGUAL DE UM MAPA ESPECÍFICO
 function getActiveKeyframeData(keyframeMap, frameNum) {
   let activeFrame = 0;
   for (let [f] of keyframeMap) {
@@ -807,14 +846,11 @@ function getActiveKeyframeData(keyframeMap, frameNum) {
   return activeFrame > 0 ? keyframeMap.get(activeFrame) : null;
 }
 
-// RENDERIZAÇÃO COMPLETA: Fundo Branco + Camada de Referência (com opacidade própria) + Onion Skin + Desenho Ativo
 function redrawDisplayCanvas(){
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // 1. CAMADA DE REFERÊNCIA DE IMAGEM/VÍDEO (OPACIDADE E LINHA DE TEMPO PRÓPRIAS)
-  const refVisible = document.getElementById("chkRefVisible").checked;
-  if (refVisible) {
+  if (isRefLayerVisible) {
     const refData = getActiveKeyframeData(keyframesRef, currentFrame);
     if (refData) {
       const refOp = (Number(document.getElementById("refOpacity").value) || 40) / 100;
@@ -823,15 +859,14 @@ function redrawDisplayCanvas(){
       refCvs.getContext("2d").putImageData(refData, 0, 0);
 
       ctx.save();
-      ctx.globalAlpha = refOp; // Opacidade totalmente isolada da camada principal
+      ctx.globalAlpha = refOp;
       ctx.drawImage(refCvs, 0, 0);
       ctx.restore();
     }
   }
 
-  // 2. ONION SKIN (Apenas para a camada de desenho)
   const useOnion = document.getElementById("chkOnion").checked;
-  if(useOnion && !isPlaying) {
+  if(isDrawLayerVisible && useOnion && !isPlaying) {
     const op = (Number(document.getElementById("onionOpacity").value) || 30) / 100;
     const prevKey = getLatestKeyframeBefore(keyframesDraw, currentFrame);
     if(prevKey) {
@@ -839,10 +874,10 @@ function redrawDisplayCanvas(){
     }
   }
 
-  // 3. CAMADA DE DESENHO ATUAL
-  ctx.drawImage(drawLayer, 0, 0);
+  if (isDrawLayerVisible) {
+    ctx.drawImage(drawLayer, 0, 0);
+  }
 
-  // 4. ELEMENTOS FLUTUANTES E SELEÇÃO
   if(floatingItem){
     ctx.drawImage(floatingItem.canvas, floatingItem.x, floatingItem.y);
   }
@@ -1127,7 +1162,6 @@ function getLatestKeyframeBefore(map, frameNum){
   return lastFrame > 0 ? map.get(lastFrame) : null;
 }
 
-// RENDERIZAÇÃO DAS DUAS LINHAS DO TEMPO EM PARALELO
 function renderTimeline(){
   const trackDraw = document.getElementById("timelineTrackDraw");
   const trackRef = document.getElementById("timelineTrackRef");
@@ -1139,7 +1173,6 @@ function renderTimeline(){
   const nextCount = useOnion ? Math.max(0, parseInt(document.getElementById("onionNext").value) || 0) : 0;
 
   for(let i = 1; i <= totalFrames; i++){
-    // Célula do Canal de Desenho
     const cellD = document.createElement("div");
     let classesD = ["frameCell"];
 
@@ -1159,7 +1192,6 @@ function renderTimeline(){
     cellD.appendChild(numD);
     trackDraw.appendChild(cellD);
 
-    // Célula do Canal de Referência
     const cellR = document.createElement("div");
     let classesR = ["frameCell", "refCell"];
 
@@ -1278,7 +1310,23 @@ function togglePlay(){
   }
 }
 
-// SINCRONIZAÇÃO DE NAVEGAÇÃO NAS LINHAS DO TEMPO DUPLAS
+const btnToggleDrawVis = document.getElementById("btnToggleDrawVis");
+const btnToggleRefVis = document.getElementById("btnToggleRefVis");
+
+btnToggleDrawVis.onclick = () => {
+  isDrawLayerVisible = !isDrawLayerVisible;
+  btnToggleDrawVis.textContent = isDrawLayerVisible ? "👁️" : "🙈";
+  btnToggleDrawVis.classList.toggle("hidden-layer", !isDrawLayerVisible);
+  redrawDisplayCanvas();
+};
+
+btnToggleRefVis.onclick = () => {
+  isRefLayerVisible = !isRefLayerVisible;
+  btnToggleRefVis.textContent = isRefLayerVisible ? "👁️" : "🙈";
+  btnToggleRefVis.classList.toggle("hidden-layer", !isRefLayerVisible);
+  redrawDisplayCanvas();
+};
+
 function setupTimelineEvents(trackEl) {
   let isScrubbing = false;
 
@@ -1318,7 +1366,6 @@ function setupTimelineEvents(trackEl) {
 setupTimelineEvents(document.getElementById("timelineTrackDraw"));
 setupTimelineEvents(document.getElementById("timelineTrackRef"));
 
-// IMPORTAÇÃO DE MÍDIAS (IMAGENS OU VÍDEO) PARA A CAMADA DE REFERÊNCIA
 const fileInputRef = document.getElementById("fileInputRef");
 document.getElementById("btnImportRef").onclick = () => fileInputRef.click();
 
@@ -1328,12 +1375,9 @@ fileInputRef.onchange = (e) => {
 
   const firstFile = files[0];
 
-  // SE FOR UM VÍDEO: Processa e extrai frames por segundo
   if (firstFile.type.startsWith("video/")) {
     processVideoForRef(firstFile);
-  } 
-  // SE FOREM IMAGENS: Carrega uma ou várias em sequência
-  else {
+  } else {
     processImagesForRef(files);
   }
   fileInputRef.value = "";
@@ -1397,7 +1441,7 @@ function processVideoForRef(videoFile) {
 
     const tempCanvas = document.createElement("canvas");
     tempCanvas.width = canvas.width; tempCanvas.height = canvas.height;
-    const tempCtx = tempCanvas.getContext("2d");
+    tempCtx = tempCanvas.getContext("2d");
 
     let targetFrame = currentFrame;
 
@@ -1441,6 +1485,120 @@ document.getElementById("btnClearRefTrack").onclick = () => {
   renderTimeline();
   redrawDisplayCanvas();
   showMessage("Camada de referência limpa");
+};
+
+// ==========================================
+// EXPORTAÇÃO E IMPORTAÇÃO COMPLETA DO PROJETO (.JSON)
+// ==========================================
+
+function imageDataToDataURL(imgData) {
+  const tempCvs = document.createElement("canvas");
+  tempCvs.width = imgData.width; tempCvs.height = imgData.height;
+  tempCvs.getContext("2d").putImageData(imgData, 0, 0);
+  return tempCvs.toDataURL("image/png");
+}
+
+function dataURLToImageData(dataUrl, width, height) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const tempCvs = document.createElement("canvas");
+      tempCvs.width = width; tempCvs.height = height;
+      const tCtx = tempCvs.getContext("2d");
+      tCtx.drawImage(img, 0, 0);
+      resolve(tCtx.getImageData(0, 0, width, height));
+    };
+    img.src = dataUrl;
+  });
+}
+
+document.getElementById("saveProjectFile").onclick = async () => {
+  if (floatingItem) dropFloatingItem();
+  showMessage("Gerando arquivo do projeto...");
+
+  const projectDrawFrames = {};
+  for (let [frame, imgData] of keyframesDraw.entries()) {
+    projectDrawFrames[frame] = imageDataToDataURL(imgData);
+  }
+
+  const projectRefFrames = {};
+  for (let [frame, imgData] of keyframesRef.entries()) {
+    projectRefFrames[frame] = imageDataToDataURL(imgData);
+  }
+
+  const projectData = {
+    version: 1.0,
+    width: canvas.width,
+    height: canvas.height,
+    totalFrames: totalFrames,
+    fps: parseInt(document.getElementById("animFPS").value) || 12,
+    keyframesDraw: projectDrawFrames,
+    keyframesRef: projectRefFrames
+  };
+
+  const jsonBlob = new Blob([JSON.stringify(projectData)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(jsonBlob);
+  a.download = `projeto_animacao_${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  showMessage("Projeto exportado em .json com sucesso!");
+};
+
+const fileInputProject = document.getElementById("fileInputProject");
+document.getElementById("loadProjectFile").onclick = () => fileInputProject.click();
+
+fileInputProject.onchange = (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async (event) => {
+    try {
+      showMessage("Carregando projeto...");
+      const projectData = JSON.parse(event.target.result);
+
+      if (!projectData.width || !projectData.height || !projectData.keyframesDraw) {
+        throw new Error("Formato inválido");
+      }
+
+      setCanvasSize(projectData.width, projectData.height, false);
+      totalFrames = projectData.totalFrames || 24;
+      document.getElementById("totalFramesInput").value = totalFrames;
+      
+      if (projectData.fps) {
+        document.getElementById("animFPS").value = projectData.fps;
+      }
+
+      keyframesDraw.clear();
+      keyframesRef.clear();
+
+      for (let frame in projectData.keyframesDraw) {
+        const frameNum = parseInt(frame);
+        const imgData = await dataURLToImageData(projectData.keyframesDraw[frame], projectData.width, projectData.height);
+        keyframesDraw.set(frameNum, imgData);
+      }
+
+      if (projectData.keyframesRef) {
+        for (let frame in projectData.keyframesRef) {
+          const frameNum = parseInt(frame);
+          const imgData = await dataURLToImageData(projectData.keyframesRef[frame], projectData.width, projectData.height);
+          keyframesRef.set(frameNum, imgData);
+        }
+      }
+
+      currentFrame = 1;
+      renderTimeline();
+      renderFrame();
+      fitCanvas();
+      showMessage("Projeto carregado com sucesso!");
+    } catch (err) {
+      console.error(err);
+      showMessage("Erro ao carregar o arquivo do projeto!");
+    }
+  };
+  reader.readAsText(file);
+  fileInputProject.value = "";
 };
 
 async function exportAnimationToZip(){
@@ -1548,6 +1706,16 @@ function initThemeSystem() {
   };
 }
 
+const toolsAccordion = document.getElementById("toolsAccordion");
+const toggleToolsAccordion = document.getElementById("toggleToolsAccordion");
+const accordionArrow = document.getElementById("accordionArrow");
+
+toggleToolsAccordion.onclick = () => {
+  toolsAccordion.classList.toggle("minimized");
+  const isMinimized = toolsAccordion.classList.contains("minimized");
+  accordionArrow.textContent = isMinimized ? "▼" : "▲";
+};
+
 const topbar = document.getElementById("topbar");
 const topbarHeader = document.getElementById("topbarHeader");
 const btnMinimize = document.getElementById("btnMinimize");
@@ -1604,7 +1772,6 @@ document.getElementById("onionOpacity").oninput = (e) => {
   redrawDisplayCanvas();
 };
 
-document.getElementById("chkRefVisible").onchange = () => { redrawDisplayCanvas(); };
 document.getElementById("refOpacity").oninput = (e) => {
   document.getElementById("refOpacityValue").textContent = e.target.value + "%";
   redrawDisplayCanvas();
@@ -1677,35 +1844,6 @@ document.getElementById("newDrawing").onchange = e => {
   fitCanvas();
   e.target.value = "";
   showMessage("Novo documento criado");
-};
-
-document.getElementById("save").onclick = () => {
-  if(floatingItem) dropFloatingItem();
-  localStorage.setItem("miniPaintTablet", JSON.stringify({
-    width: canvas.width, height: canvas.height, data: canvas.toDataURL("image/png")
-  }));
-  showMessage("Desenho salvo no tablet");
-};
-
-document.getElementById("load").onclick = () => {
-  if(floatingItem) dropFloatingItem();
-  const raw = localStorage.getItem("miniPaintTablet");
-  if(!raw){ showMessage("Nenhum desenho salvo"); return; }
-  const obj = JSON.parse(raw), img = new Image();
-  img.onload = () => {
-    keyframesDraw.clear();
-    keyframesRef.clear();
-    currentFrame = 1;
-    setCanvasSize(obj.width, obj.height, false);
-    drawCtx.clearRect(0, 0, canvas.width, canvas.height);
-    drawCtx.drawImage(img, 0, 0); 
-    originalData = snapshot(); 
-    keyframesDraw.set(1, snapshot());
-    redrawDisplayCanvas();
-    fitCanvas();
-    showMessage("Desenho carregado");
-  };
-  img.src = obj.data;
 };
 
 document.getElementById("export").onclick = () => {
