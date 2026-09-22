@@ -79,13 +79,13 @@ select{
 }
 #app{width:100%;height:100%;display:flex;flex-direction:column}
 
-/* BARRA FLUTUANTE / MENU SUSPENSO VERTICAL */
+/* MENU SUSPENSO / FLUTUANTE VERTICAL REORGANIZADO */
 #topbar{
   position: absolute; top: 15px; left: 15px;
   display: flex; flex-direction: column;
   background: var(--panel2); border: 1px solid var(--line); border-radius: 12px;
-  z-index: 40; box-shadow: 0 10px 30px rgba(0,0,0,0.5); backdrop-filter: blur(6px); width: 240px;
-  max-height: calc(100vh - 120px); overflow-y: auto;
+  z-index: 40; box-shadow: 0 10px 30px rgba(0,0,0,0.5); backdrop-filter: blur(6px); width: 250px;
+  max-height: calc(100vh - 100px); overflow-y: auto;
 }
 .topbar-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -103,22 +103,24 @@ select{
 }
 .window-btn:hover { background: var(--line); color: var(--text); }
 .brand{font-weight:900;color:var(--accent);font-size:1.05rem;margin-right:4px}
-.group{display:flex;flex-direction:column;align-items:stretch;gap:4px;width:100%}
+.toolGrid{display:grid;grid-template-columns:1fr 1fr;gap:5px}.toolGrid button{width:100%;min-height:38px}.sliderLine{display:flex;justify-content:space-between;align-items:center}.layerMenuRow{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:5px 6px;background:var(--panel);border:1px solid var(--line);border-radius:6px}.layerMenuRow button{min-height:30px}.menuSubTitle{font-size:.7rem;color:var(--muted);font-weight:800;text-transform:uppercase;margin-top:2px}.inlineFields{display:flex;gap:8px}.inlineFields label{display:flex;align-items:center;gap:4px;font-size:.75rem}.inlineFields input{width:55px}.group{display:flex;flex-direction:column;align-items:stretch;gap:4px;width:100%}
 .label{font-size:.75rem;color:var(--muted)}
 .spacer{display:none}
 #status{font-size:.72rem;color:var(--muted);text-align:center;margin-top:2px}
 
-/* ACORDION / PAINEL RECOLHÍVEL DAS FERRAMENTAS SECUNDÁRIAS */
+/* ACORDIONS DO MENU LATERAL */
+.accordion-section {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden;
+}
 .accordion-header {
   display: flex; align-items: center; justify-content: space-between;
-  background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
-  padding: 6px 8px; font-size: 0.75rem; font-weight: bold; cursor: pointer; color: var(--muted);
-  transition: color 0.2s, background 0.2s;
+  padding: 8px 10px; font-size: 0.78rem; font-weight: bold; cursor: pointer; color: var(--text);
+  background: var(--panel); transition: background 0.2s;
 }
-.accordion-header:hover { background: var(--btn); color: var(--text); }
+.accordion-header:hover { background: var(--btn); }
 .accordion-content {
-  display: flex; flex-direction: column; gap: 8px; margin-top: 4px;
-  padding: 6px; background: rgba(0,0,0,0.15); border-radius: 8px; border: 1px dashed var(--line);
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 8px; background: var(--panel2); border-top: 1px solid var(--line);
 }
 .accordion-section.minimized .accordion-content { display: none; }
 
@@ -174,7 +176,7 @@ select{
   font-size: 0.85rem; opacity: 0.8; transition: transform 0.1s, opacity 0.1s;
 }
 .btnVisibility:hover { opacity: 1; transform: scale(1.15); }
-.btnVisibility.hidden-layer { opacity: 0.4; filter: grayscale(1); }
+.btnVisibility.hidden-layer { opacity: 0.3; filter: grayscale(1); }
 
 .timelineTrack{
   display:flex;gap:4px;overflow-x:auto;padding:2px 0;
@@ -255,99 +257,72 @@ select{
       </div>
     </div>
     <div class="topbar-content">
-      <div class="group">
-        <span class="label">Pincéis & Traços:</span>
-        <select id="brush">
-          <optgroup label="Ferramentas Mantidas">
-            <option value="pencil">✏️ Lápis Cartoon</option>
-            <option value="pencil-soft">✏️ Grafite macio</option>
-            <option value="pencil-hard">✏️ Grafite duro</option>
-            <option value="pencil-real">✏️ Lápis sensível</option>
-            <option value="mechanical">🖊️ Lapiseira</option>
-            <option value="fineliner">🖋️ Caneta técnica</option>
-            <option value="ink" selected>🖊️ Nanquim</option>
-            <option value="brush-pen">🖌️ Caneta Brush</option>
-            <option value="marker">🖍️ Marcador</option>
-            <option value="hard-brush">● Pincel duro</option>
-            <option value="soft-brush">◉ Pincel suave</option>
-            <option value="watercolor">💧 Aquarela</option>
-            <option value="chalk">▰ Giz</option>
-          </optgroup>
-          <optgroup label="Animação & Estrutura">
-            <option value="rough-sketch">✏️ Lápis Esboço Rápido</option>
-            <option value="vector-gpen">🖊️ G-Pen Vectorial</option>
-            <option value="color-jitter">🎨 Pincel Color-Jitter</option>
-          </optgroup>
-          <optgroup label="Preenchimento e Cor">
-            <option value="close-fill">🪣 Balde Sem Erro</option>
-            <option value="cell-shading">✒️ Sombra Direcionada</option>
-            <option value="soft-airbrush">💨 Gradiente Suave</option>
-          </optgroup>
-          <optgroup label="Finalização & Pós-Produção">
-            <option value="additive-glow">✨ Luz FX & Glow</option>
-            <option value="dust-particles">░ Poeira e Partículas</option>
-            <option value="film-grain">📺 Ruído e Granulação</option>
-            <option value="motion-blur">💫 Desfocagem de Movimento</option>
-          </optgroup>
-        </select>
-      </div>
-
-      <!-- MENU SUSPENSO RECOLHÍVEL DE FERRAMENTAS SECUNDÁRIAS -->
-      <div class="accordion-section" id="toolsAccordion">
-        <div class="accordion-header" id="toggleToolsAccordion">
-          <span>🛠️ Ferramentas Secundárias</span>
-          <span id="accordionArrow">▲</span>
+      <!-- GRUPO: DESENHO -->
+      <div class="accordion-section" id="accDrawSection">
+        <div class="accordion-header" onclick="toggleAccordion('accDrawSection')">
+          <span>✏️ Desenho e Ferramentas</span><span>▼</span>
         </div>
         <div class="accordion-content">
-          <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:4px;">
-            <button id="eraser" style="width:100%" title="Borracha">🧽</button>
-            <button id="picker" style="width:100%" title="Conta-gotas">💧</button>
-            <button id="fill" style="width:100%" title="Balde de tinta">🪣</button>
+          <div class="group">
+            <span class="label">Pincel</span>
+            <select id="brush">
+              <optgroup label="Ferramentas Mantidas">
+                <option value="pencil">✏️ Lápis Cartoon</option><option value="pencil-soft">✏️ Grafite macio</option><option value="pencil-hard">✏️ Grafite duro</option><option value="pencil-real">✏️ Lápis sensível</option><option value="mechanical">🖊️ Lapiseira</option><option value="fineliner">🖋️ Caneta técnica</option><option value="ink" selected>🖊️ Nanquim</option><option value="brush-pen">🖌️ Caneta Brush</option><option value="marker">🖍️ Marcador</option><option value="hard-brush">● Pincel duro</option><option value="soft-brush">◉ Pincel suave</option><option value="watercolor">💧 Aquarela</option><option value="chalk">▰ Giz</option>
+              </optgroup>
+              <optgroup label="Animação e Estrutura">
+                <option value="rough-sketch">✏️ Lápis Esboço Rápido</option><option value="vector-gpen">🖊️ G-Pen Vectorial</option><option value="color-jitter">🎨 Pincel Color-Jitter</option>
+              </optgroup>
+              <optgroup label="Preenchimento e Cor">
+                <option value="close-fill">🪣 Balde Sem Erro</option><option value="cell-shading">✒️ Sombra Direcionada</option><option value="soft-airbrush">💨 Gradiente Suave</option>
+              </optgroup>
+              <optgroup label="Finalização e FX">
+                <option value="additive-glow">✨ Luz FX & Glow</option><option value="dust-particles">░ Poeira e Partículas</option><option value="film-grain">📺 Ruído e Granulação</option><option value="motion-blur">💫 Desfocagem de Movimento</option>
+              </optgroup>
+            </select>
           </div>
-          
-          <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:4px;">
-            <button id="select" title="Seleção Retangular Pontilhada">⌖</button>
-            <button id="copySelection" title="Copiar área selecionada">📋</button>
-            <button id="pasteSelection" title="Colar área copiada">📥</button>
-          </div>
-          
-          <input id="color" type="color" value="#ff0055" title="Cor">
-
-          <div class="sliderBox">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span class="label">Tamanho</span>
-              <span id="sizeValue" class="value">12 px</span>
-            </div>
-            <input id="size" type="range" min="1" max="100" value="12">
-          </div>
-
-          <div class="sliderBox desktopOnly">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span class="label">Pressão</span>
-              <span id="pressureValue" class="value">85%</span>
-            </div>
-            <input id="pressure" type="range" min="0" max="100" value="85">
+          <div class="toolGrid">
+            <button id="eraser" title="Borracha">🧽 Borracha</button><button id="picker" title="Conta-gotas">💧 Conta-gotas</button><button id="fill" title="Balde de tinta">🪣 Preencher</button>
+            <button id="select" title="Seleção Retangular Pontilhada">⌖ Selecionar</button><button id="copySelection" title="Copiar área selecionada">📋 Copiar</button><button id="pasteSelection" title="Colar área copiada">📥 Colar</button>
           </div>
         </div>
       </div>
 
-      <div class="group">
-        <span class="label">Tema:</span>
-        <select id="themeSelect">
-          <option value="dark">🌙 Dark Classic</option>
-          <option value="light">☀️ Light Clean</option>
-          <option value="cyberpunk">👾 Cyberpunk Neon</option>
-          <option value="nordic">❄️ Nordic Slate</option>
-          <option value="forest">🌲 Forest Organic</option>
-          <option value="sunset">🌅 Sunset Pastel</option>
-          <option value="dracula">🧛 Dracula Gothic</option>
-          <option value="solarized">🌾 Solarized Light</option>
-          <option value="neongreen">⚡ Cyber Neon Green</option>
-          <option value="monochrome">🏁 Monochrome Ink</option>
-          <option value="pastel">🌸 Pastel Dream</option>
-          <option value="midnight">🌌 Midnight Blue</option>
-        </select>
-        <button id="btnPreviewThemes" title="Visualizar opções de temas">🖼️ Opções</button>
+      <!-- GRUPO: COR E TRAÇO -->
+      <div class="accordion-section" id="accStrokeSection">
+        <div class="accordion-header" onclick="toggleAccordion('accStrokeSection')">
+          <span>🎨 Cor e Traço</span><span>▼</span>
+        </div>
+        <div class="accordion-content">
+          <input id="color" type="color" value="#ff0055" title="Cor">
+          <div class="sliderBox"><div class="sliderLine"><span class="label">Tamanho</span><span id="sizeValue" class="value">12 px</span></div><input id="size" type="range" min="1" max="100" value="12"></div>
+          <div class="sliderBox desktopOnly"><div class="sliderLine"><span class="label">Pressão</span><span id="pressureValue" class="value">85%</span></div><input id="pressure" type="range" min="0" max="100" value="85"></div>
+        </div>
+      </div>
+
+      <!-- GRUPO: ANIMAÇÃO E CAMADAS -->
+      <div class="accordion-section" id="accAnimSection">
+        <div class="accordion-header" onclick="toggleAccordion('accAnimSection')">
+          <span>🎬 Animação e Camadas</span><span>▼</span>
+        </div>
+        <div class="accordion-content">
+          <div class="menuSubTitle">Camadas</div>
+          <div class="layerMenuRow"><span>✏️ Desenho</span><button id="btnMenuDrawVis" title="Ocultar/Exibir desenho">👁️ Visível</button></div>
+          <div class="layerMenuRow"><span>🎬 Referência</span><button id="btnMenuRefVis" title="Ocultar/Exibir referência">👁️ Visível</button></div>
+          <div class="menuSubTitle">Onion Skin</div>
+          <label><input type="checkbox" id="chkOnionMenu" checked> Ativar Onion</label>
+          <div class="sliderBox"><div class="sliderLine"><span class="label">Opacidade</span><span id="onionOpacityMenuValue" class="value">30%</span></div><input id="onionOpacityMenu" type="range" min="0" max="100" value="30"></div>
+          <div class="menuSubTitle">Animação</div>
+          <div class="inlineFields"><label>FPS <input type="number" id="animFPSMenu" value="12" min="1" max="60"></label><label>Frames <input type="number" id="totalFramesMenu" value="24" min="1" max="300"></label></div>
+        </div>
+      </div>
+
+      <!-- GRUPO: APARÊNCIA -->
+      <div class="accordion-section" id="accThemeSection">
+        <div class="accordion-header" onclick="toggleAccordion('accThemeSection')"><span>🖼️ Aparência</span><span>▼</span></div>
+        <div class="accordion-content">
+          <select id="themeSelect"><option value="dark">🌙 Dark Classic</option><option value="light">☀️ Light Clean</option><option value="cyberpunk">👾 Cyberpunk Neon</option><option value="nordic">❄️ Nordic Slate</option><option value="forest">🌲 Forest Organic</option><option value="sunset">🌅 Sunset Pastel</option><option value="dracula">🧛 Dracula Gothic</option><option value="solarized">🌾 Solarized Light</option><option value="neongreen">⚡ Cyber Neon Green</option><option value="monochrome">🏁 Monochrome Ink</option><option value="pastel">🌸 Pastel Dream</option><option value="midnight">🌌 Midnight Blue</option></select>
+          <button id="btnPreviewThemes" style="width:100%;">🖼️ Galeria de Temas</button>
+        </div>
       </div>
 
       <span id="status">Novo desenho</span>
@@ -382,32 +357,32 @@ select{
         <button id="btnRemoveKeyframe" title="Remover Quadro do Canal Selecionado">➖ Excluir</button>
       </div>
 
-      <!-- CONTROLES DA CAMADA DE REFERÊNCIA (SUPORTA IMAGENS E VÍDEOS) -->
+      <!-- CONTROLES DA CAMADA DE REFERÊNCIA -->
       <div style="display:flex; align-items:center; gap:6px; background:var(--panel2); padding:2px 6px; border-radius:6px; border:1px solid var(--line);">
-        <button id="btnImportRef" title="Importar Imagem(ns) ou Vídeo para a Camada de Referência">🎬 / 🖼️ Importar Ref.</button>
+        <button id="btnImportRef" title="Importar Imagem(ns) ou Vídeo para a Camada de Referência">🎬 / 🖼️ Ref.</button>
         <input type="file" id="fileInputRef" accept="image/*,video/*" multiple style="display:none">
-        <span class="label">Opacidade:</span>
-        <input id="refOpacity" type="range" min="0" max="100" value="40" style="width:65px;">
-        <span id="refOpacityValue" class="value" style="min-width:30px;">40%</span>
-        <button id="btnClearRefTrack" style="padding:2px 5px;" title="Limpar todos os frames de referência">🗑️ Ref</button>
+        <span class="label">Opac:</span>
+        <input id="refOpacity" type="range" min="0" max="100" value="40" style="width:55px;">
+        <span id="refOpacityValue" class="value" style="min-width:25px;">40%</span>
+        <button id="btnClearRefTrack" style="padding:2px 5px;" title="Limpar referência">🗑️</button>
       </div>
 
       <div class="sliderBox" style="width:auto; flex-direction:row; align-items:center; gap:4px;">
-        <label><input type="checkbox" id="chkOnion" checked> Onion Skin</label>
+        <label><input type="checkbox" id="chkOnion" checked> Onion</label>
         <span class="label">Ant:</span>
-        <input type="number" id="onionPrev" value="1" min="0" max="5">
+        <input type="number" id="onionPrev" value="1" min="0" max="5" style="width:45px;">
         <span class="label">Post:</span>
-        <input type="number" id="onionNext" value="1" min="0" max="5">
+        <input type="number" id="onionNext" value="1" min="0" max="5" style="width:45px;">
         <span class="label">Opac:</span>
-        <input id="onionOpacity" type="range" min="0" max="100" value="30" style="width:60px;">
-        <span id="onionOpacityValue" class="value" style="min-width:30px;">30%</span>
+        <input id="onionOpacity" type="range" min="0" max="100" value="30" style="width:50px;">
+        <span id="onionOpacityValue" class="value" style="min-width:25px;">30%</span>
       </div>
 
       <div class="sliderBox" style="width:auto; flex-direction:row; align-items:center; gap:4px;">
         <span class="label">FPS:</span>
-        <input type="number" id="animFPS" value="12" min="1" max="60">
+        <input type="number" id="animFPS" value="12" min="1" max="60" style="width:45px;">
         <span class="label">Frames:</span>
-        <input type="number" id="totalFramesInput" value="24" min="1" max="300">
+        <input type="number" id="totalFramesInput" value="24" min="1" max="300" style="width:50px;">
       </div>
     </div>
 
@@ -437,11 +412,11 @@ select{
   <div id="bottom">
     <button id="undo">↶ Desfazer</button>
     <button id="redo">↷ Refazer</button>
-    <button id="clear">🗑️ Limpar Canvas</button>
+    <button id="clear">🗑️ Limpar</button>
     <button id="original">↺ Restaurar</button>
     <div class="newDrawingGroup" style="width:auto;">
       <select id="newDrawing" title="Escolher novo desenho" style="width:auto;">
-        <option value="">＋ Novo desenho...</option>
+        <option value="">＋ Novo...</option>
         <optgroup label="Formatos comuns">
           <option value="square">Quadrado — 1200 × 1200</option>
           <option value="landscape">Paisagem — 1600 × 1000</option>
@@ -452,16 +427,16 @@ select{
         </optgroup>
       </select>
     </div>
-    <button id="saveProjectFile" title="Exportar projeto completo com imagens e linha do tempo">💾 Salvar Arquivo (.json)</button>
-    <button id="loadProjectFile" title="Carregar projeto completo anteriormente salvo">📂 Abrir Arquivo (.json)</button>
+    <button id="saveProjectFile" title="Exportar projeto completo (.json)">💾 Salvar</button>
+    <button id="loadProjectFile" title="Carregar projeto (.json)">📂 Abrir</button>
     <input type="file" id="fileInputProject" accept=".json" style="display:none">
     
     <button id="export">⬇️ PNG</button>
-    <button id="exportZip">📦 Exportar ZIP</button>
+    <button id="exportZip">📦 ZIP</button>
 
     <div class="spacer" style="display:block; flex:1;"></div>
     <button id="zoomOut">−</button>
-    <span id="zoomValue" class="value" style="min-width:42px;">100%</span>
+    <span id="zoomValue" class="value" style="min-width:40px;">100%</span>
     <button id="zoomIn">＋</button>
     <button id="zoomReset">🔍 100%</button>
   </div>
@@ -470,7 +445,7 @@ select{
 <!-- MODAL DE PRÉ-VISUALIZAÇÃO DE LAYOUTS -->
 <div id="themePreviewModal">
   <div class="modalContent">
-    <h3>Opções Prévias de Layout</h3>
+    <h3>Galeria de Temas e Cores</h3>
     <p class="label" style="margin-top:4px">Escolha o estilo visual para o seu workspace:</p>
     <div class="themeGrid" id="themeGrid"></div>
     <div style="margin-top:16px; text-align:right">
@@ -482,12 +457,16 @@ select{
 <script>
 "use strict";
 
+function toggleAccordion(id) {
+  const el = document.getElementById(id);
+  if(el) el.classList.toggle("minimized");
+}
+
 const canvas = document.getElementById("paintCanvas");
 const wrapper = document.getElementById("canvasWrapper");
 const ctx = canvas.getContext("2d", {willReadFrequently:true});
 const viewport = document.getElementById("canvasViewport");
 
-// Canvas virtual secundário para armazenar somente os riscos/desenhos do frame atual
 const drawLayer = document.createElement("canvas");
 const drawCtx = drawLayer.getContext("2d", {willReadFrequently:true});
 
@@ -514,17 +493,16 @@ let isSelecting = false;
 let selectionStart = null;
 let floatingItem = null;
 
-// ESTRUTURA DE ANIMAÇÃO COM SUPORTE A LINHA DO TEMPO DUPLA (DESENHO E REFERÊNCIA)
 let currentFrame = 1;
 let totalFrames = 24;
-let keyframesDraw = new Map(); // Camada principal de desenho
-let keyframesRef = new Map();  // Camada paralela de imagem/vídeo de referência
+let keyframesDraw = new Map();
+let keyframesRef = new Map();
 let isPlaying = false;
 let playInterval = null;
 
-// VISIBILIDADE DAS CAMADAS NO CANVAS
-let isDrawLayerVisible = true;
-let isRefLayerVisible = true;
+// 1. Gerenciamento de Visibilidade das camadas por objeto booleano
+const drawLayerObj = { isVisible: true };
+const refLayerObj = { isVisible: true };
 
 function smoothing(c){
   c.imageSmoothingEnabled = true;
@@ -850,7 +828,8 @@ function redrawDisplayCanvas(){
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  if (isRefLayerVisible) {
+  // 2. Lógica de Exibição: renderiza camada de referência apenas se refLayerObj.isVisible for verdadeiro
+  if (refLayerObj.isVisible) {
     const refData = getActiveKeyframeData(keyframesRef, currentFrame);
     if (refData) {
       const refOp = (Number(document.getElementById("refOpacity").value) || 40) / 100;
@@ -866,7 +845,7 @@ function redrawDisplayCanvas(){
   }
 
   const useOnion = document.getElementById("chkOnion").checked;
-  if(isDrawLayerVisible && useOnion && !isPlaying) {
+  if(drawLayerObj.isVisible && useOnion && !isPlaying) {
     const op = (Number(document.getElementById("onionOpacity").value) || 30) / 100;
     const prevKey = getLatestKeyframeBefore(keyframesDraw, currentFrame);
     if(prevKey) {
@@ -874,7 +853,8 @@ function redrawDisplayCanvas(){
     }
   }
 
-  if (isDrawLayerVisible) {
+  // 2. Lógica de Exibição: renderiza camada de desenho principal apenas se drawLayerObj.isVisible for verdadeiro
+  if (drawLayerObj.isVisible) {
     ctx.drawImage(drawLayer, 0, 0);
   }
 
@@ -1173,17 +1153,25 @@ function renderTimeline(){
   const nextCount = useOnion ? Math.max(0, parseInt(document.getElementById("onionNext").value) || 0) : 0;
 
   for(let i = 1; i <= totalFrames; i++){
-    const cellD = document.createElement("div");
-    let classesD = ["frameCell"];
+    // 2. Lógica de Exibição: Renderiza quadros apenas se drawLayerObj.isVisible for verdadeiro
+    if (!drawLayerObj.isVisible) {
+      // Camada oculta: não cria nem desenha os retângulos da timeline.
+    } else {
+      const cellD = document.createElement("div");
+      let classesD = ["frameCell"];
 
-    if (i === currentFrame) {
-      classesD.push("active");
-    } else if (useOnion && i >= currentFrame - prevCount && i < currentFrame) {
-      classesD.push("onion-prev");
-    } else if (useOnion && i > currentFrame && i <= currentFrame + nextCount) {
-      classesD.push("onion-next");
+    if (drawLayerObj.isVisible) {
+      if (i === currentFrame) {
+        classesD.push("active");
+      } else if (useOnion && i >= currentFrame - prevCount && i < currentFrame) {
+        classesD.push("onion-prev");
+      } else if (useOnion && i > currentFrame && i <= currentFrame + nextCount) {
+        classesD.push("onion-next");
+      }
+      if (keyframesDraw.has(i)) classesD.push("hasKeyframe");
+    } else {
+      classesD.push("hidden-layer");
     }
-    if (keyframesDraw.has(i)) classesD.push("hasKeyframe");
 
     cellD.className = classesD.join(" ");
     cellD.dataset.frame = i;
@@ -1191,7 +1179,10 @@ function renderTimeline(){
     numD.textContent = i;
     cellD.appendChild(numD);
     trackDraw.appendChild(cellD);
+    }
 
+    // A camada de referência também deixa a track completamente vazia quando oculta.
+    if (!refLayerObj.isVisible) continue;
     const cellR = document.createElement("div");
     let classesR = ["frameCell", "refCell"];
 
@@ -1313,19 +1304,21 @@ function togglePlay(){
 const btnToggleDrawVis = document.getElementById("btnToggleDrawVis");
 const btnToggleRefVis = document.getElementById("btnToggleRefVis");
 
-btnToggleDrawVis.onclick = () => {
-  isDrawLayerVisible = !isDrawLayerVisible;
-  btnToggleDrawVis.textContent = isDrawLayerVisible ? "👁️" : "🙈";
-  btnToggleDrawVis.classList.toggle("hidden-layer", !isDrawLayerVisible);
-  redrawDisplayCanvas();
-};
-
-btnToggleRefVis.onclick = () => {
-  isRefLayerVisible = !isRefLayerVisible;
-  btnToggleRefVis.textContent = isRefLayerVisible ? "👁️" : "🙈";
-  btnToggleRefVis.classList.toggle("hidden-layer", !isRefLayerVisible);
-  redrawDisplayCanvas();
-};
+// 3. Atualização de UI no evento de clique do ícone de olho para Camada de Desenho
+// 3. Atualização de UI no evento de clique do ícone de olho para Camada de Referência
+// Atalhos equivalentes dentro do menu reorganizado
+function syncLayerMenu(){
+  const d=document.getElementById("btnMenuDrawVis"), r=document.getElementById("btnMenuRefVis");
+  if(d){ d.textContent=drawLayerObj.isVisible?"👁️ Visível":"🙈 Oculta"; d.classList.toggle("hidden-layer",!drawLayerObj.isVisible); }
+  if(r){ r.textContent=refLayerObj.isVisible?"👁️ Visível":"🙈 Oculta"; r.classList.toggle("hidden-layer",!refLayerObj.isVisible); }
+}
+function setDrawVisibility(v){ drawLayerObj.isVisible=v; btnToggleDrawVis.textContent=v?"👁️":"🙈"; btnToggleDrawVis.classList.toggle("hidden-layer",!v); syncLayerMenu(); renderTimeline(); redrawDisplayCanvas(); }
+function setRefVisibility(v){ refLayerObj.isVisible=v; btnToggleRefVis.textContent=v?"👁️":"🙈"; btnToggleRefVis.classList.toggle("hidden-layer",!v); syncLayerMenu(); renderTimeline(); redrawDisplayCanvas(); }
+document.getElementById("btnMenuDrawVis").onclick=()=>setDrawVisibility(!drawLayerObj.isVisible);
+document.getElementById("btnMenuRefVis").onclick=()=>setRefVisibility(!refLayerObj.isVisible);
+btnToggleDrawVis.onclick=()=>setDrawVisibility(!drawLayerObj.isVisible);
+btnToggleRefVis.onclick=()=>setRefVisibility(!refLayerObj.isVisible);
+syncLayerMenu();
 
 function setupTimelineEvents(trackEl) {
   let isScrubbing = false;
@@ -1363,6 +1356,14 @@ function setupTimelineEvents(trackEl) {
   trackEl.addEventListener('pointercancel', () => { isScrubbing = false; });
 }
 
+const menuOnion = document.getElementById("chkOnionMenu");
+const menuOnionOpacity = document.getElementById("onionOpacityMenu");
+const menuFPS = document.getElementById("animFPSMenu");
+const menuFrames = document.getElementById("totalFramesMenu");
+menuOnion.onchange=()=>{ document.getElementById("chkOnion").checked=menuOnion.checked; renderTimeline(); redrawDisplayCanvas(); };
+menuOnionOpacity.oninput=()=>{ document.getElementById("onionOpacity").value=menuOnionOpacity.value; document.getElementById("onionOpacityValue").textContent=menuOnionOpacity.value+"%"; document.getElementById("onionOpacityMenuValue").textContent=menuOnionOpacity.value+"%"; redrawDisplayCanvas(); };
+menuFPS.oninput=()=>{ document.getElementById("animFPS").value=menuFPS.value; };
+menuFrames.onchange=()=>{ const n=Math.max(1,Math.min(300,parseInt(menuFrames.value)||24)); totalFrames=n; document.getElementById("totalFramesInput").value=n; if(currentFrame>n) currentFrame=n; renderTimeline(); renderFrame(); };
 setupTimelineEvents(document.getElementById("timelineTrackDraw"));
 setupTimelineEvents(document.getElementById("timelineTrackRef"));
 
@@ -1441,7 +1442,7 @@ function processVideoForRef(videoFile) {
 
     const tempCanvas = document.createElement("canvas");
     tempCanvas.width = canvas.width; tempCanvas.height = canvas.height;
-    tempCtx = tempCanvas.getContext("2d");
+    let tempCtx = tempCanvas.getContext("2d");
 
     let targetFrame = currentFrame;
 
@@ -1486,10 +1487,6 @@ document.getElementById("btnClearRefTrack").onclick = () => {
   redrawDisplayCanvas();
   showMessage("Camada de referência limpa");
 };
-
-// ==========================================
-// EXPORTAÇÃO E IMPORTAÇÃO COMPLETA DO PROJETO (.JSON)
-// ==========================================
 
 function imageDataToDataURL(imgData) {
   const tempCvs = document.createElement("canvas");
@@ -1686,14 +1683,12 @@ function initThemeSystem() {
       applyTheme(t.id);
       document.getElementById("themePreviewModal").style.display = "none";
     };
-    
     card.innerHTML = `
-      <div class="themePreviewBox">
-        <div class="themeColorSample" style="background:${t.bg}"></div>
+      <div class="themePreviewBox" style="background:${t.bg}">
         <div class="themeColorSample" style="background:${t.panel}"></div>
         <div class="themeColorSample" style="background:${t.accent}"></div>
       </div>
-      <div style="font-size:0.85rem; font-weight:bold">${t.name}</div>
+      <div style="font-size:0.75rem; font-weight:bold; color:var(--text);">${t.name}</div>
     `;
     grid.appendChild(card);
   });
@@ -1706,55 +1701,118 @@ function initThemeSystem() {
   };
 }
 
-const toolsAccordion = document.getElementById("toolsAccordion");
-const toggleToolsAccordion = document.getElementById("toggleToolsAccordion");
-const accordionArrow = document.getElementById("accordionArrow");
-
-toggleToolsAccordion.onclick = () => {
-  toolsAccordion.classList.toggle("minimized");
-  const isMinimized = toolsAccordion.classList.contains("minimized");
-  accordionArrow.textContent = isMinimized ? "▼" : "▲";
-};
-
+// DRAG AND DROP DO MENU FLUTUANTE
 const topbar = document.getElementById("topbar");
 const topbarHeader = document.getElementById("topbarHeader");
-const btnMinimize = document.getElementById("btnMinimize");
-
-let isDraggingMenu = false;
-let menuStartX = 0, menuStartY = 0;
-let menuPosX = 15, menuPosY = 15;
+let isDraggingTopbar = false;
+let topbarOffset = {x:0, y:0};
 
 topbarHeader.addEventListener("pointerdown", (e) => {
-  if (e.target.closest('#btnMinimize')) return;
-  isDraggingMenu = true;
-  menuStartX = e.clientX - topbar.offsetLeft;
-  menuStartY = e.clientY - topbar.offsetTop;
+  isDraggingTopbar = true;
+  const rect = topbar.getBoundingClientRect();
+  topbarOffset.x = e.clientX - rect.left;
+  topbarOffset.y = e.clientY - rect.top;
   topbarHeader.setPointerCapture(e.pointerId);
 });
 
 topbarHeader.addEventListener("pointermove", (e) => {
-  if (!isDraggingMenu) return;
-  menuPosX = e.clientX - menuStartX;
-  menuPosY = e.clientY - menuStartY;
-  
-  const maxW = window.innerWidth - topbar.offsetWidth;
-  const maxH = window.innerHeight - topbar.offsetHeight;
-  menuPosX = Math.max(0, Math.min(menuPosX, maxW));
-  menuPosY = Math.max(0, Math.min(menuPosY, maxH));
-
-  topbar.style.left = menuPosX + "px";
-  topbar.style.top = menuPosY + "px";
+  if(!isDraggingTopbar) return;
+  topbar.style.left = (e.clientX - topbarOffset.x) + "px";
+  topbar.style.top = (e.clientY - topbarOffset.y) + "px";
+  topbar.style.position = "fixed";
 });
 
 topbarHeader.addEventListener("pointerup", (e) => {
-  isDraggingMenu = false;
-  try { topbarHeader.releasePointerCapture(e.pointerId); } catch(_) {}
+  isDraggingTopbar = false;
+  try{ topbarHeader.releasePointerCapture(e.pointerId); }catch(_){}
 });
 
-btnMinimize.onclick = () => {
+document.getElementById("btnMinimize").onclick = () => {
   topbar.classList.toggle("minimized");
-  btnMinimize.textContent = topbar.classList.contains("minimized") ? "🗖" : "🗕";
+  document.getElementById("btnMinimize").textContent = topbar.classList.contains("minimized") ? "🗖" : "🗕";
 };
+
+document.getElementById("brush").onchange = (e) => setTool(e.target.value);
+document.getElementById("eraser").onclick = () => setTool("eraser");
+document.getElementById("picker").onclick = () => setTool("picker");
+document.getElementById("fill").onclick = () => setTool("fill");
+document.getElementById("select").onclick = () => setTool("select");
+document.getElementById("copySelection").onclick = copySelectionArea;
+document.getElementById("pasteSelection").onclick = pasteSelectionArea;
+
+document.getElementById("size").oninput = (e) => {
+  document.getElementById("sizeValue").textContent = e.target.value + " px";
+};
+document.getElementById("pressure").oninput = (e) => {
+  document.getElementById("pressureValue").textContent = e.target.value + "%";
+};
+document.getElementById("refOpacity").oninput = (e) => {
+  document.getElementById("refOpacityValue").textContent = e.target.value + "%";
+  redrawDisplayCanvas();
+};
+document.getElementById("onionOpacity").oninput = (e) => {
+  document.getElementById("onionOpacityValue").textContent = e.target.value + "%";
+  redrawDisplayCanvas();
+};
+document.getElementById("animFPS").onchange = () => renderTimeline();
+document.getElementById("totalFramesInput").onchange = (e) => {
+  totalFrames = Math.max(1, parseInt(e.target.value) || 24);
+  if(currentFrame > totalFrames) currentFrame = totalFrames;
+  renderTimeline();
+};
+
+document.getElementById("undo").onclick = undo;
+document.getElementById("redo").onclick = redo;
+document.getElementById("clear").onclick = () => {
+  if(floatingItem) dropFloatingItem();
+  pushUndo();
+  drawCtx.clearRect(0, 0, drawLayer.width, drawLayer.height);
+  autoSaveKeyframe();
+  updateStatus();
+  showMessage("Canvas limpo!");
+};
+document.getElementById("original").onclick = () => {
+  if(floatingItem) dropFloatingItem();
+  if(!originalData) return;
+  pushUndo();
+  drawCtx.putImageData(originalData, 0, 0);
+  autoSaveKeyframe();
+  updateStatus();
+  showMessage("Estado original restaurado!");
+};
+
+document.getElementById("newDrawing").onchange = (e) => {
+  const v = e.target.value;
+  if(!v) return;
+  let w = 1200, h = 1200;
+  if(v === "landscape") { w = 1600; h = 1000; }
+  else if(v === "portrait") { w = 1000; h = 1400; }
+  else if(v === "hd") { w = 1600; h = 900; }
+  else if(v === "fullhd") { w = 1920; h = 1080; }
+  else if(v === "4k") { w = 3840; h = 2160; }
+  
+  setCanvasSize(w, h, false);
+  drawCtx.fillStyle = "#ffffff";
+  drawCtx.fillRect(0, 0, w, h);
+  originalData = snapshot();
+  keyframesDraw.clear();
+  keyframesRef.clear();
+  currentFrame = 1;
+  autoSaveKeyframe();
+  e.target.value = "";
+  showMessage(`Novo desenho: ${w}×${h}px`);
+};
+
+document.getElementById("export").onclick = () => {
+  if(floatingItem) dropFloatingItem();
+  const a = document.createElement("a");
+  a.href = canvas.toDataURL("image/png");
+  a.download = `desenho_${new Date().toISOString().slice(0, 10)}.png`;
+  a.click();
+  showMessage("Exportado em PNG!");
+};
+
+document.getElementById("exportZip").onclick = exportAnimationToZip;
 
 document.getElementById("btnPlay").onclick = togglePlay;
 document.getElementById("btnPrevFrame").onclick = () => gotoFrame(currentFrame - 1);
@@ -1762,129 +1820,27 @@ document.getElementById("btnNextFrame").onclick = () => gotoFrame(currentFrame +
 document.getElementById("btnAddKeyframe").onclick = setKeyframe;
 document.getElementById("btnAddBlankKeyframe").onclick = addBlankKeyframe;
 document.getElementById("btnRemoveKeyframe").onclick = removeKeyframe;
+document.getElementById("chkOnion").onchange = () => renderTimeline();
 
-document.getElementById("chkOnion").onchange = () => { redrawDisplayCanvas(); renderTimeline(); };
-document.getElementById("onionPrev").onchange = () => { redrawDisplayCanvas(); renderTimeline(); };
-document.getElementById("onionNext").onchange = () => { redrawDisplayCanvas(); renderTimeline(); };
-
-document.getElementById("onionOpacity").oninput = (e) => {
-  document.getElementById("onionOpacityValue").textContent = e.target.value + "%";
-  redrawDisplayCanvas();
-};
-
-document.getElementById("refOpacity").oninput = (e) => {
-  document.getElementById("refOpacityValue").textContent = e.target.value + "%";
-  redrawDisplayCanvas();
-};
-
-document.getElementById("totalFramesInput").onchange = (e) => {
-  totalFrames = Math.max(1, parseInt(e.target.value) || 1);
-  if(currentFrame > totalFrames) currentFrame = totalFrames;
-  renderTimeline();
-};
-
-document.getElementById("brush").onchange = e => setTool(e.target.value);
-document.getElementById("eraser").onclick = () => setTool("eraser");
-document.getElementById("picker").onclick = () => setTool("picker");
-document.getElementById("fill").onclick = () => setTool("fill");
-document.getElementById("select").onclick = () => setTool("select");
-
-document.getElementById("copySelection").onclick = copySelectionArea;
-document.getElementById("pasteSelection").onclick = pasteSelectionArea;
-
-document.getElementById("size").oninput = e => {
-  document.getElementById("sizeValue").textContent = e.target.value + " px";
-};
-document.getElementById("pressure").oninput = e => {
-  document.getElementById("pressureValue").textContent = e.target.value + "%";
-};
-
-document.getElementById("undo").onclick = () => { if(floatingItem) dropFloatingItem(); undo(); };
-document.getElementById("redo").onclick = () => { if(floatingItem) dropFloatingItem(); redo(); };
-document.getElementById("clear").onclick = () => {
-  if(floatingItem) dropFloatingItem();
-  pushUndo(); drawCtx.clearRect(0, 0, drawLayer.width, drawLayer.height); autoSaveKeyframe(); updateStatus();
-};
-document.getElementById("original").onclick = () => {
-  if(floatingItem) dropFloatingItem();
-  if(!originalData) return; pushUndo(); restore(originalData); autoSaveKeyframe();
-};
-
-document.getElementById("zoomOut").onclick = () => setZoom(zoom / 1.25);
 document.getElementById("zoomIn").onclick = () => setZoom(zoom * 1.25);
-document.getElementById("zoomReset").onclick = () => setZoom(1);
+document.getElementById("zoomOut").onclick = () => setZoom(zoom / 1.25);
+document.getElementById("zoomReset").onclick = () => fitCanvas();
 
-document.getElementById("newDrawing").onchange = e => {
-  if(floatingItem) dropFloatingItem();
-  const type = e.target.value;
-  if(!type) return;
+window.addEventListener("resize", () => updateTransform());
 
-  let w = 1600, h = 1000;
-  if(type === "square"){ w = 1200; h = 1200; }
-  else if(type === "landscape"){ w = 1600; h = 1000; }
-  else if(type === "portrait"){ w = 1000; h = 1400; }
-  else if(type === "hd"){ w = 1600; h = 900; }
-  else if(type === "fullhd"){ w = 1920; h = 1080; }
-  else if(type === "4k"){ w = 3840; h = 2160; }
-
-  keyframesDraw.clear();
-  keyframesRef.clear();
-  currentFrame = 1;
-  setCanvasSize(w, h, false);
-  drawCtx.clearRect(0, 0, w, h);
-
-  originalData = snapshot();
-  keyframesDraw.set(1, snapshot());
-
-  setTool("ink");
-  document.getElementById("color").value = "#0066ff";
-  document.getElementById("size").value = 12;
-  document.getElementById("sizeValue").textContent = "12 px";
-
-  fitCanvas();
-  e.target.value = "";
-  showMessage("Novo documento criado");
-};
-
-document.getElementById("export").onclick = () => {
-  if(floatingItem) dropFloatingItem();
-  canvas.toBlob(blob => {
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob); a.download = "animacao-frame.png"; a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  }, "image/png");
-};
-
-document.getElementById("exportZip").onclick = exportAnimationToZip;
-
-window.addEventListener("keydown", e => {
-  if(e.ctrlKey && e.key.toLowerCase() === "z"){ e.preventDefault(); if(floatingItem) dropFloatingItem(); undo(); }
-  else if(e.ctrlKey && (e.key.toLowerCase() === "y" || (e.key.toLowerCase() === "z" && e.shiftKey))){ e.preventDefault(); if(floatingItem) dropFloatingItem(); redo(); }
-  else if(e.ctrlKey && e.key.toLowerCase() === "c"){ e.preventDefault(); copySelectionArea(); }
-  else if(e.ctrlKey && e.key.toLowerCase() === "v"){ e.preventDefault(); pasteSelectionArea(); }
-  else if(e.key === "e" || e.key === "E") setTool("eraser");
-});
-
-window.addEventListener("resize", () => {
-  if(pointers.size === 0) fitCanvas();
-  else updateTransform();
-});
-
+// Inicialização Geral
 initThemeSystem();
-setCanvasSize(1600, 1000, false);
-drawCtx.clearRect(0, 0, canvas.width, canvas.height);
-document.getElementById("color").value = "#0066ff";
-document.getElementById("size").value = 12;
-document.getElementById("sizeValue").textContent = "12 px";
-setTool("ink");
+setCanvasSize(1200, 1200, false);
+drawCtx.fillStyle = "#ffffff";
+drawCtx.fillRect(0, 0, 1200, 1200);
 originalData = snapshot();
-
-currentFrame = 1;
-keyframesDraw.set(1, snapshot());
-
+autoSaveKeyframe();
 renderTimeline();
-redrawDisplayCanvas();
-fitCanvas();
+fitCardDefaults();
+
+function fitCardDefaults(){
+  fitCanvas();
+}
 </script>
 </body>
 </html>
