@@ -8,7 +8,7 @@
 <!-- JSZip para exportar arquivos em ZIP -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
-/* TEMAS DE LAYOUT PREDEFINIDOS (12 OPÇÕES) */
+/* TEMAS DE LAYOUT PREDEFINIDOS */
 :root, [data-theme="dark"] {
   --bg:#171923; --panel:#232634; --panel2:#11131b; --line:#3a4054;
   --text:#f3f5fb; --muted:#aeb5c7; --accent:#00d2ff; --btn:#303548;
@@ -80,65 +80,25 @@ select{
 
 /* BARRA FLUTUANTE / MENU SUSPENSO VERTICAL */
 #topbar{
-  position: absolute;
-  top: 15px;
-  left: 15px;
-  display: flex;
-  flex-direction: column;
-  background: var(--panel2);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  z-index: 40;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-  backdrop-filter: blur(6px);
-  width: 240px;
+  position: absolute; top: 15px; left: 15px;
+  display: flex; flex-direction: column;
+  background: var(--panel2); border: 1px solid var(--line); border-radius: 12px;
+  z-index: 40; box-shadow: 0 10px 30px rgba(0,0,0,0.5); backdrop-filter: blur(6px); width: 240px;
 }
-
 .topbar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  background: var(--panel);
-  border-top-left-radius: 11px;
-  border-top-right-radius: 11px;
-  border-bottom: 1px solid var(--line);
-  cursor: move;
-  user-select: none;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; background: var(--panel);
+  border-top-left-radius: 11px; border-top-right-radius: 11px;
+  border-bottom: 1px solid var(--line); cursor: move; user-select: none;
 }
-
-.topbar-content {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 10px;
-  padding: 12px;
-}
-
-#topbar.minimized .topbar-content {
-  display: none;
-}
-
-.topbar-actions {
-  display: flex;
-  gap: 4px;
-}
-
+.topbar-content { display: flex; flex-direction: column; align-items: stretch; gap: 10px; padding: 12px; }
+#topbar.minimized .topbar-content { display: none; }
+.topbar-actions { display: flex; gap: 4px; }
 .window-btn {
-  background: transparent;
-  border: none;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 0.9rem;
-  padding: 2px 6px;
-  min-height: auto;
-  border-radius: 4px;
+  background: transparent; border: none; color: var(--muted); cursor: pointer;
+  font-size: 0.9rem; padding: 2px 6px; min-height: auto; border-radius: 4px;
 }
-.window-btn:hover {
-  background: var(--line);
-  color: var(--text);
-}
-
+.window-btn:hover { background: var(--line); color: var(--text); }
 .brand{font-weight:900;color:var(--accent);font-size:1.05rem;margin-right:4px}
 .group{display:flex;flex-direction:column;align-items:stretch;gap:6px;width:100%}
 .label{font-size:.78rem;color:var(--muted)}
@@ -157,84 +117,38 @@ select{
   background-position:0 0,0 12px,12px -12px,-12px 0;
 }
 #canvasViewport{
-  position:relative;
-  min-width:100%;min-height:100%;
-  width:100%;height:100%;
-  overflow:visible;
-  touch-action:none;
+  position:relative; min-width:100%; min-height:100%;
+  width:100%; height:100%; overflow:visible; touch-action:none;
 }
-
 #canvasWrapper {
-  position: absolute;
-  left: 0; top: 0;
+  position: absolute; left: 0; top: 0;
   box-shadow: 0 0 0 1px rgba(0,0,0,.15), 0 12px 35px rgba(0,0,0,.35);
-  transform-origin: 0 0;
-  border-radius: 18px;
-  overflow: hidden;
-  background: #ffffff;
-  display: flex;
-  flex-direction: column;
+  transform-origin: 0 0; border-radius: 18px; overflow: hidden;
+  background: #ffffff; display: flex; flex-direction: column;
 }
-
-#paintCanvas{
-  display:block;
-  touch-action:none;
-}
+#paintCanvas{ display:block; touch-action:none; }
 
 .disneyPegBar {
-  height: 48px;
-  width: 100%;
-  background: #f8f9fa;
-  border-top: 1px solid #e0e0e0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 36px;
-  flex-shrink: 0;
-  pointer-events: none;
+  height: 48px; width: 100%; background: #f8f9fa; border-top: 1px solid #e0e0e0;
+  display: flex; align-items: center; justify-content: center; gap: 36px;
+  flex-shrink: 0; pointer-events: none;
 }
-.pegHole {
-  background: #171923;
-  box-shadow: inset 1px 1px 2px rgba(0,0,0,0.6);
-}
-.pegHole.circle {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-}
-.pegHole.rect {
-  width: 32px;
-  height: 12px;
-  border-radius: 3px;
-}
+.pegHole { background: #171923; box-shadow: inset 1px 1px 2px rgba(0,0,0,0.6); }
+.pegHole.circle { width: 14px; height: 14px; border-radius: 50%; }
+.pegHole.rect { width: 32px; height: 12px; border-radius: 3px; }
 
 #timelinePanel{
   flex:0 0 auto;background:var(--panel);border-top:1px solid var(--line);
   padding:6px 10px;display:flex;flex-direction:column;gap:6px;z-index:15;
 }
 .timelineControls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-
-.timelineDivider{
-  width:100%;
-  height:1px;
-  background-color:var(--line);
-  margin:2px 0;
-}
-
-.timelineTrackContainer{
-  position:relative;
-  width:100%;
-  display:flex;
-  flex-direction:column;
-}
-
+.timelineDivider{ width:100%; height:1px; background-color:var(--line); margin:2px 0; }
+.timelineTrackContainer{ position:relative; width:100%; display:flex; flex-direction:column; }
 .timelineTrack{
   display:flex;gap:4px;overflow-x:auto;padding:8px 0;
   scrollbar-width:thin;scrollbar-color:var(--line) transparent;
-  cursor:ew-resize;
-  position:relative;
+  cursor:ew-resize;position:relative;
 }
-
 .frameCell{
   min-width:32px;height:44px;background:var(--panel2);border:1px solid var(--line);
   border-radius:6px;display:flex;flex-direction:column;align-items:center;
@@ -242,25 +156,10 @@ select{
   padding-bottom:4px;overflow:hidden;flex-shrink:0;transition:all 0.15s ease;
 }
 .frameCell.active{border-color:var(--accent);background:var(--btn);font-weight:bold}
-
-.frameCell::before{
-  content:"";
-  width:100%;
-  height:8px;
-  background:var(--line);
-}
-.frameCell.hasKeyframe::before{
-  background:var(--accent);
-}
-
-.frameCell.onion-prev {
-  border-left: 3px solid #ff4757 !important;
-  background: rgba(255, 71, 87, 0.18) !important;
-}
-.frameCell.onion-next {
-  border-right: 3px solid #2ed573 !important;
-  background: rgba(46, 213, 115, 0.18) !important;
-}
+.frameCell::before{ content:""; width:100%; height:8px; background:var(--line); }
+.frameCell.hasKeyframe::before{ background:var(--accent); }
+.frameCell.onion-prev { border-left: 3px solid #ff4757 !important; background: rgba(255, 71, 87, 0.18) !important; }
+.frameCell.onion-next { border-right: 3px solid #2ed573 !important; background: rgba(46, 213, 115, 0.18) !important; }
 
 #themePreviewModal {
   position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
@@ -272,9 +171,7 @@ select{
   padding: 20px; width: 90%; max-width: 650px; max-height: 85vh; overflow-y: auto;
   box-shadow: 0 10px 25px rgba(0,0,0,0.5);
 }
-.themeGrid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-top: 15px;
-}
+.themeGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-top: 15px; }
 .themeCard {
   border: 2px solid var(--line); border-radius: 8px; padding: 10px; cursor: pointer;
   background: var(--panel2); text-align: center; transition: transform 0.2s, border-color 0.2s;
@@ -353,7 +250,6 @@ select{
         <button id="fill" style="width:100%" title="Balde de tinta">🪣</button>
       </div>
       
-      <!-- BOTÕES DE SELEÇÃO RETANGULAR PONTILHADA, COPIAR E COLAR -->
       <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:4px;">
         <button id="select" title="Seleção Retangular Pontilhada">⌖</button>
         <button id="copySelection" title="Copiar área selecionada">📋</button>
@@ -378,7 +274,6 @@ select{
         <input id="pressure" type="range" min="0" max="100" value="85">
       </div>
 
-      <!-- SELETOR E PRÉ-VISUALIZADOR DE TEMAS (12 TEMAS) -->
       <div class="group">
         <span class="label">Tema:</span>
         <select id="themeSelect">
@@ -404,7 +299,6 @@ select{
 
   <div id="workspace">
     <div id="canvasViewport">
-      <!-- CONTAINER DA FOLHA ESTILO ANIMAÇÃO DISNEY COM PERFURAÇÕES -->
       <div id="canvasWrapper">
         <canvas id="paintCanvas"></canvas>
         <div class="disneyPegBar">
@@ -427,6 +321,7 @@ select{
       
       <div class="group" style="flex-direction:row; width:auto;">
         <button id="btnAddKeyframe">➕ Keyframe</button>
+        <button id="btnAddBlankKeyframe">📄 Branco</button>
         <button id="btnRemoveKeyframe">➖ Keyframe</button>
       </div>
 
@@ -452,9 +347,7 @@ select{
     <div class="timelineDivider"></div>
 
     <div class="timelineTrackContainer">
-      <div class="timelineTrack" id="timelineTrack">
-        <!-- Células geradas via JS -->
-      </div>
+      <div class="timelineTrack" id="timelineTrack"></div>
     </div>
   </div>
 
@@ -509,6 +402,10 @@ const wrapper = document.getElementById("canvasWrapper");
 const ctx = canvas.getContext("2d", {willReadFrequently:true});
 const viewport = document.getElementById("canvasViewport");
 
+// Canvas virtual secundário para armazenar somente os riscos/desenhos do frame atual
+const drawLayer = document.createElement("canvas");
+const drawCtx = drawLayer.getContext("2d", {willReadFrequently:true});
+
 let tool = "ink";
 let drawing = false;
 let last = null;
@@ -525,15 +422,13 @@ let originalData = null;
 const pointers = new Map();
 let gestureStart = null;
 
-/* VARIÁVEIS PARA SELEÇÃO / CLIPBOARD E ITEM FLUTUANTE */
-let selectionRect = null; // {x, y, w, h}
-let lastSelectionCoords = null; // {x, y, w, h}
-let clipboardData = null; // ImageData
+let selectionRect = null;
+let lastSelectionCoords = null;
+let clipboardData = null;
 let isSelecting = false;
 let selectionStart = null;
-let floatingItem = null; // { canvas: HTMLCanvasElement, x: number, y: number }
+let floatingItem = null;
 
-/* ESTRUTURA DE ANIMAÇÃO */
 let currentFrame = 1;
 let totalFrames = 24;
 let keyframes = new Map();
@@ -545,18 +440,21 @@ function smoothing(c){
   c.imageSmoothingQuality = "high";
 }
 smoothing(ctx);
+smoothing(drawCtx);
 
 function setCanvasSize(w, h, copy = true){
   w = Math.max(1, Math.floor(w)); h = Math.max(1, Math.floor(h));
   let old = null;
-  if(copy && canvas.width && canvas.height){
+  if(copy && drawLayer.width && drawLayer.height){
     old = document.createElement("canvas");
-    old.width = canvas.width; old.height = canvas.height;
-    old.getContext("2d").drawImage(canvas, 0, 0);
+    old.width = drawLayer.width; old.height = drawLayer.height;
+    old.getContext("2d").drawImage(drawLayer, 0, 0);
   }
   canvas.width = w; canvas.height = h;
-  smoothing(ctx);
-  if(old) ctx.drawImage(old, 0, 0);
+  drawLayer.width = w; drawLayer.height = h;
+  smoothing(ctx); smoothing(drawCtx);
+  if(old) drawCtx.drawImage(old, 0, 0);
+  
   originalData = snapshot();
   undoStack = []; redoStack = [];
   fitCanvas();
@@ -564,7 +462,7 @@ function setCanvasSize(w, h, copy = true){
 }
 
 function snapshot(){
-  return canvas.width && canvas.height ? ctx.getImageData(0, 0, canvas.width, canvas.height) : null;
+  return drawLayer.width && drawLayer.height ? drawCtx.getImageData(0, 0, drawLayer.width, drawLayer.height) : null;
 }
 function pushUndo(){
   const s = snapshot();
@@ -575,7 +473,8 @@ function pushUndo(){
 }
 function restore(s){
   if(!s) return;
-  ctx.putImageData(s, 0, 0);
+  drawCtx.putImageData(s, 0, 0);
+  redrawDisplayCanvas();
   updateStatus();
 }
 function undo(){
@@ -583,12 +482,14 @@ function undo(){
   const cur = snapshot();
   if(cur) redoStack.push(cur);
   restore(undoStack.pop());
+  autoSaveKeyframe();
 }
 function redo(){
   if(!redoStack.length) return;
   const cur = snapshot();
   if(cur) undoStack.push(cur);
   restore(redoStack.pop());
+  autoSaveKeyframe();
 }
 
 function showMessage(text){
@@ -612,14 +513,11 @@ function updateStatus(){
 
 function setTool(t){
   if(floatingItem) dropFloatingItem();
-
-  // Se trocar de ferramenta e não for "select", esquece o processo de recorte atual
   if(t !== "select") {
     selectionRect = null;
     isSelecting = false;
     selectionStart = null;
   }
-
   tool = t;
   document.getElementById("brush").value =
     ["eraser", "picker", "fill", "select"].includes(t) ? "ink" : t;
@@ -628,17 +526,10 @@ function setTool(t){
     if(el) el.classList.toggle("active", id === t);
   });
   
-  if (t === "picker") {
-    canvas.style.cursor = "copy";
-  } else if (t === "fill") {
-    canvas.style.cursor = "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M19 11l-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11z\"></path><path d=\"M5 2l5 5\"></path><path d=\"M2 22h20\"></path></svg>') 0 24, auto";
-  } else if (t === "eraser") {
-    canvas.style.cursor = "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21H7z\"></path><path d=\"M22 21H7\"></path><path d=\"m5 11 9 9\"></path></svg>') 0 24, auto";
-  } else if (t === "select") {
-    canvas.style.cursor = "crosshair";
-  } else {
-    canvas.style.cursor = "crosshair";
-  }
+  if (t === "picker") canvas.style.cursor = "copy";
+  else if (t === "fill") canvas.style.cursor = "crosshair";
+  else if (t === "eraser") canvas.style.cursor = "crosshair";
+  else canvas.style.cursor = "crosshair";
   updateStatus();
 }
 
@@ -670,20 +561,22 @@ function settings(){
 
 function drawSegment(a, b){
   const s = tool === "eraser" ? {size:size(), alpha:1, blur:0} : settings();
-  ctx.save();
-  ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.lineWidth = s.size;
+  drawCtx.save();
+  drawCtx.lineCap = "round"; drawCtx.lineJoin = "round"; drawCtx.lineWidth = s.size;
   if(tool === "eraser"){
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.strokeStyle = "rgba(0,0,0,1)";
+    drawCtx.globalCompositeOperation = "destination-out";
+    drawCtx.strokeStyle = "rgba(0,0,0,1)";
   }else{
-    ctx.globalCompositeOperation = "source-over";
-    ctx.strokeStyle = color();
-    ctx.globalAlpha = s.alpha;
-    if(s.blur > 0) ctx.filter = `blur(${s.blur}px)`;
+    drawCtx.globalCompositeOperation = "source-over";
+    drawCtx.strokeStyle = color();
+    drawCtx.globalAlpha = s.alpha;
+    if(s.blur > 0) drawCtx.filter = `blur(${s.blur}px)`;
   }
-  ctx.beginPath();
-  ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
-  ctx.restore();
+  drawCtx.beginPath();
+  drawCtx.moveTo(a.x, a.y); drawCtx.lineTo(b.x, b.y); drawCtx.stroke();
+  drawCtx.restore();
+
+  redrawDisplayCanvas();
 }
 
 function point(e){
@@ -705,8 +598,8 @@ function hexRGBA(hex){
 }
 
 function floodFill(sx, sy){
-  const w = canvas.width, h = canvas.height;
-  const img = ctx.getImageData(0, 0, w, h), d = img.data;
+  const w = drawLayer.width, h = drawLayer.height;
+  const img = drawCtx.getImageData(0, 0, w, h), d = img.data;
   const start = (sy * w + sx) * 4;
   const sr = d[start], sg = d[start+1], sb = d[start+2], sa = d[start+3];
   const [tr, tg, tb, ta] = hexRGBA(color());
@@ -731,13 +624,30 @@ function floodFill(sx, sy){
     if(y > 0){ let n = pos - w; if(!visited[n]){ visited[n] = 1; stack.push(n); } }
     if(y < h - 1){ let n = pos + w; if(!visited[n]){ visited[n] = 1; stack.push(n); } }
   }
-  ctx.putImageData(img, 0, 0);
+  drawCtx.putImageData(img, 0, 0);
+  redrawDisplayCanvas();
 }
 
-/* SISTEMA DE ITEM FLUTUANTE E RENDERIZAÇÃO COM SELEÇÃO PONTILHADA */
+// RENDERIZAÇÃO COMPLETA: Fundo Branco + Onion Skin (Quadro Anterior) + Desenho do Frame Atual
+function redrawDisplayCanvas(){
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-function redrawCanvasWithFloating(){
-  renderFrameBaseOnly();
+  const useOnion = document.getElementById("chkOnion").checked;
+  
+  // Renderiza a Onion Skin (Anterior/Posterior) apenas se estiver ativada
+  if(useOnion && !isPlaying) {
+    const op = (Number(document.getElementById("onionOpacity").value) || 30) / 100;
+    const prevKey = getLatestKeyframeBefore(currentFrame);
+    if(prevKey) {
+      drawOnionLayer(prevKey, op);
+    }
+  }
+
+  // Desenha a camada atual por cima
+  ctx.drawImage(drawLayer, 0, 0);
+
+  // Renderização de Itens Flutuantes ou Área Selecionada
   if(floatingItem){
     ctx.drawImage(floatingItem.canvas, floatingItem.x, floatingItem.y);
   }
@@ -753,41 +663,10 @@ function redrawCanvasWithFloating(){
   }
 }
 
-function renderFrameBaseOnly(){
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  const useOnion = document.getElementById("chkOnion").checked;
-  if(useOnion){
-    const prevCount = Math.max(0, parseInt(document.getElementById("onionPrev").value) || 0);
-    const nextCount = Math.max(0, parseInt(document.getElementById("onionNext").value) || 0);
-    const baseOpacity = (parseInt(document.getElementById("onionOpacity").value) || 30) / 100;
-
-    for(let i = prevCount; i >= 1; i--){
-      const f = currentFrame - i;
-      if(keyframes.has(f)){
-        drawOnionLayer(keyframes.get(f), baseOpacity / i);
-      }
-    }
-
-    for(let i = 1; i <= nextCount; i++){
-      const f = currentFrame + i;
-      if(keyframes.has(f)){
-        drawOnionLayer(keyframes.get(f), baseOpacity / i);
-      }
-    }
-  }
-
-  // O frame atual só exibe seu próprio desenho se possuir keyframe. Caso contrário, fica em branco.
-  if(keyframes.has(currentFrame)){
-    drawOnionLayer(keyframes.get(currentFrame), 1.0);
-  }
-}
-
 function dropFloatingItem(){
   if(!floatingItem) return;
   pushUndo();
-  ctx.drawImage(floatingItem.canvas, floatingItem.x, floatingItem.y);
+  drawCtx.drawImage(floatingItem.canvas, floatingItem.x, floatingItem.y);
   floatingItem = null;
   autoSaveKeyframe();
   updateStatus();
@@ -808,11 +687,10 @@ function startFloatingFromImageData(imgData, targetX, targetY) {
     x: Math.floor(targetX),
     y: Math.floor(targetY)
   };
-  redrawCanvasWithFloating();
+  redrawDisplayCanvas();
   showMessage("Arraste para posicionar e clique fora para fixar!");
 }
 
-/* FUNÇÕES DE COPIAR E COLAR A SELEÇÃO */
 function copySelectionArea() {
   if(floatingItem) dropFloatingItem();
 
@@ -826,10 +704,10 @@ function copySelectionArea() {
   const h = Math.min(canvas.height - y, Math.floor(selectionRect.h));
 
   if(w > 0 && h > 0) {
-    clipboardData = ctx.getImageData(x, y, w, h);
+    clipboardData = drawCtx.getImageData(x, y, w, h);
     lastSelectionCoords = {x, y, w, h};
-    selectionRect = null; // Retira o retângulo informando área de recorte
-    redrawCanvasWithFloating();
+    selectionRect = null;
+    redrawDisplayCanvas();
     updateStatus();
     showMessage("Área copiada para a memória!");
   }
@@ -841,7 +719,6 @@ function pasteSelectionArea() {
     showMessage("Área de transferência vazia!");
     return;
   }
-  // Cola na mesma área do recorte original
   const px = lastSelectionCoords ? lastSelectionCoords.x : Math.floor((canvas.width - clipboardData.width) / 2);
   const py = lastSelectionCoords ? lastSelectionCoords.y : Math.floor((canvas.height - clipboardData.height) / 2);
   startFloatingFromImageData(clipboardData, px, py);
@@ -863,10 +740,8 @@ function pointerDown(e){
   const y = Math.max(0, Math.min(canvas.height - 1, Math.floor(p.y)));
 
   if(floatingItem){
-    const fx = floatingItem.x;
-    const fy = floatingItem.y;
-    const fw = floatingItem.canvas.width;
-    const fh = floatingItem.canvas.height;
+    const fx = floatingItem.x, fy = floatingItem.y;
+    const fw = floatingItem.canvas.width, fh = floatingItem.canvas.height;
 
     if(p.x >= fx && p.x <= fx + fw && p.y >= fy && p.y <= fy + fh){
       drawing = true;
@@ -922,7 +797,7 @@ function pointerMove(e){
     floatingItem.x += dx;
     floatingItem.y += dy;
     last = p;
-    redrawCanvasWithFloating();
+    redrawDisplayCanvas();
     return;
   }
 
@@ -934,7 +809,7 @@ function pointerMove(e){
       w: Math.abs(p.x - selectionStart.x),
       h: Math.abs(p.y - selectionStart.y)
     };
-    redrawCanvasWithFloating();
+    redrawDisplayCanvas();
     return;
   }
   if(!drawing) return;
@@ -942,7 +817,7 @@ function pointerMove(e){
   updatePressure(e);
   if(e.shiftKey && start){
     const base = undoStack[undoStack.length - 1];
-    if(base) ctx.putImageData(base, 0, 0);
+    if(base) drawCtx.putImageData(base, 0, 0);
     drawSegment(start, p);
   }else if(last){
     drawSegment(last, p);
@@ -1094,10 +969,8 @@ function renderTimeline(){
 }
 
 function autoSaveKeyframe(){
-  if(keyframes.has(currentFrame)){
-    keyframes.set(currentFrame, snapshot());
-    renderTimeline();
-  }
+  keyframes.set(currentFrame, snapshot());
+  renderTimeline();
 }
 
 function setKeyframe(){
@@ -1105,19 +978,33 @@ function setKeyframe(){
   if(!keyframes.has(currentFrame)){
     const prevData = getLatestKeyframeBefore(currentFrame);
     if(prevData){
-      ctx.putImageData(prevData, 0, 0);
+      drawCtx.putImageData(prevData, 0, 0);
     } else {
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      drawCtx.clearRect(0, 0, drawLayer.width, drawLayer.height);
     }
   }
   keyframes.set(currentFrame, snapshot());
   renderTimeline();
-  showMessage(`Keyframe salvo no quadro ${currentFrame}`);
+  redrawDisplayCanvas();
+  showMessage(`Keyframe criado no quadro ${currentFrame}`);
+}
+
+function addBlankKeyframe(){
+  if(floatingItem) dropFloatingItem();
+  drawCtx.clearRect(0, 0, drawLayer.width, drawLayer.height);
+  const blankData = snapshot();
+  keyframes.set(currentFrame, blankData);
+  renderTimeline();
+  redrawDisplayCanvas();
+  showMessage(`Keyframe em branco no quadro ${currentFrame}`);
 }
 
 function removeKeyframe(){
   if(floatingItem) dropFloatingItem();
+  if(currentFrame === 1 && keyframes.size === 1) {
+    showMessage("O quadro 1 é o keyframe inicial.");
+    return;
+  }
   if(keyframes.has(currentFrame)){
     keyframes.delete(currentFrame);
     renderTimeline();
@@ -1128,15 +1015,20 @@ function removeKeyframe(){
 
 function renderFrame(){
   if(floatingItem) dropFloatingItem();
-  renderFrameBaseOnly();
+  
+  drawCtx.clearRect(0, 0, drawLayer.width, drawLayer.height);
+  if(keyframes.has(currentFrame)){
+    drawCtx.putImageData(keyframes.get(currentFrame), 0, 0);
+  }
+
+  redrawDisplayCanvas();
   undoStack = []; redoStack = [];
 }
 
 function drawOnionLayer(imgData, alpha){
   const tempCanvas = document.createElement("canvas");
   tempCanvas.width = canvas.width; tempCanvas.height = canvas.height;
-  const tCtx = tempCanvas.getContext("2d");
-  tCtx.putImageData(imgData, 0, 0);
+  tempCanvas.getContext("2d").putImageData(imgData, 0, 0);
 
   ctx.save();
   ctx.globalAlpha = alpha;
@@ -1233,7 +1125,10 @@ async function exportAnimationToZip(){
     tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
     if(frameData){
-      tempCtx.putImageData(frameData, 0, 0);
+      const tCvs = document.createElement("canvas");
+      tCvs.width = canvas.width; tCvs.height = canvas.height;
+      tCvs.getContext("2d").putImageData(frameData, 0, 0);
+      tempCtx.drawImage(tCvs, 0, 0);
     }
 
     const dataUrl = tempCanvas.toDataURL("image/png");
@@ -1354,15 +1249,16 @@ document.getElementById("btnPlay").onclick = togglePlay;
 document.getElementById("btnPrevFrame").onclick = () => gotoFrame(currentFrame - 1);
 document.getElementById("btnNextFrame").onclick = () => gotoFrame(currentFrame + 1);
 document.getElementById("btnAddKeyframe").onclick = setKeyframe;
+document.getElementById("btnAddBlankKeyframe").onclick = addBlankKeyframe;
 document.getElementById("btnRemoveKeyframe").onclick = removeKeyframe;
 
-document.getElementById("chkOnion").onchange = () => { renderFrame(); renderTimeline(); };
-document.getElementById("onionPrev").onchange = () => { renderFrame(); renderTimeline(); };
-document.getElementById("onionNext").onchange = () => { renderFrame(); renderTimeline(); };
+document.getElementById("chkOnion").onchange = () => { redrawDisplayCanvas(); renderTimeline(); };
+document.getElementById("onionPrev").onchange = () => { redrawDisplayCanvas(); renderTimeline(); };
+document.getElementById("onionNext").onchange = () => { redrawDisplayCanvas(); renderTimeline(); };
 
 document.getElementById("onionOpacity").oninput = (e) => {
   document.getElementById("onionOpacityValue").textContent = e.target.value + "%";
-  renderFrame();
+  redrawDisplayCanvas();
 };
 
 document.getElementById("totalFramesInput").onchange = (e) => {
@@ -1391,7 +1287,7 @@ document.getElementById("undo").onclick = () => { if(floatingItem) dropFloatingI
 document.getElementById("redo").onclick = () => { if(floatingItem) dropFloatingItem(); redo(); };
 document.getElementById("clear").onclick = () => {
   if(floatingItem) dropFloatingItem();
-  pushUndo(); ctx.clearRect(0, 0, canvas.width, canvas.height); autoSaveKeyframe(); updateStatus();
+  pushUndo(); drawCtx.clearRect(0, 0, drawLayer.width, drawLayer.height); autoSaveKeyframe(); updateStatus();
 };
 document.getElementById("original").onclick = () => {
   if(floatingItem) dropFloatingItem();
@@ -1416,15 +1312,12 @@ document.getElementById("newDrawing").onchange = e => {
   else if(type === "4k"){ w = 3840; h = 2160; }
 
   keyframes.clear();
+  currentFrame = 1;
   setCanvasSize(w, h, false);
-  ctx.save();
-  ctx.globalCompositeOperation = "source-over";
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, w, h);
-  ctx.restore();
+  drawCtx.clearRect(0, 0, w, h);
 
   originalData = snapshot();
-  autoSaveKeyframe();
+  keyframes.set(1, snapshot());
 
   setTool("ink");
   document.getElementById("color").value = "#0066ff";
@@ -1451,11 +1344,13 @@ document.getElementById("load").onclick = () => {
   const obj = JSON.parse(raw), img = new Image();
   img.onload = () => {
     keyframes.clear();
+    currentFrame = 1;
     setCanvasSize(obj.width, obj.height, false);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0); 
+    drawCtx.clearRect(0, 0, canvas.width, canvas.height);
+    drawCtx.drawImage(img, 0, 0); 
     originalData = snapshot(); 
-    autoSaveKeyframe();
+    keyframes.set(1, snapshot());
+    redrawDisplayCanvas();
     fitCanvas();
     showMessage("Desenho carregado");
   };
@@ -1488,15 +1383,18 @@ window.addEventListener("resize", () => {
 
 initThemeSystem();
 setCanvasSize(1600, 1000, false);
-ctx.fillStyle = "#ffffff";
-ctx.fillRect(0, 0, canvas.width, canvas.height);
+drawCtx.clearRect(0, 0, canvas.width, canvas.height);
 document.getElementById("color").value = "#0066ff";
 document.getElementById("size").value = 12;
 document.getElementById("sizeValue").textContent = "12 px";
 setTool("ink");
 originalData = snapshot();
-autoSaveKeyframe();
+
+currentFrame = 1;
+keyframes.set(1, snapshot());
+
 renderTimeline();
+redrawDisplayCanvas();
 fitCanvas();
 </script>
 </body>
