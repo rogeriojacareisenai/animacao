@@ -1,0 +1,2289 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animação e Leitura de OBJ / FBX / glTF / GLB</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --panel-bg: rgba(25, 25, 25, 0.92);
+            --text-color: #ffffff;
+            --border-color: #444;
+            --timeline-bg: #2b2b2b;
+            --timeline-controls-bg: #333;
+            --timeline-ruler-bg: #2a2a2a;
+            --timeline-track-bg: #222;
+            --frame-cell-bg: #2c2c2c;
+            --keyframe-bg: #c0c0c0;
+            --keyframe-dot: #000000;
+            --input-bg: #222;
+            --tween-line-color: #800020;
+        }
+
+        body.light-theme {
+            --bg-color: #e0e0e0;
+            --panel-bg: rgba(240, 240, 240, 0.92);
+            --text-color: #111111;
+            --border-color: #ccc;
+            --timeline-bg: #f0f0f0;
+            --timeline-controls-bg: #e0e0e0;
+            --timeline-ruler-bg: #e5e5e5;
+            --timeline-track-bg: #ffffff;
+            --frame-cell-bg: #f5f5f5;
+            --keyframe-bg: #a0a0a0;
+            --keyframe-dot: #111111;
+            --input-bg: #ffffff;
+            --tween-line-color: #800020;
+        }
+
+        body { margin: 0; overflow: hidden; font-family: sans-serif; background-color: var(--bg-color); color: var(--text-color); user-select: none; transition: background-color 0.3s; }
+        
+        button, input, select { cursor: pointer; padding: 4px; }
+        .active { background: #4CAF50; color: white; border: none; }
+        .btn-group { display: flex; gap: 4px; }
+        .btn-group button { flex: 1; font-size: 11px; }
+        .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+        .section-title { font-size: 11px; font-weight: bold; color: #4CAF50; text-transform: uppercase; }
+        .slider-row { display: flex; flex-direction: column; gap: 2px; font-size: 11px; }
+
+        /* Janelas Flutuantes Independentes */
+        .floating-panel {
+            position: absolute;
+            background: var(--panel-bg);
+            color: var(--text-color);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            z-index: 100;
+            width: 270px;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+            backdrop-filter: blur(5px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px 10px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: move;
+            border-top-left-radius: 7px;
+            border-top-right-radius: 7px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-header button.minimize-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-color);
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+            padding: 0 4px;
+        }
+        .panel-header button.minimize-btn:hover { color: #4CAF50; }
+
+        .panel-body {
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+
+        .control-block { display: flex; flex-direction: column; gap: 2px; font-size: 11px; }
+        .status-text { font-size: 10px; color: #888; }
+
+        select, input[type="file"], input[type="number"], input[type="text"] {
+            font-size: 11px;
+            background: var(--input-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            border-radius: 3px;
+            padding: 2px 4px;
+        }
+
+        /* Estilo para Menus Suspensos Internos (Details/Dropdown) */
+        .dropdown-section {
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.15);
+            padding: 4px;
+        }
+        .dropdown-section summary {
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #4CAF50;
+            padding: 2px;
+            user-select: none;
+        }
+        .dropdown-section summary:hover {
+            opacity: 0.8;
+        }
+        .dropdown-content {
+            margin-top: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding-top: 4px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        #bone-panel {
+            background: rgba(125, 125, 125, 0.1);
+            border: 1px solid var(--border-color);
+            padding: 8px;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .coord-group { display: flex; justify-content: space-between; align-items: center; gap: 4px; }
+        .coord-field { display: flex; flex-direction: column; align-items: center; flex: 1; }
+        .coord-field label { font-size: 9px; opacity: 0.8; }
+        .coord-field input { width: 100%; text-align: center; background: var(--input-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 3px; font-size: 10px; }
+
+        #flash-timeline-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100vw;
+            height: 120px;
+            background: var(--timeline-bg);
+            border-top: 2px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.3);
+        }
+        
+        .timeline-controls {
+            height: 32px;
+            background: var(--timeline-controls-bg);
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .timeline-controls button {
+            background: #444;
+            color: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 3px;
+            font-size: 11px;
+            padding: 3px 8px;
+        }
+
+        .timeline-controls button:hover { opacity: 0.8; }
+
+        .timeline-field {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            border-left: 1px solid var(--border-color);
+            padding-left: 8px;
+            margin-left: 2px;
+        }
+
+        .timeline-field input {
+            width: 38px;
+            text-align: center;
+        }
+
+        .timeline-scroll-area {
+            flex: 1;
+            overflow-x: auto;
+            overflow-y: hidden;
+            position: relative;
+            background: var(--timeline-track-bg);
+            cursor: pointer;
+        }
+
+        .timeline-ruler {
+            height: 20px;
+            background: var(--timeline-ruler-bg);
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            position: relative;
+        }
+
+        .ruler-mark {
+            width: 20px;
+            min-width: 20px;
+            height: 100%;
+            border-right: 1px solid var(--border-color);
+            font-size: 9px;
+            opacity: 0.7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            pointer-events: none;
+        }
+
+        .timeline-track {
+            height: 35px;
+            display: flex;
+            background: var(--timeline-track-bg);
+            position: relative;
+        }
+
+        .frame-cell {
+            width: 20px;
+            min-width: 20px;
+            height: 100%;
+            border-right: 1px solid var(--border-color);
+            box-sizing: border-box;
+            position: relative;
+            background: var(--frame-cell-bg);
+            pointer-events: auto;
+        }
+
+        .frame-cell.has-keyframe { background: var(--keyframe-bg); }
+
+        .frame-cell.has-keyframe::after {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: var(--keyframe-dot);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+        }
+
+        .frame-cell.is-interpolated::before {
+            content: '';
+            position: absolute;
+            top: calc(50% - 1px);
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--tween-line-color);
+            z-index: 1;
+        }
+
+        .frame-cell.active-frame {
+            border-left: 2px solid #ff3333;
+            border-right: 2px solid #ff3333;
+        }
+
+        .frame-cell.active-frame::before {
+            content: '';
+            position: absolute;
+            top: -20px;
+            left: -1px;
+            width: 100%;
+            height: 20px;
+            background: rgba(255, 51, 51, 0.4);
+            border-top: 2px solid #ff3333;
+            z-index: 10;
+        }
+
+        #context-menu {
+            display: none;
+            position: absolute;
+            background: var(--timeline-controls-bg);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+            z-index: 1000;
+            border-radius: 4px;
+            padding: 4px 0;
+            width: 160px;
+        }
+        .context-menu-item {
+            padding: 6px 12px;
+            font-size: 11px;
+            cursor: pointer;
+            color: var(--text-color);
+        }
+        .context-menu-item:hover {
+            background: #4CAF50;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Painel 1: Arquivo e Projeto -->
+<div class="floating-panel" id="panel-file" style="top: 10px; left: 10px;">
+    <div class="panel-header">
+        <span>📁 Arquivo e Projeto</span>
+        <button class="minimize-btn" onclick="toggleMinimize('panel-file')">_</button>
+    </div>
+    <div class="panel-body">
+        <div class="control-block">
+            <label>Carregar Modelo (OBJ/FBX/glTF/GLB):</label>
+            <input type="file" id="file-input" accept=".obj, .fbx, .gltf, .glb">
+            <span id="model-status" class="status-text">Nenhum modelo carregado.</span>
+        </div>
+
+        <div id="embedded-anim-container" class="control-block" style="display: none;">
+            <label>Animações (Mixamo / Embutidas):</label>
+            <select id="embedded-anim-select"></select>
+            <button id="btn-bake-anim" style="background: #e65100; color: #fff; margin-top: 4px; font-size: 11px;">📌 Converter Mixamo em Keyframes</button>
+        </div>
+
+        <!-- Menu Suspenso (Dropdown) Separado para Texturas -->
+        <details class="dropdown-section">
+            <summary>🎨 Gerenciar Texturas do Modelo</summary>
+            <div class="dropdown-content">
+                <div class="control-block">
+                    <label>Textura Base (Color / Albedo):</label>
+                    <input type="file" id="map-albedo" accept="image/png, image/jpeg">
+                </div>
+
+                <div class="control-block">
+                    <label>Mapa de Normal (Normal Map):</label>
+                    <input type="file" id="map-normal" accept="image/png, image/jpeg">
+                </div>
+
+                <div class="control-block">
+                    <label>Rugosidade (Roughness Map):</label>
+                    <input type="file" id="map-roughness" accept="image/png, image/jpeg">
+                </div>
+
+                <div class="control-block">
+                    <label>Metálico (Metalness Map):</label>
+                    <input type="file" id="map-metalness" accept="image/png, image/jpeg">
+                </div>
+
+                <div class="control-block">
+                    <label>Oclusão Ambiental (AO Map):</label>
+                    <input type="file" id="map-ao" accept="image/png, image/jpeg">
+                </div>
+
+                <span id="texture-status" class="status-text">Texturas originais preservadas.</span>
+            </div>
+        </details>
+
+        <!-- Menu Suspenso (Dropdown) Separado para Exportar/Importar JSON do Projeto -->
+        <details class="dropdown-section">
+            <summary>📦 Exportar / Importar JSON do Projeto</summary>
+            <div class="dropdown-content">
+                <div class="control-block">
+                    <label>Salvar / Carregar Animação:</label>
+                    <div class="btn-group">
+                        <button id="btn-save-anim" style="background: #0277bd; color: #fff;">💾 Exportar JSON</button>
+                        <button id="btn-load-anim" style="background: #ef6c00; color: #fff;">📂 Importar JSON</button>
+                    </div>
+                    <input type="file" id="anim-file-input" accept=".json" style="display: none;">
+                </div>
+            </div>
+        </details>
+
+        <div class="control-block" style="margin-top: 4px;">
+            <label>Sessão no Navegador:</label>
+            <div class="btn-group">
+                <button id="btn-save-session" style="background: #2e7d32; color: #fff;">💾 Salvar</button>
+                <button id="btn-load-session" style="background: #ef6c00; color: #fff;">📂 Carregar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Painel 2: Ambiente e Iluminação -->
+<div class="floating-panel" id="panel-light" style="top: 10px; left: 290px;">
+    <div class="panel-header">
+        <span>💡 Ambiente e Iluminação</span>
+        <button class="minimize-btn" onclick="toggleMinimize('panel-light')">_</button>
+    </div>
+    <div class="panel-body">
+        <div class="btn-group">
+            <button id="btn-theme-toggle">🌓 Tema Light/Dark</button>
+        </div>
+
+        <div class="control-block">
+            <label>Preset de Iluminação:</label>
+            <select id="ambient-light-select">
+                <option value="neutral">💡 Neutra / Padrão</option>
+                <option value="daylight">☀️ Luz Diurna / Dia Ensolarado</option>
+                <option value="sunset">🌅 Pôr do Sol / Golden Hour</option>
+                <option value="night">🌙 Luz Noturna / Luar</option>
+                <option value="studio">🎬 Estúdio / Softbox</option>
+                <option value="cyberpunk">🛈 Neon / Cyberpunk</option>
+                <option value="fire">🔥 Lareira / Fogo</option>
+                <option value="forest">🌲 Floresta / Místico Verde</option>
+                <option value="abyssal">🌊 Abissal / Oceano Profundo</option>
+                <option value="synthwave">🌆 Synthwave / Neon Retrô</option>
+                <option value="dramatic_sunset">🌇 Pôr do Sol Dramático</option>
+            </select>
+        </div>
+
+        <div class="slider-row" style="margin-top: 4px;">
+            <label>Força da Luz Principal:</label>
+            <input type="range" id="light-intensity-slider" min="0.0" max="4.0" step="0.1" value="1.5">
+        </div>
+
+        <div class="slider-row">
+            <label>Distância da Luz (Raio X/Z):</label>
+            <input type="range" id="light-distance-slider" min="50" max="600" step="10" value="180">
+        </div>
+
+        <div class="slider-row">
+            <label>Altura da Luz (Y):</label>
+            <input type="range" id="light-height-slider" min="-50" max="500" step="10" value="200">
+        </div>
+
+        <button id="btn-move-light" style="background: #1976d2; color: #fff; font-size: 11px; margin-top: 4px;">💡 Mover Luz com o Mouse (Gizmo)</button>
+    </div>
+</div>
+
+<!-- Painel 3: Visualização e Renderização -->
+<div class="floating-panel" id="panel-render" style="top: 10px; left: 570px;">
+    <div class="panel-header">
+        <span>👁️ Visualização e Renderização</span>
+        <button class="minimize-btn" onclick="toggleMinimize('panel-render')">_</button>
+    </div>
+    <div class="panel-body">
+        <div class="control-block">
+            <label>Modo de Renderização (Estilo/Material):</label>
+            <select id="render-mode-select">
+                <option value="normal">Padrão (Texturado / Original)</option>
+                <option value="metallic">Metálico Refletivo</option>
+                <option value="toon">Cartoon / Toon Shader</option>
+                <option value="wireframe">Wireframe (Linhas de Malha)</option>
+                <option value="glass">Glass / Vidro Transparente</option>
+                <option value="matcap">Matcap (Escultura / Argila Cinza)</option>
+                <option value="normals">Normais de Superfície (RGB)</option>
+                <option value="xray">Raio-X / X-Ray</option>
+                <option value="clay">Argila Vermelha (Terracota)</option>
+                <option value="gold">Ouro Polido</option>
+                <option value="hologram">Holograma Tron</option>
+                <option value="neon_glow">Neon Glow Cyber</option>
+                <option value="depth">Mapa de Profundidade (Depth)</option>
+                <option value="bounding_box">Caixa Delimitadora (Bounding Box)</option>
+                <option value="unlit">Unlit (Sem Sombra / Flat)</option>
+            </select>
+        </div>
+
+        <div class="checkbox-row">
+            <input type="checkbox" id="chk-ground" checked>
+            <label for="chk-ground">Exibir Chão Infinito (Piso/Grade)</label>
+        </div>
+
+        <div class="checkbox-row">
+            <input type="checkbox" id="chk-skeleton" checked>
+            <label for="chk-skeleton">Exibir Esqueleto</label>
+        </div>
+
+        <div class="checkbox-row">
+            <input type="checkbox" id="chk-pickers" checked>
+            <label for="chk-pickers">Exibir Juntas Interativas</label>
+        </div>
+
+        <div class="slider-row">
+            <label>Tamanho das Juntas:</label>
+            <input type="range" id="picker-radius-slider" min="0.5" max="6.0" step="0.2" value="1.8">
+        </div>
+
+        <div class="slider-row">
+            <label>Opacidade da Malha:</label>
+            <input type="range" id="opacity-slider" min="0.0" max="1.0" step="0.05" value="1.0">
+        </div>
+    </div>
+</div>
+
+<!-- Painel 4: Ferramentas de Gizmo -->
+<div class="floating-panel" id="panel-gizmo" style="top: 320px; left: 10px;">
+    <div class="panel-header">
+        <span>🛠️ Ferramentas de Gizmo</span>
+        <button class="minimize-btn" onclick="toggleMinimize('panel-gizmo')">_</button>
+    </div>
+    <div class="panel-body">
+        <label style="font-size: 11px;">Modo de Gizmo:</label>
+        <div class="btn-group">
+            <button id="btn-mode-translate" class="active">Mover</button>
+            <button id="btn-mode-rotate">Rotacionar</button>
+            <button id="btn-mode-scale">Escalonar</button>
+        </div>
+
+        <button id="btn-select-root" style="background: #1976d2; color: #fff; font-size: 11px; margin-top: 4px;">🦴 Selecionar Raiz (Todo o Esqueleto)</button>
+        <span style="font-size: 10px; opacity: 0.8; margin-top: 2px;">Dica: Use <b>Shift + Clique</b> para selecionar múltiplos bones.</span>
+    </div>
+</div>
+
+<!-- Painel 5: Osso / Objeto Selecionado -->
+<div class="floating-panel" id="bone-details" style="top: 320px; left: 290px; display: none;">
+    <div class="panel-header">
+        <span>🦴 Osso Selecionado</span>
+        <button class="minimize-btn" onclick="toggleMinimize('bone-details')">_</button>
+    </div>
+    <div class="panel-body">
+        <div id="bone-panel">
+            <span class="section-title" id="selected-bone-name">Osso Selecionado</span>
+            
+            <div style="font-size: 10px; font-weight: bold; margin-top: 4px;">Posição:</div>
+            <div class="coord-group">
+                <div class="coord-field"><label>X</label><input type="number" id="pos-x" step="0.1"></div>
+                <div class="coord-field"><label>Y</label><input type="number" id="pos-y" step="0.1"></div>
+                <div class="coord-field"><label>Z</label><input type="number" id="pos-z" step="0.1"></div>
+            </div>
+
+            <div style="font-size: 10px; font-weight: bold; margin-top: 4px;">Rotação (°):</div>
+            <div class="coord-group">
+                <div class="coord-field"><label>X</label><input type="number" id="rot-x" step="1"></div>
+                <div class="coord-field"><label>Y</label><input type="number" id="rot-y" step="1"></div>
+                <div class="coord-field"><label>Z</label><input type="number" id="rot-z" step="1"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Timeline na parte inferior -->
+<div id="flash-timeline-container">
+    <div class="timeline-controls">
+        <button id="btn-play">► Play</button>
+        <button id="btn-add-keyframe" style="background: #2e7d32;">F6 - Keyframe</button>
+        <button id="btn-clear-keyframe" style="background: #c62828;">F7 - Limpar</button>
+        <button id="btn-insert-space" style="background: #0277bd;" title="Inserir espaço de 1 frame e interpolar">➕ Inserir Frame</button>
+        <button id="btn-undo" title="Desfazer (Ctrl+Z)">↩ Undo</button>
+        <button id="btn-center-scene" style="background: #6a1b9a;" title="Centralizar Visualização da Cena">🎯 Centralizar Cena</button>
+        
+        <div class="timeline-field">
+            <label for="fps-input">FPS:</label>
+            <input type="number" id="fps-input" value="30" min="1" max="60">
+        </div>
+
+        <div class="timeline-field">
+            <label for="total-frames-input">Fim:</label>
+            <input type="number" id="total-frames-input" value="60" min="2" max="1000">
+        </div>
+
+        <span style="font-size: 11px; margin-left: auto;">
+            Frame: <strong id="current-frame-text" style="color: #4CAF50;">1</strong> / <span id="total-frames-text">60</span>
+        </span>
+    </div>
+
+    <div class="timeline-scroll-area" id="timeline-scroll">
+        <div class="timeline-ruler" id="timeline-ruler"></div>
+        <div class="timeline-track" id="timeline-track"></div>
+    </div>
+</div>
+
+<div id="context-menu">
+    <div class="context-menu-item" id="ctx-copy">📋 Copiar Keyframe</div>
+    <div class="context-menu-item" id="ctx-paste">📋 Colar Keyframe</div>
+    <div class="context-menu-item" id="ctx-remove">🗑️ Remover Frame</div>
+    <div class="context-menu-item" id="ctx-clear">❌ Limpar Keyframe</div>
+    <div class="context-menu-item" id="ctx-save-transparent" style="border-top: 1px solid var(--border-color); color: #4CAF50;">📷 Salvar Fundo Transparente</div>
+    <div class="context-menu-item" id="ctx-save-current" style="color: #4CAF50;">📷 Salvar Atual</div>
+</div>
+
+<script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+</script>
+
+<script>
+const SETTINGS_KEY = 'model_animator_settings';
+
+function savePanelsState() {
+    const panelsData = {};
+    document.querySelectorAll('.floating-panel').forEach(panel => {
+        const body = panel.querySelector('.panel-body');
+        panelsData[panel.id] = {
+            left: panel.style.left,
+            top: panel.style.top,
+            minimized: body.style.display === 'none'
+        };
+    });
+    
+    let settings = {};
+    try {
+        settings = JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {};
+    } catch(e) {}
+    
+    settings.panels = panelsData;
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+function loadPanelsState() {
+    try {
+        const saved = localStorage.getItem(SETTINGS_KEY);
+        if (!saved) return;
+        const settings = JSON.parse(saved);
+        if (!settings.panels) return;
+
+        for (const [panelId, data] of Object.entries(settings.panels)) {
+            const panel = document.getElementById(panelId);
+            if (panel) {
+                if (data.left) panel.style.left = data.left;
+                if (data.top) panel.style.top = data.top;
+                if (data.minimized !== undefined) {
+                    const body = panel.querySelector('.panel-body');
+                    if (panelId === 'bone-details' && panel.style.display === 'none') {
+                        // Respeita estado oculto por padrão
+                    } else {
+                        body.style.display = data.minimized ? 'none' : 'flex';
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        console.warn('Erro ao carregar estado dos painéis:', e);
+    }
+}
+
+function toggleMinimize(panelId) {
+    const panel = document.getElementById(panelId);
+    const body = panel.querySelector('.panel-body');
+    if (body.style.display === 'none') {
+        body.style.display = 'flex';
+    } else {
+        body.style.display = 'none';
+    }
+    savePanelsState();
+}
+
+let activePanel = null;
+let initialX = 0, initialY = 0;
+
+document.addEventListener('mousedown', (e) => {
+    const header = e.target.closest('.panel-header');
+    if (!header) return;
+    activePanel = header.closest('.floating-panel');
+    if (!activePanel) return;
+
+    document.querySelectorAll('.floating-panel').forEach(p => p.style.zIndex = '100');
+    activePanel.style.zIndex = '101';
+
+    initialX = e.clientX - activePanel.offsetLeft;
+    initialY = e.clientY - activePanel.offsetTop;
+});
+
+document.addEventListener('mousemove', (e) => {
+    if (!activePanel) return;
+    e.preventDefault();
+    
+    let newX = e.clientX - initialX;
+    let newY = e.clientY - initialY;
+
+    newX = Math.max(0, Math.min(window.innerWidth - activePanel.offsetWidth, newX));
+    newY = Math.max(0, Math.min(window.innerHeight - 130 - activePanel.offsetHeight, newY));
+
+    activePanel.style.left = `${newX}px`;
+    activePanel.style.top = `${newY}px`;
+});
+
+document.addEventListener('mouseup', () => {
+    if (activePanel) {
+        savePanelsState();
+        activePanel = null;
+    }
+});
+
+window.addEventListener('DOMContentLoaded', loadPanelsState);
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { TransformControls } from 'three/addons/controls/TransformControls.js';
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1a1a);
+
+const groundGroup = new THREE.Group();
+const gridHelper = new THREE.GridHelper(2000, 200, 0x777777, 0x555555);
+gridHelper.position.y = -0.01;
+groundGroup.add(gridHelper);
+
+const planeGeo = new THREE.PlaneGeometry(10000, 10000);
+const planeMat = new THREE.MeshStandardMaterial({ 
+    color: 0x222222, 
+    roughness: 0.8, 
+    metalness: 0.2,
+    side: THREE.DoubleSide
+});
+const groundMesh = new THREE.Mesh(planeGeo, planeMat);
+groundMesh.rotation.x = -Math.PI / 2;
+groundMesh.receiveShadow = true;
+groundGroup.add(groundMesh);
+
+scene.add(groundGroup);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / (window.innerHeight - 120), 0.1, 5000);
+camera.position.set(0, 100, 250);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, alpha: true });
+renderer.setSize(window.innerWidth, window.innerHeight - 120);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+const orbit = new OrbitControls(camera, renderer.domElement);
+orbit.target.set(0, 90, 0);
+
+const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+scene.add(ambientLight);
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+dirLight.position.set(100, 200, 150);
+scene.add(dirLight);
+
+const extraLightsGroup = new THREE.Group();
+scene.add(extraLightsGroup);
+
+function applyLightingPreset(preset) {
+    while (extraLightsGroup.children.length > 0) {
+        const obj = extraLightsGroup.children[0];
+        extraLightsGroup.remove(obj);
+        if (obj.dispose) obj.dispose();
+    }
+
+    switch (preset) {
+        case 'daylight':
+            ambientLight.color.setHex(0xcae5ff);
+            ambientLight.intensity = 0.9;
+            dirLight.color.setHex(0xfffaed);
+            dirLight.intensity = 2.0;
+            dirLight.position.set(120, 250, 100);
+            break;
+
+        case 'sunset':
+            ambientLight.color.setHex(0xffaa77);
+            ambientLight.intensity = 0.7;
+            dirLight.color.setHex(0xff5500);
+            dirLight.intensity = 2.5;
+            dirLight.position.set(-200, 40, -100);
+            break;
+
+        case 'night':
+            ambientLight.color.setHex(0x112244);
+            ambientLight.intensity = 0.4;
+            dirLight.color.setHex(0x6688ff);
+            dirLight.intensity = 0.8;
+            dirLight.position.set(-80, 180, -80);
+            break;
+
+        case 'studio':
+            ambientLight.color.setHex(0xffffff);
+            ambientLight.intensity = 0.6;
+            dirLight.color.setHex(0xffffff);
+            dirLight.intensity = 1.2;
+            dirLight.position.set(150, 150, 150);
+
+            const fillLight = new THREE.DirectionalLight(0xddeeff, 0.6);
+            fillLight.position.set(-150, 100, 150);
+            extraLightsGroup.add(fillLight);
+
+            const rimLight = new THREE.DirectionalLight(0xffffff, 1.0);
+            rimLight.position.set(0, 150, -200);
+            extraLightsGroup.add(rimLight);
+            break;
+
+        case 'cyberpunk':
+            ambientLight.color.setHex(0x220033);
+            ambientLight.intensity = 0.5;
+
+            dirLight.color.setHex(0x00ffff);
+            dirLight.intensity = 1.8;
+            dirLight.position.set(-150, 100, 100);
+
+            const magentaPoint = new THREE.PointLight(0xff007f, 3.0, 500);
+            magentaPoint.position.set(150, 80, -50);
+            extraLightsGroup.add(magentaPoint);
+
+            const bluePoint = new THREE.PointLight(0x0055ff, 2.0, 400);
+            bluePoint.position.set(0, -50, 150);
+            extraLightsGroup.add(bluePoint);
+            break;
+
+        case 'fire':
+            ambientLight.color.setHex(0x330d00);
+            ambientLight.intensity = 0.5;
+            dirLight.color.setHex(0xff4500);
+            dirLight.intensity = 2.2;
+            dirLight.position.set(0, 20, 80);
+
+            const firePoint = new THREE.PointLight(0xffaa00, 4.0, 300);
+            firePoint.position.set(0, 10, 50);
+            extraLightsGroup.add(firePoint);
+            break;
+
+        case 'forest':
+            ambientLight.color.setHex(0x0a220a);
+            ambientLight.intensity = 0.8;
+            dirLight.color.setHex(0x88ff88);
+            dirLight.intensity = 1.6;
+            dirLight.position.set(80, 200, 50);
+
+            const warmGreen = new THREE.DirectionalLight(0xddffaa, 0.5);
+            warmGreen.position.set(-100, 50, -100);
+            extraLightsGroup.add(warmGreen);
+            break;
+
+        case 'abyssal':
+            ambientLight.color.setHex(0x000a1a);
+            ambientLight.intensity = 0.3;
+            dirLight.color.setHex(0x0088cc);
+            dirLight.intensity = 1.2;
+            dirLight.position.set(0, 250, 0);
+
+            const cyanGlow = new THREE.PointLight(0x00ffaa, 2.0, 400);
+            cyanGlow.position.set(0, -100, 100);
+            extraLightsGroup.add(cyanGlow);
+            break;
+
+        case 'synthwave':
+            ambientLight.color.setHex(0x20002b);
+            ambientLight.intensity = 0.6;
+            dirLight.color.setHex(0xff007f);
+            dirLight.intensity = 2.5;
+            dirLight.position.set(-100, 100, -100);
+
+            const yellowSun = new THREE.DirectionalLight(0xffaa00, 1.5);
+            yellowSun.position.set(0, 20, -200);
+            extraLightsGroup.add(yellowSun);
+            break;
+
+        case 'dramatic_sunset':
+            ambientLight.color.setHex(0x401000);
+            ambientLight.intensity = 0.6;
+            dirLight.color.setHex(0xff3300);
+            dirLight.intensity = 3.0;
+            dirLight.position.set(-300, 30, -50);
+
+            const purpleSky = new THREE.DirectionalLight(0x6600cc, 0.8);
+            purpleSky.position.set(100, 150, 100);
+            extraLightsGroup.add(purpleSky);
+            break;
+
+        case 'neutral':
+        default:
+            ambientLight.color.setHex(0xffffff);
+            ambientLight.intensity = 1.2;
+            dirLight.color.setHex(0xffffff);
+            dirLight.intensity = 1.5;
+            dirLight.position.set(100, 200, 150);
+            break;
+    }
+
+    document.getElementById('light-intensity-slider').value = dirLight.intensity;
+}
+
+document.getElementById('ambient-light-select').addEventListener('change', (e) => {
+    applyLightingPreset(e.target.value);
+    saveEnvironmentSettings();
+});
+
+document.getElementById('light-intensity-slider').addEventListener('input', (e) => {
+    dirLight.intensity = parseFloat(e.target.value);
+    saveEnvironmentSettings();
+});
+
+document.getElementById('light-distance-slider').addEventListener('input', (e) => {
+    const dist = parseFloat(e.target.value);
+    const currentHeight = dirLight.position.y;
+    const angle = Math.atan2(dirLight.position.z, dirLight.position.x);
+    dirLight.position.x = Math.cos(angle) * dist;
+    dirLight.position.z = Math.sin(angle) * dist;
+    dirLight.position.y = currentHeight;
+    saveEnvironmentSettings();
+});
+
+document.getElementById('light-height-slider').addEventListener('input', (e) => {
+    dirLight.position.y = parseFloat(e.target.value);
+    saveEnvironmentSettings();
+});
+
+const SETTINGS_KEY = 'model_animator_settings';
+const SESSION_PROJECT_KEY = 'model_animator_project_session';
+
+function saveEnvironmentSettings() {
+    let settings = {};
+    try {
+        settings = JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {};
+    } catch(e) {}
+
+    settings.theme = document.body.classList.contains('light-theme') ? 'light' : 'dark';
+    settings.showSkeleton = document.getElementById('chk-skeleton').checked;
+    settings.showPickers = document.getElementById('chk-pickers').checked;
+    settings.showGround = document.getElementById('chk-ground').checked;
+    settings.pickerRadius = document.getElementById('picker-radius-slider').value;
+    settings.meshOpacity = document.getElementById('opacity-slider').value;
+    settings.ambientPreset = document.getElementById('ambient-light-select').value;
+    settings.renderMode = document.getElementById('render-mode-select').value;
+    settings.lightIntensity = dirLight.intensity;
+    settings.lightPosition = [dirLight.position.x, dirLight.position.y, dirLight.position.z];
+    settings.cameraPos = [camera.position.x, camera.position.y, camera.position.z];
+    settings.cameraTarget = [orbit.target.x, orbit.target.y, orbit.target.z];
+
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+function loadEnvironmentSettings() {
+    const saved = localStorage.getItem(SETTINGS_KEY);
+    if (!saved) return;
+
+    try {
+        const settings = JSON.parse(saved);
+        if (settings.theme === 'light') {
+            document.body.classList.add('light-theme');
+            scene.background.setHex(0xe0e0e0);
+            planeMat.color.setHex(0xcccccc);
+        }
+        if (settings.showSkeleton !== undefined) document.getElementById('chk-skeleton').checked = settings.showSkeleton;
+        if (settings.showPickers !== undefined) document.getElementById('chk-pickers').checked = settings.showPickers;
+        if (settings.showGround !== undefined) {
+            document.getElementById('chk-ground').checked = settings.showGround;
+            groundGroup.visible = settings.showGround;
+        }
+        if (settings.pickerRadius !== undefined) document.getElementById('picker-radius-slider').value = settings.pickerRadius;
+        if (settings.meshOpacity !== undefined) document.getElementById('opacity-slider').value = settings.meshOpacity;
+
+        if (settings.ambientPreset !== undefined) {
+            document.getElementById('ambient-light-select').value = settings.ambientPreset;
+            applyLightingPreset(settings.ambientPreset);
+        }
+
+        if (settings.lightIntensity !== undefined) {
+            dirLight.intensity = settings.lightIntensity;
+            document.getElementById('light-intensity-slider').value = settings.lightIntensity;
+        }
+
+        if (settings.lightPosition) {
+            dirLight.position.set(...settings.lightPosition);
+        }
+
+        if (settings.renderMode !== undefined) {
+            document.getElementById('render-mode-select').value = settings.renderMode;
+            applyRenderMode(settings.renderMode);
+        }
+
+        if (settings.cameraPos) camera.position.set(...settings.cameraPos);
+        if (settings.cameraTarget) {
+            orbit.target.set(...settings.cameraTarget);
+            orbit.update();
+        }
+    } catch (e) {
+        console.warn('Erro ao carregar configurações:', e);
+    }
+}
+
+orbit.addEventListener('end', saveEnvironmentSettings);
+
+const undoStack = [];
+const redoStack = [];
+const MAX_HISTORY = 30;
+
+function pushState() {
+    const snapshot = new Map();
+    keyframesMap.forEach((pose, frameIdx) => {
+        const poseCopy = pose.map(p => ({
+            position: p.position.clone(),
+            quaternion: p.quaternion.clone(),
+            scale: p.scale.clone()
+        }));
+        snapshot.set(frameIdx, poseCopy);
+    });
+    undoStack.push({ snapshot, totalFrames });
+    if (undoStack.length > MAX_HISTORY) undoStack.shift();
+    redoStack.length = 0;
+}
+
+function undo() {
+    if (undoStack.length === 0) return;
+    const currentSnapshot = new Map();
+    keyframesMap.forEach((pose, frameIdx) => {
+        const poseCopy = pose.map(p => ({
+            position: p.position.clone(),
+            quaternion: p.quaternion.clone(),
+            scale: p.scale.clone()
+        }));
+        currentSnapshot.set(frameIdx, poseCopy);
+    });
+    redoStack.push({ snapshot: currentSnapshot, totalFrames });
+
+    const prevStateObj = undoStack.pop();
+    totalFrames = prevStateObj.totalFrames;
+    document.getElementById('total-frames-input').value = totalFrames;
+    restoreState(prevStateObj.snapshot);
+}
+
+function redo() {
+    if (redoStack.length === 0) return;
+    const currentSnapshot = new Map();
+    keyframesMap.forEach((pose, frameIdx) => {
+        const poseCopy = pose.map(p => ({
+            position: p.position.clone(),
+            quaternion: p.quaternion.clone(),
+            scale: p.scale.clone()
+        }));
+        currentSnapshot.set(frameIdx, poseCopy);
+    });
+    undoStack.push({ snapshot: currentSnapshot, totalFrames });
+
+    const nextStateObj = redoStack.pop();
+    totalFrames = nextStateObj.totalFrames;
+    document.getElementById('total-frames-input').value = nextStateObj.totalFrames;
+    restoreState(nextStateObj.snapshot);
+}
+
+function restoreState(snapshotMap) {
+    keyframesMap.clear();
+    snapshotMap.forEach((pose, frameIdx) => {
+        const poseCopy = pose.map(p => ({
+            position: p.position.clone(),
+            quaternion: p.quaternion.clone(),
+            scale: p.scale.clone()
+        }));
+        keyframesMap.set(frameIdx, poseCopy);
+    });
+    buildFlashTimelineUI();
+    applyPoseForFrame(currentFrame);
+}
+
+let copiedKeyframeData = null;
+
+let selectedBones = [];
+const pivotObject = new THREE.Object3D();
+scene.add(pivotObject);
+
+const initialStates = new Map();
+let prevPivotPosition = new THREE.Vector3();
+let prevPivotQuaternion = new THREE.Quaternion();
+let prevPivotScale = new THREE.Vector3();
+
+const transformControls = new TransformControls(camera, renderer.domElement);
+transformControls.setMode('translate');
+
+transformControls.addEventListener('dragging-changed', (event) => {
+    orbit.enabled = !event.value;
+    if (event.value) {
+        if (transformControls.object === dirLight) return; 
+        pushState();
+        prevPivotPosition.copy(pivotObject.position);
+        prevPivotQuaternion.copy(pivotObject.quaternion);
+        prevPivotScale.copy(pivotObject.scale);
+
+        initialStates.clear();
+        selectedBones.forEach(bone => {
+            initialStates.set(bone, {
+                position: bone.position.clone(),
+                quaternion: bone.quaternion.clone(),
+                scale: bone.scale.clone(),
+                worldPosition: bone.getWorldPosition(new THREE.Vector3()),
+                worldQuaternion: bone.getWorldQuaternion(new THREE.Quaternion()),
+                worldScale: bone.getWorldScale(new THREE.Vector3())
+            });
+        });
+    }
+});
+
+transformControls.addEventListener('change', () => {
+    if (transformControls.object === dirLight) {
+        saveEnvironmentSettings();
+        return;
+    }
+
+    if (transformControls.dragging && selectedBones.length > 0) {
+        const mode = transformControls.getMode();
+
+        if (mode === 'translate') {
+            const deltaPos = pivotObject.position.clone().sub(prevPivotPosition);
+            selectedBones.forEach(bone => {
+                if (bone.parent) {
+                    const localDelta = deltaPos.clone();
+                    bone.parent.worldToLocal(localDelta.add(bone.parent.getWorldPosition(new THREE.Vector3())));
+                    localDelta.sub(bone.parent.position);
+                }
+                bone.position.add(deltaPos);
+            });
+            prevPivotPosition.copy(pivotObject.position);
+        } else if (mode === 'rotate') {
+            const deltaRot = pivotObject.quaternion.clone().multiply(prevPivotQuaternion.clone().invert());
+            selectedBones.forEach(bone => {
+                const init = initialStates.get(bone);
+                if (init) {
+                    const worldPos = init.worldPosition.clone().sub(pivotObject.position);
+                    worldPos.applyQuaternion(deltaRot);
+                    worldPos.add(pivotObject.position);
+
+                    if (bone.parent) {
+                        bone.parent.worldToLocal(worldPos);
+                    }
+                    bone.position.copy(worldPos);
+
+                    const targetWorldRot = deltaRot.clone().multiply(init.worldQuaternion);
+                    if (bone.parent) {
+                        const parentWorldRot = bone.parent.getWorldQuaternion(new THREE.Quaternion());
+                        bone.quaternion.copy(parentWorldRot.invert().multiply(targetWorldRot));
+                    } else {
+                        bone.quaternion.copy(targetWorldRot);
+                    }
+                }
+            });
+        } else if (mode === 'scale') {
+            const scaleFactor = new THREE.Vector3(
+                pivotObject.scale.x / prevPivotScale.x,
+                pivotObject.scale.y / prevPivotScale.y,
+                pivotObject.scale.z / prevPivotScale.z
+            );
+
+            selectedBones.forEach(bone => {
+                const init = initialStates.get(bone);
+                if (init) {
+                    const localPos = init.worldPosition.clone().sub(pivotObject.position);
+                    localPos.multiply(scaleFactor);
+                    const newWorldPos = pivotObject.position.clone().add(localPos);
+
+                    if (bone.parent) {
+                        bone.parent.worldToLocal(newWorldPos);
+                    }
+                    bone.position.copy(newWorldPos);
+                    bone.scale.copy(init.scale.clone().multiply(scaleFactor));
+                }
+            });
+        }
+
+        updateUIInputs();
+        saveKeyframe(currentFrame, false, false);
+    }
+});
+scene.add(transformControls);
+
+let isMovingLight = false;
+document.getElementById('btn-move-light').addEventListener('click', () => {
+    isMovingLight = !isMovingLight;
+    const btn = document.getElementById('btn-move-light');
+    if (isMovingLight) {
+        transformControls.attach(dirLight);
+        btn.innerText = '✅ Parar de Mover Luz';
+        btn.style.background = '#2e7d32';
+    } else {
+        transformControls.detach();
+        btn.innerText = '💡 Mover Luz com o Mouse (Gizmo)';
+        btn.style.background = '#1976d2';
+    }
+});
+
+let characterGroup = null;
+let skeletonHelper = null;
+let bonePickers = [];
+let boneMap = new Map();
+let allBones = [];
+let originalMaterials = new Map();
+
+const loadedTextures = {
+    map: null,          
+    normalMap: null,    
+    roughnessMap: null, 
+    metalnessMap: null, 
+    aoMap: null         
+};
+
+const textureLoader = new THREE.TextureLoader();
+
+function handleTextureUpload(inputId, mapType, isSRGB = false) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+
+    input.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (e) => {
+            textureLoader.load(e.target.result, (texture) => {
+                texture.colorSpace = isSRGB ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+                loadedTextures[mapType] = texture;
+                applyTexturesToModel();
+                document.getElementById('texture-status').innerText = `Mapa ${mapType} alterado com sucesso!`;
+            });
+        };
+    });
+}
+
+handleTextureUpload('map-albedo', 'map', true);
+handleTextureUpload('map-normal', 'normalMap', false);
+handleTextureUpload('map-roughness', 'roughnessMap', false);
+handleTextureUpload('map-metalness', 'metalnessMap', false);
+handleTextureUpload('map-ao', 'aoMap', false);
+
+function applyTexturesToModel() {
+    if (!characterGroup) return;
+
+    characterGroup.traverse((child) => {
+        if (child.isMesh) {
+            const materials = Array.isArray(child.material) ? child.material : [child.material];
+
+            materials.forEach(mat => {
+                if (loadedTextures.map) mat.map = loadedTextures.map;
+                if (loadedTextures.normalMap) mat.normalMap = loadedTextures.normalMap;
+                if (loadedTextures.roughnessMap) mat.roughnessMap = loadedTextures.roughnessMap;
+                if (loadedTextures.metalnessMap) mat.metalnessMap = loadedTextures.metalnessMap;
+                if (loadedTextures.aoMap) mat.aoMap = loadedTextures.aoMap;
+
+                mat.needsUpdate = true;
+            });
+        }
+    });
+}
+
+let mixer = null;
+let animations = [];
+let activeAction = null;
+const clock = new THREE.Clock();
+
+let loadedFileName = "";
+let totalFrames = 60;
+let currentFrame = 0;
+let keyframesMap = new Map();
+let isPlaying = false;
+let playInterval = null;
+let targetFPS = 30;
+
+let pngExportCounter = 1;
+
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+document.getElementById('file-input').addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    loadedFileName = file.name;
+    const ext = loadedFileName.split('.').pop().toLowerCase();
+    document.getElementById('model-status').innerText = `Modelo: ${loadedFileName}`;
+
+    const reader = new FileReader();
+
+    if (ext === 'obj') {
+        reader.readAsText(file);
+        reader.onload = (e) => {
+            loadOBJFromText(e.target.result);
+        };
+    } else {
+        reader.readAsArrayBuffer(file);
+        reader.onload = (e) => {
+            if (ext === 'fbx') {
+                loadFBXFromArrayBuffer(e.target.result);
+            } else if (ext === 'gltf' || ext === 'glb') {
+                loadGLTFFromArrayBuffer(e.target.result);
+            }
+        };
+    }
+});
+
+function processLoadedModel(model, modelAnimations = []) {
+    clearCurrentModel();
+
+    characterGroup = model;
+    scene.add(characterGroup);
+    characterGroup.scale.setScalar(1);
+
+    allBones.push(characterGroup);
+
+    skeletonHelper = new THREE.SkeletonHelper(characterGroup);
+    skeletonHelper.material.linewidth = 2;
+    scene.add(skeletonHelper);
+
+    const radius = parseFloat(document.getElementById('picker-radius-slider').value);
+
+    characterGroup.traverse((child) => {
+        if (child.isMesh) {
+            originalMaterials.set(child, child.material);
+            child.material.side = THREE.DoubleSide;
+            child.material.transparent = true;
+            child.material.opacity = parseFloat(document.getElementById('opacity-slider').value);
+
+            if (child.material.map) {
+                child.material.map.colorSpace = THREE.SRGBColorSpace;
+                child.material.needsUpdate = true;
+            }
+        }
+
+        if (child.isBone || child.isObject3D) {
+            if (child.isBone) child.matrixAutoUpdate = true;
+            if (child.isBone && !allBones.includes(child)) {
+                allBones.push(child);
+
+                const pickerGeo = new THREE.SphereGeometry(radius, 16, 16);
+                const pickerMat = new THREE.MeshBasicMaterial({ color: 0xffcc00, depthTest: false, transparent: true, opacity: 0.8 });
+                const picker = new THREE.Mesh(pickerGeo, pickerMat);
+                picker.renderOrder = 999;
+                
+                scene.add(picker);
+                bonePickers.push(picker);
+                boneMap.set(picker, child);
+            }
+        }
+    });
+
+    applyTexturesToModel();
+
+    animations = modelAnimations;
+    const animSelect = document.getElementById('embedded-anim-select');
+    const animContainer = document.getElementById('embedded-anim-container');
+    animSelect.innerHTML = '<option value="">Nenhuma (Apenas Timeline Manual)</option>';
+
+    if (animations.length > 0) {
+        mixer = new THREE.AnimationMixer(characterGroup);
+        animations.forEach((clip, index) => {
+            const opt = document.createElement('option');
+            opt.value = index;
+            opt.innerText = clip.name || `Animação Mixamo ${index + 1}`;
+            animSelect.appendChild(opt);
+        });
+        animContainer.style.display = 'flex';
+    } else {
+        animContainer.style.display = 'none';
+    }
+
+    applyRenderMode(document.getElementById('render-mode-select').value);
+
+    saveKeyframe(0, true, false);
+    buildFlashTimelineUI();
+    selectFrame(0);
+    selectBone(characterGroup, false);
+    updateVisibility();
+}
+
+function applyRenderMode(mode) {
+    if (!characterGroup) return;
+
+    const opacity = parseFloat(document.getElementById('opacity-slider').value);
+
+    characterGroup.traverse((child) => {
+        if (!child.isMesh) return;
+
+        const origMat = originalMaterials.get(child) || child.material;
+
+        switch (mode) {
+            case 'metallic':
+                child.material = new THREE.MeshStandardMaterial({
+                    color: 0xaaaaaa,
+                    metalness: 0.95,
+                    roughness: 0.1,
+                    transparent: opacity < 1.0,
+                    opacity: opacity
+                });
+                break;
+
+            case 'toon':
+                child.material = new THREE.MeshToonMaterial({
+                    color: 0x33aafe,
+                    transparent: opacity < 1.0,
+                    opacity: opacity
+                });
+                break;
+
+            case 'wireframe':
+                child.material = new THREE.MeshBasicMaterial({
+                    color: 0x00ff88,
+                    wireframe: true,
+                    transparent: opacity < 1.0,
+                    opacity: opacity
+                });
+                break;
+
+            case 'glass':
+                child.material = new THREE.MeshPhysicalMaterial({
+                    color: 0xffffff,
+                    transmission: 0.9,
+                    opacity: 1.0,
+                    transparent: true,
+                    roughness: 0.05,
+                    ior: 1.5
+                });
+                break;
+
+            case 'matcap':
+                child.material = new THREE.MeshMatcapMaterial({
+                    color: 0xdddddd,
+                    transparent: opacity < 1.0,
+                    opacity: opacity
+                });
+                break;
+
+            case 'normals':
+                child.material = new THREE.MeshNormalMaterial({
+                    wireframe: false,
+                    transparent: opacity < 1.0,
+                    opacity: opacity
+                });
+                break;
+
+            case 'xray':
+                child.material = new THREE.MeshBasicMaterial({
+                    color: 0x00aaff,
+                    wireframe: true,
+                    transparent: true,
+                    opacity: Math.min(opacity, 0.4),
+                    depthWrite: false
+                });
+                break;
+
+            case 'clay':
+                child.material = new THREE.MeshStandardMaterial({
+                    color: 0xb25238,
+                    roughness: 0.9,
+                    metalness: 0.0,
+                    transparent: opacity < 1.0,
+                    opacity: opacity
+                });
+                break;
+
+            case 'gold':
+                child.material = new THREE.MeshStandardMaterial({
+                    color: 0xffffd700,
+                    metalness: 0.9,
+                    roughness: 0.2,
+                    transparent: opacity < 1.0,
+                    opacity: opacity
+                });
+                break;
+
+            case 'hologram':
+                child.material = new THREE.MeshBasicMaterial({
+                    color: 0x00ffff,
+                    wireframe: true,
+                    transparent: true,
+                    opacity: Math.min(opacity, 0.6)
+                });
+                break;
+
+            case 'neon_glow':
+                child.material = new THREE.MeshBasicMaterial({
+                    color: 0xff00ff,
+                    wireframe: false,
+                    transparent: opacity < 1.0,
+                    opacity: opacity
+                });
+                break;
+
+            case 'depth':
+                child.material = new THREE.MeshDepthMaterial({
+                    transparent: opacity < 1.0,
+                    opacity: opacity
+                });
+                break;
+
+            case 'bounding_box':
+                child.material = new THREE.MeshBasicMaterial({
+                    color: 0xffff00,
+                    wireframe: true,
+                    transparent: opacity < 1.0,
+                    opacity: opacity
+                });
+                break;
+
+            case 'unlit':
+                child.material = new THREE.MeshBasicMaterial({
+                    color: 0xffffff,
+                    map: origMat.map || null,
+                    transparent: opacity < 1.0,
+                    opacity: opacity
+                });
+                break;
+
+            case 'normal':
+            default:
+                child.material = origMat;
+                child.material.transparent = opacity < 1.0;
+                child.material.opacity = opacity;
+                break;
+        }
+        child.material.needsUpdate = true;
+    });
+}
+
+document.getElementById('render-mode-select').addEventListener('change', (e) => {
+    applyRenderMode(e.target.value);
+    saveEnvironmentSettings();
+});
+
+document.getElementById('chk-ground').addEventListener('change', (e) => {
+    groundGroup.visible = e.target.checked;
+    saveEnvironmentSettings();
+});
+
+function loadFBXFromArrayBuffer(arrayBuffer) {
+    const loader = new FBXLoader();
+    const fbx = loader.parse(arrayBuffer, '');
+    processLoadedModel(fbx, fbx.animations || []);
+}
+
+function loadGLTFFromArrayBuffer(arrayBuffer) {
+    const loader = new GLTFLoader();
+    loader.parse(arrayBuffer, '', (gltf) => {
+        processLoadedModel(gltf.scene, gltf.animations || []);
+    });
+}
+
+function loadOBJFromText(textData) {
+    const loader = new OBJLoader();
+    const obj = loader.parse(textData);
+    processLoadedModel(obj, []);
+}
+
+document.getElementById('embedded-anim-select').addEventListener('change', (e) => {
+    const index = e.target.value;
+    if (activeAction) {
+        activeAction.stop();
+        activeAction = null;
+    }
+
+    if (index !== "" && mixer && animations[index]) {
+        const clip = animations[index];
+        activeAction = mixer.clipAction(clip);
+        activeAction.play();
+
+        const calculatedFrames = Math.ceil(clip.duration * targetFPS);
+        if (calculatedFrames > 0) {
+            totalFrames = calculatedFrames;
+            document.getElementById('total-frames-input').value = totalFrames;
+            buildFlashTimelineUI();
+        }
+        
+        selectFrame(0);
+    } else {
+        selectFrame(currentFrame);
+    }
+});
+
+document.getElementById('btn-bake-anim').addEventListener('click', () => {
+    if (!activeAction || !mixer) {
+        return alert('Selecione primeiro uma animação do Mixamo no menu suspenso.');
+    }
+
+    pushState();
+    keyframesMap.clear();
+
+    const clip = activeAction.getClip();
+    const duration = clip.duration;
+    const step = 1 / targetFPS;
+
+    for (let frameIdx = 0; frameIdx < totalFrames; frameIdx++) {
+        const time = Math.min(frameIdx * step, duration);
+        mixer.setTime(time);
+        characterGroup.updateMatrixWorld(true);
+
+        const poseSnapshot = allBones.map(bone => ({
+            position: bone.position.clone(),
+            quaternion: bone.quaternion.clone(),
+            scale: bone.scale.clone()
+        }));
+
+        keyframesMap.set(frameIdx, poseSnapshot);
+    }
+
+    activeAction.stop();
+    activeAction = null;
+    document.getElementById('embedded-anim-select').value = "";
+
+    buildFlashTimelineUI();
+    selectFrame(0);
+    alert('Animação do Mixamo convertida com sucesso em Keyframes editáveis na Timeline!');
+});
+
+function clearCurrentModel() {
+    stopAnimation();
+    if (characterGroup) scene.remove(characterGroup);
+    if (skeletonHelper) scene.remove(skeletonHelper);
+    bonePickers.forEach(p => scene.remove(p));
+    bonePickers = [];
+    boneMap.clear();
+    allBones = [];
+    keyframesMap.clear();
+    originalMaterials.clear();
+    undoStack.length = 0;
+    redoStack.length = 0;
+    if (!isMovingLight) transformControls.detach();
+    selectedBones = [];
+    mixer = null;
+    activeAction = null;
+    animations = [];
+    
+    Object.keys(loadedTextures).forEach(k => loadedTextures[k] = null);
+    document.getElementById('texture-status').innerText = "Texturas originais preservadas.";
+
+    document.getElementById('bone-details').style.display = 'none';
+}
+
+function updateHelpers() {
+    bonePickers.forEach(picker => {
+        const bone = boneMap.get(picker);
+        if (bone) {
+            bone.getWorldPosition(picker.position);
+            picker.material.color.setHex(selectedBones.includes(bone) ? 0x00ff00 : 0xffcc00);
+        }
+    });
+}
+
+function selectBone(bone, multiSelect = false) {
+    if (isMovingLight) return; 
+    if (!multiSelect) {
+        selectedBones = [bone];
+    } else {
+        const index = selectedBones.indexOf(bone);
+        if (index > -1) {
+            selectedBones.splice(index, 1);
+        } else {
+            selectedBones.push(bone);
+        }
+    }
+
+    if (selectedBones.length === 0) {
+        transformControls.detach();
+        document.getElementById('bone-details').style.display = 'none';
+        savePanelsState();
+        return;
+    }
+
+    const avgPosition = new THREE.Vector3();
+    selectedBones.forEach(b => {
+        avgPosition.add(b.getWorldPosition(new THREE.Vector3()));
+    });
+    avgPosition.divideScalar(selectedBones.length);
+
+    pivotObject.position.copy(avgPosition);
+    pivotObject.rotation.set(0, 0, 0);
+    pivotObject.scale.set(1, 1, 1);
+
+    transformControls.attach(pivotObject);
+
+    const boneDetails = document.getElementById('bone-details');
+    boneDetails.style.display = 'flex';
+    savePanelsState();
+
+    if (selectedBones.length === 1) {
+        const singleBone = selectedBones[0];
+        document.getElementById('selected-bone-name').innerText = (singleBone === characterGroup) ? 'Raiz (Todo o Esqueleto)' : (singleBone.name || 'Osso Selecionado');
+    } else {
+        document.getElementById('selected-bone-name').innerText = `${selectedBones.length} Bones Selecionados`;
+    }
+
+    updateUIInputs();
+}
+
+document.getElementById('btn-select-root').addEventListener('click', () => {
+    if (characterGroup && !isMovingLight) selectBone(characterGroup, false);
+});
+
+function updateUIInputs() {
+    if (selectedBones.length === 0) return;
+    const target = selectedBones.length === 1 ? selectedBones[0] : pivotObject;
+
+    document.getElementById('pos-x').value = target.position.x.toFixed(2);
+    document.getElementById('pos-y').value = target.position.y.toFixed(2);
+    document.getElementById('pos-z').value = target.position.z.toFixed(2);
+    document.getElementById('rot-x').value = THREE.MathUtils.radToDeg(target.rotation.x).toFixed(0);
+    document.getElementById('rot-y').value = THREE.MathUtils.radToDeg(target.rotation.y).toFixed(0);
+    document.getElementById('rot-z').value = THREE.MathUtils.radToDeg(target.rotation.z).toFixed(0);
+}
+
+['pos-x', 'pos-y', 'pos-z'].forEach((id, index) => {
+    const inputEl = document.getElementById(id);
+    inputEl.addEventListener('focus', () => pushState());
+    inputEl.addEventListener('input', (e) => {
+        if (selectedBones.length === 0) return;
+        const val = parseFloat(e.target.value) || 0;
+        const axis = ['x', 'y', 'z'][index];
+
+        if (selectedBones.length === 1) {
+            selectedBones[0].position[axis] = val;
+        } else {
+            const delta = val - pivotObject.position[axis];
+            pivotObject.position[axis] = val;
+            selectedBones.forEach(b => b.position[axis] += delta);
+        }
+        saveKeyframe(currentFrame, false, false);
+    });
+});
+
+['rot-x', 'rot-y', 'rot-z'].forEach((id, index) => {
+    const inputEl = document.getElementById(id);
+    inputEl.addEventListener('focus', () => pushState());
+    inputEl.addEventListener('input', (e) => {
+        if (selectedBones.length === 0) return;
+        const val = THREE.MathUtils.degToRad(parseFloat(e.target.value) || 0);
+        const axis = ['x', 'y', 'z'][index];
+
+        if (selectedBones.length === 1) {
+            selectedBones[0].rotation[axis] = val;
+        } else {
+            const delta = val - pivotObject.rotation[axis];
+            pivotObject.rotation[axis] = val;
+            selectedBones.forEach(b => b.rotation[axis] += delta);
+        }
+        saveKeyframe(currentFrame, false, false);
+    });
+});
+
+function buildFlashTimelineUI() {
+    const rulerContainer = document.getElementById('timeline-ruler');
+    const trackContainer = document.getElementById('timeline-track');
+    
+    rulerContainer.innerHTML = '';
+    trackContainer.innerHTML = '';
+
+    for (let i = 0; i < totalFrames; i++) {
+        const mark = document.createElement('div');
+        mark.className = 'ruler-mark';
+        if ((i + 1) % 5 === 0 || i === 0) mark.innerText = i + 1;
+        rulerContainer.appendChild(mark);
+
+        const cell = document.createElement('div');
+        cell.className = 'frame-cell';
+        cell.dataset.frame = i;
+        trackContainer.appendChild(cell);
+    }
+    document.getElementById('total-frames-text').innerText = totalFrames;
+    updateTimelineGrid();
+}
+
+function saveKeyframe(frameIdx, updateUI = true, recordHistory = true) {
+    if (allBones.length === 0) return;
+    if (recordHistory) pushState();
+
+    const poseSnapshot = allBones.map(bone => ({
+        position: bone.position.clone(),
+        quaternion: bone.quaternion.clone(),
+        scale: bone.scale.clone()
+    }));
+    keyframesMap.set(frameIdx, poseSnapshot);
+    if (updateUI) updateTimelineGrid();
+}
+
+function clearKeyframe(frameIdx) {
+    pushState();
+    keyframesMap.delete(frameIdx);
+    updateTimelineGrid();
+    applyPoseForFrame(currentFrame);
+}
+
+function insertFrameAt(targetFrame) {
+    pushState();
+    totalFrames++;
+    document.getElementById('total-frames-input').value = totalFrames;
+
+    const newMap = new Map();
+    keyframesMap.forEach((pose, fIdx) => {
+        if (fIdx >= targetFrame) {
+            newMap.set(fIdx + 1, pose);
+        } else {
+            newMap.set(fIdx, pose);
+        }
+    });
+    keyframesMap = newMap;
+    
+    applyPoseForFrame(targetFrame);
+    buildFlashTimelineUI();
+    selectFrame(targetFrame);
+}
+
+function removeFrameAt(targetFrame) {
+    if (totalFrames <= 2) return alert('O limite mínimo é de 2 frames.');
+    pushState();
+    totalFrames--;
+    document.getElementById('total-frames-input').value = totalFrames;
+
+    const newMap = new Map();
+    keyframesMap.forEach((pose, fIdx) => {
+        if (fIdx > targetFrame) {
+            newMap.set(fIdx - 1, pose);
+        } else if (fIdx < targetFrame) {
+            newMap.set(fIdx, pose);
+        }
+    });
+    keyframesMap = newMap;
+
+    buildFlashTimelineUI();
+    selectFrame(Math.min(currentFrame, totalFrames - 1));
+}
+
+document.getElementById('btn-insert-space').addEventListener('click', () => {
+    insertFrameAt(currentFrame);
+});
+
+const contextMenu = document.getElementById('context-menu');
+let contextTargetFrame = 0;
+
+document.getElementById('timeline-track').addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    const cell = e.target.closest('.frame-cell');
+    if (!cell) return;
+
+    contextTargetFrame = parseInt(cell.dataset.frame);
+    
+    contextMenu.style.display = 'block';
+    contextMenu.style.left = `${Math.min(e.clientX, window.innerWidth - 170)}px`;
+    contextMenu.style.top = `${e.clientY - 160}px`;
+});
+
+window.addEventListener('click', () => {
+    contextMenu.style.display = 'none';
+});
+
+document.getElementById('ctx-copy').addEventListener('click', () => {
+    if (keyframesMap.has(contextTargetFrame)) {
+        const pose = keyframesMap.get(contextTargetFrame);
+        copiedKeyframeData = pose.map(p => ({
+            position: p.position.clone(),
+            quaternion: p.quaternion.clone(),
+            scale: p.scale.clone()
+        }));
+        alert(`Keyframe do Frame ${contextTargetFrame + 1} copiado!`);
+    } else {
+        alert('Este frame não possui um Keyframe salvo para copiar.');
+    }
+});
+
+document.getElementById('ctx-paste').addEventListener('click', () => {
+    if (!copiedKeyframeData) return alert('Nenhum keyframe copiado na memória.');
+    pushState();
+    const poseCopy = copiedKeyframeData.map(p => ({
+        position: p.position.clone(),
+        quaternion: p.quaternion.clone(),
+        scale: p.scale.clone()
+    }));
+    keyframesMap.set(contextTargetFrame, poseCopy);
+    updateTimelineGrid();
+    selectFrame(contextTargetFrame);
+});
+
+document.getElementById('ctx-remove').addEventListener('click', () => {
+    removeFrameAt(contextTargetFrame);
+});
+
+document.getElementById('ctx-clear').addEventListener('click', () => {
+    clearKeyframe(contextTargetFrame);
+});
+
+function downloadCanvasAsPNG(transparent = false) {
+    const previousFrame = currentFrame;
+    selectFrame(contextTargetFrame);
+
+    const oldSkeletonVisible = skeletonHelper ? skeletonHelper.visible : false;
+    if (skeletonHelper) skeletonHelper.visible = false;
+
+    const oldPickersVisibility = bonePickers.map(p => p.visible);
+    bonePickers.forEach(p => p.visible = false);
+
+    const oldGizmoVisible = transformControls.visible;
+    transformControls.visible = false;
+
+    const oldGroundVisible = groundGroup.visible;
+    const oldBg = scene.background;
+    if (transparent) {
+        groundGroup.visible = false;
+        scene.background = null;
+        renderer.setClearColor(0x000000, 0);
+    }
+
+    renderer.render(scene, camera);
+    const dataURL = renderer.domElement.toDataURL('image/png');
+
+    if (skeletonHelper) skeletonHelper.visible = oldSkeletonVisible;
+    bonePickers.forEach((p, idx) => p.visible = oldPickersVisibility[idx]);
+    transformControls.visible = oldGizmoVisible;
+
+    if (transparent) {
+        groundGroup.visible = oldGroundVisible;
+        scene.background = oldBg;
+    }
+
+    selectFrame(previousFrame);
+
+    const paddedNum = String(pngExportCounter++).padStart(3, '0');
+    const filename = `frame_${paddedNum}.png`;
+
+    const link = document.createElement('a');
+    link.download = filename;
+    link.href = dataURL;
+    link.click();
+}
+
+document.getElementById('ctx-save-transparent').addEventListener('click', () => {
+    downloadCanvasAsPNG(true);
+});
+
+document.getElementById('ctx-save-current').addEventListener('click', () => {
+    downloadCanvasAsPNG(false);
+});
+
+function selectFrame(frameIdx) {
+    currentFrame = Math.max(0, Math.min(totalFrames - 1, frameIdx));
+    document.getElementById('current-frame-text').innerText = currentFrame + 1;
+
+    if (mixer && activeAction) {
+        const time = currentFrame / targetFPS;
+        mixer.setTime(time);
+    }
+
+    applyPoseForFrame(currentFrame);
+    updateTimelineGrid();
+}
+
+function applyPoseForFrame(frameIdx) {
+    if (allBones.length === 0) return;
+
+    if (keyframesMap.has(frameIdx)) {
+        const pose = keyframesMap.get(frameIdx);
+        allBones.forEach((bone, idx) => {
+            if (pose[idx]) {
+                bone.position.copy(pose[idx].position);
+                bone.quaternion.copy(pose[idx].quaternion);
+                bone.scale.copy(pose[idx].scale);
+            }
+        });
+        updateUIInputs();
+        return;
+    }
+
+    const sortedFrames = Array.from(keyframesMap.keys()).sort((a, b) => a - b);
+    let prevFrame = -1;
+    let nextFrame = -1;
+
+    for (let f of sortedFrames) {
+        if (f < frameIdx) prevFrame = f;
+        if (f > frameIdx && nextFrame === -1) nextFrame = f;
+    }
+
+    if (prevFrame !== -1 && nextFrame !== -1) {
+        const factor = (frameIdx - prevFrame) / (nextFrame - prevFrame);
+        const prevPose = keyframesMap.get(prevFrame);
+        const nextPose = keyframesMap.get(nextFrame);
+
+        allBones.forEach((bone, idx) => {
+            if (prevPose[idx] && nextPose[idx]) {
+                bone.position.lerpVectors(prevPose[idx].position, nextPose[idx].position, factor);
+                bone.quaternion.slerpQuaternions(prevPose[idx].quaternion, nextPose[idx].quaternion, factor);
+                bone.scale.lerpVectors(prevPose[idx].scale, nextPose[idx].scale, factor);
+            }
+        });
+    } else if (prevFrame !== -1) {
+        const prevPose = keyframesMap.get(prevFrame);
+        allBones.forEach((bone, idx) => {
+            if (prevPose[idx]) {
+                bone.position.copy(prevPose[idx].position);
+                bone.quaternion.copy(prevPose[idx].quaternion);
+                bone.scale.copy(prevPose[idx].scale);
+            }
+        });
+    }
+    updateUIInputs();
+}
+
+function updateTimelineGrid() {
+    const cells = document.querySelectorAll('.frame-cell');
+    const sortedFrames = Array.from(keyframesMap.keys()).sort((a, b) => a - b);
+
+    cells.forEach((cell, idx) => {
+        cell.classList.toggle('active-frame', idx === currentFrame);
+        cell.classList.toggle('has-keyframe', keyframesMap.has(idx));
+
+        let isTween = false;
+        if (!keyframesMap.has(idx) && sortedFrames.length >= 2) {
+            const firstKey = sortedFrames[0];
+            const lastKey = sortedFrames[sortedFrames.length - 1];
+            if (idx > firstKey && idx < lastKey) isTween = true;
+        }
+        cell.classList.toggle('is-interpolated', isTween);
+    });
+}
+
+function centerScene() {
+    camera.position.set(0, 100, 250);
+    orbit.target.set(0, 90, 0);
+    orbit.update();
+    saveEnvironmentSettings();
+}
+
+document.getElementById('btn-center-scene').addEventListener('click', centerScene);
+
+function serializeProjectData() {
+    const keyframesArr = [];
+    
+    if (keyframesMap.size === 0 && activeAction) {
+        for (let frameIdx = 0; frameIdx < totalFrames; frameIdx++) {
+            const time = frameIdx / targetFPS;
+            mixer.setTime(time);
+            characterGroup.updateMatrixWorld(true);
+
+            keyframesArr.push({
+                frame: frameIdx,
+                pose: allBones.map(p => ({
+                    pos: [p.position.x, p.position.y, p.position.z],
+                    rot: [p.quaternion.x, p.quaternion.y, p.quaternion.z, p.quaternion.w],
+                    scl: [p.scale.x, p.scale.y, p.scale.z]
+                }))
+            });
+        }
+    } else {
+        keyframesMap.forEach((pose, frameIdx) => {
+            keyframesArr.push({
+                frame: frameIdx,
+                pose: pose.map(p => ({
+                    pos: [p.position.x, p.position.y, p.position.z],
+                    rot: [p.quaternion.x, p.quaternion.y, p.quaternion.z, p.quaternion.w],
+                    scl: [p.scale.x, p.scale.y, p.scale.z]
+                }))
+            });
+        });
+    }
+
+    return {
+        loadedFileName: loadedFileName || 'modelo.glb',
+        fps: targetFPS,
+        totalFrames: totalFrames,
+        keyframes: keyframesArr
+    };
+}
+
+document.getElementById('btn-save-session').addEventListener('click', () => {
+    localStorage.setItem(SESSION_PROJECT_KEY, JSON.stringify(serializeProjectData()));
+    saveEnvironmentSettings();
+    alert('Projeto salvo no navegador!');
+});
+
+document.getElementById('btn-load-session').addEventListener('click', () => {
+    const savedProject = localStorage.getItem(SESSION_PROJECT_KEY);
+    if (!savedProject) return alert('Nenhum projeto encontrado salvo localmente.');
+    try {
+        importAnimationToTimeline(JSON.parse(savedProject));
+        alert('Projeto carregado com sucesso!');
+    } catch (err) {
+        alert('Erro ao carregar projeto: ' + err.message);
+    }
+});
+
+function importAnimationToTimeline(data) {
+    if (!data || !data.keyframes) {
+        throw new Error("Formato de arquivo JSON inválido ou sem dados de keyframes.");
+    }
+
+    pushState();
+
+    if (data.fps) {
+        targetFPS = data.fps;
+        document.getElementById('fps-input').value = targetFPS;
+    }
+    if (data.totalFrames) {
+        totalFrames = data.totalFrames;
+        document.getElementById('total-frames-input').value = totalFrames;
+    }
+
+    keyframesMap.clear();
+
+    data.keyframes.forEach(kf => {
+        const frameIdx = kf.frame;
+        
+        const poseSnapshot = allBones.map((bone, idx) => {
+            if (kf.pose && kf.pose[idx]) {
+                const p = kf.pose[idx];
+                return {
+                    position: new THREE.Vector3(...p.pos),
+                    quaternion: new THREE.Quaternion(...p.rot),
+                    scale: new THREE.Vector3(...p.scl)
+                };
+            }
+            return {
+                position: bone.position.clone(),
+                quaternion: bone.quaternion.clone(),
+                scale: bone.scale.clone()
+            };
+        });
+
+        keyframesMap.set(frameIdx, poseSnapshot);
+    });
+
+    buildFlashTimelineUI();
+    selectFrame(0);
+}
+
+const scrollArea = document.getElementById('timeline-scroll');
+let isScrubbing = false;
+
+function handleTimelineScrub(e) {
+    const rect = scrollArea.getBoundingClientRect();
+    const offsetX = e.clientX - rect.left + scrollArea.scrollLeft;
+    const frameIndex = Math.floor(offsetX / 20);
+    if (frameIndex >= 0 && frameIndex < totalFrames && frameIndex !== currentFrame) {
+        selectFrame(frameIndex);
+    }
+}
+
+scrollArea.addEventListener('mousedown', (e) => { 
+    if (e.button !== 0) return;
+    isScrubbing = true; 
+    handleTimelineScrub(e); 
+});
+window.addEventListener('mousemove', (e) => { if (isScrubbing) handleTimelineScrub(e); });
+window.addEventListener('mouseup', () => { isScrubbing = false; });
+
+document.getElementById('total-frames-input').addEventListener('change', (e) => {
+    let val = Math.max(2, Math.min(1000, parseInt(e.target.value) || 60));
+    e.target.value = val;
+    totalFrames = val;
+    buildFlashTimelineUI();
+    if (currentFrame >= totalFrames) selectFrame(totalFrames - 1);
+});
+
+document.getElementById('fps-input').addEventListener('change', (e) => {
+    let val = Math.max(1, Math.min(60, parseInt(e.target.value) || 30));
+    e.target.value = val;
+    targetFPS = val;
+    if (isPlaying) { stopAnimation(); startAnimation(); }
+});
+
+function togglePlay() {
+    if (isPlaying) stopAnimation();
+    else startAnimation();
+}
+
+function startAnimation() {
+    isPlaying = true;
+    document.getElementById('btn-play').innerText = '❚❚ Pause';
+    playInterval = setInterval(() => {
+        currentFrame = (currentFrame + 1) % totalFrames;
+        selectFrame(currentFrame);
+    }, 1000 / targetFPS);
+}
+
+function stopAnimation() {
+    isPlaying = false;
+    document.getElementById('btn-play').innerText = '► Play';
+    if (playInterval) clearInterval(playInterval);
+}
+
+document.getElementById('btn-play').addEventListener('click', togglePlay);
+document.getElementById('btn-add-keyframe').addEventListener('click', () => saveKeyframe(currentFrame, true));
+document.getElementById('btn-clear-keyframe').addEventListener('click', () => clearKeyframe(currentFrame));
+document.getElementById('btn-undo').addEventListener('click', undo);
+
+document.getElementById('btn-save-anim').addEventListener('click', () => {
+    const exportData = serializeProjectData();
+    exportData.bonesOrder = allBones.map(b => b.name || 'Root');
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = (loadedFileName ? loadedFileName.replace(/\.[^/.]+$/, '') : 'animacao') + '_export.json';
+    a.click();
+    URL.revokeObjectURL(url);
+});
+
+document.getElementById('btn-load-anim').addEventListener('click', () => document.getElementById('anim-file-input').click());
+
+document.getElementById('anim-file-input').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        try {
+            const parsedData = JSON.parse(event.target.result);
+            importAnimationToTimeline(parsedData);
+            alert('Animação importada e aplicada à Timeline com sucesso!');
+        } catch (err) {
+            alert('Erro ao carregar o arquivo JSON: ' + err.message);
+        }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+});
+
+window.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) redo(); else undo();
+    } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault(); redo();
+    } else if (e.key === 'F6') { e.preventDefault(); saveKeyframe(currentFrame, true); }
+    else if (e.key === 'F7') { e.preventDefault(); clearKeyframe(currentFrame); }
+    else if (e.code === 'Space' && e.target.tagName !== 'INPUT') { e.preventDefault(); togglePlay(); }
+});
+
+document.getElementById('btn-theme-toggle').addEventListener('click', () => {
+    document.body.classList.toggle('light-theme');
+    const isLight = document.body.classList.contains('light-theme');
+    scene.background.setHex(isLight ? 0xe0e0e0 : 0x1a1a1a);
+    planeMat.color.setHex(isLight ? 0xcccccc : 0x222222);
+    saveEnvironmentSettings();
+});
+
+document.getElementById('picker-radius-slider').addEventListener('input', (e) => {
+    const newGeo = new THREE.SphereGeometry(parseFloat(e.target.value), 16, 16);
+    bonePickers.forEach(p => { p.geometry.dispose(); p.geometry = newGeo; });
+    saveEnvironmentSettings();
+});
+
+const setMode = (mode, btnId) => {
+    transformControls.setMode(mode);
+    ['btn-mode-translate', 'btn-mode-rotate', 'btn-mode-scale'].forEach(id => {
+        document.getElementById(id).classList.toggle('active', id === btnId);
+    });
+};
+
+document.getElementById('btn-mode-translate').addEventListener('click', () => setMode('translate', 'btn-mode-translate'));
+document.getElementById('btn-mode-rotate').addEventListener('click', () => setMode('rotate', 'btn-mode-rotate'));
+document.getElementById('btn-mode-scale').addEventListener('click', () => setMode('scale', 'btn-mode-scale'));
+
+function updateVisibility() {
+    if (skeletonHelper) skeletonHelper.visible = document.getElementById('chk-skeleton').checked;
+    bonePickers.forEach(p => p.visible = document.getElementById('chk-pickers').checked);
+}
+
+document.getElementById('chk-skeleton').addEventListener('change', () => { updateVisibility(); saveEnvironmentSettings(); });
+document.getElementById('chk-pickers').addEventListener('change', () => { updateVisibility(); saveEnvironmentSettings(); });
+
+document.getElementById('opacity-slider').addEventListener('input', (e) => {
+    applyRenderMode(document.getElementById('render-mode-select').value);
+    saveEnvironmentSettings();
+});
+
+window.addEventListener('pointerdown', (event) => {
+    if (isMovingLight) return;
+    if (event.clientY > window.innerHeight - 120 || ['INPUT', 'BUTTON', 'LABEL', 'SELECT', 'SUMMARY', 'DETAILS'].includes(event.target.tagName)) return;
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / (window.innerHeight - 120)) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(bonePickers.filter(p => p.visible));
+    if (intersects.length > 0) {
+        const targetBone = boneMap.get(intersects[0].object);
+        if (targetBone) {
+            const multiSelect = event.shiftKey || event.ctrlKey;
+            selectBone(targetBone, multiSelect);
+        }
+    }
+});
+
+loadEnvironmentSettings();
+
+function animate() {
+    requestAnimationFrame(animate);
+    updateHelpers();
+    renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / (window.innerHeight - 120);
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight - 120);
+});
+</script>
+</body>
+</html>
