@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor de Terreno 3D Avançado</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            900: '#090d16',
+                            800: '#111827',
+                            700: '#1f2937',
+                            600: '#374151',
+                            500: '#4b5563'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            user-select: none;
+        }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: #111827; }
+        ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+    </style>
+</head>
+<body class="bg-dark-900 text-slate-100 h-screen w-screen flex flex-col justify-between">
+
+    <!-- Three.js and OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <!-- Main Container -->
+    <div class="flex-1 flex relative overflow-hidden">
+        
+        <!-- Sidebar -->
+        <aside aria-label="Painel de Controle" class="w-84 bg-dark-800 border-r border-dark-700 flex flex-col z-20 shadow-2xl w-80">
+            <!-- Header -->
+            <div class="p-4 border-b border-dark-700 flex items-center justify-between bg-dark-800">
+                <div class="flex items-center space-x-2.5">
+                    <div class="bg-indigo-600 text-white p-2 rounded-lg shadow-lg">
+                        <i class="fa-solid fa-earth-americas text-base"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-xs tracking-wide">Editor de Terreno 3D</h1>
+                        <p class="text-[10px] text-slate-400">Escultura, Texturas & Cores</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scrollable Controls -->
+            <div class="flex-1 overflow-y-auto p-4 space-y-5">
+                
+                <!-- Tools -->
+                <div>
+                    <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2 block">Ferramenta Ativa</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="tool-raise" onclick="setTool('raise')" class="flex items-center space-x-2 p-2.5 rounded-lg border border-indigo-500 bg-indigo-600 text-white text-xs font-medium transition shadow">
+                            <i class="fa-solid fa-arrow-up-long"></i>
+                            <span>Elevar</span>
+                        </button>
+                        <button id="tool-lower" onclick="setTool('lower')" class="flex items-center space-x-2 p-2.5 rounded-lg border border-dark-600 bg-dark-700 text-slate-300 text-xs font-medium hover:bg-dark-600 transition">
+                            <i class="fa-solid fa-arrow-down-long"></i>
+                            <span>Abaixar</span>
+                        </button>
+                        <button id="tool-smooth" onclick="setTool('smooth')" class="flex items-center space-x-2 p-2.5 rounded-lg border border-dark-600 bg-dark-700 text-slate-300 text-xs font-medium hover:bg-dark-600 transition">
+                            <i class="fa-solid fa-water"></i>
+                            <span>Alisar (Contínuo)</span>
+                        </button>
+                        <button id="tool-paint" onclick="setTool('paint')" class="flex items-center space-x-2 p-2.5 rounded-lg border border-dark-600 bg-dark-700 text-slate-300 text-xs font-medium hover:bg-dark-600 transition">
+                            <i class="fa-solid fa-paintbrush"></i>
+                            <span>Pintar Cor/Tex</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- History / Undo Toolbar -->
+                <div class="space-y-2 bg-dark-900/60 p-3.5 rounded-xl border border-dark-700">
+                    <h2 class="text-[11px] font-semibold text-slate-300 uppercase tracking-wider">Histórico</h2>
+                    <button id="btn-undo" onclick="undoAction()" class="w-full py-2 bg-dark-700 hover:bg-dark-600 border border-dark-600 text-slate-200 rounded-lg text-xs font-medium transition flex items-center justify-center space-x-2 shadow">
+                        <i class="fa-solid fa-rotate-left"></i>
+                        <span>Desfazer (Ctrl + Z)</span>
+                    </button>
+                </div>
+
+                <!-- Brush Settings -->
+                <div class="space-y-3.5 bg-dark-900/60 p-3.5 rounded-xl border border-dark-700">
+                    <h2 class="text-[11px] font-semibold text-slate-300 uppercase tracking-wider">Ajustes do Pincel</h2>
+                    
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400">Raio (Tamanho)</span>
+                            <span id="brush-size-val" class="font-mono text-indigo-400">3.0</span>
+                        </div>
+                        <input type="range" id="brush-size" min="0.5" max="10" step="0.5" value="3.0" oninput="updateBrushSize(this.value)" class="w-full accent-indigo-500 bg-dark-700 h-1.5 rounded-lg cursor-pointer">
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400">Intensidade / Força</span>
+                            <span id="brush-intensity-val" class="font-mono text-indigo-400">1.0</span>
+                        </div>
+                        <input type="range" id="brush-intensity" min="0.1" max="5" step="0.1" value="1.0" oninput="updateBrushIntensity(this.value)" class="w-full accent-indigo-500 bg-dark-700 h-1.5 rounded-lg cursor-pointer">
+                    </div>
+
+                    <!-- Color Picker & Advanced Palette (Active in Paint Mode) -->
+                    <div id="paint-options-container" class="pt-2 border-t border-dark-700/60 hidden space-y-3">
+                        <div>
+                            <label class="text-[11px] font-semibold text-slate-300 mb-1.5 block">Cor Sólida do Pincel (Área Exata)</label>
+                            <div class="flex items-center space-x-3">
+                                <input type="color" id="brush-color" value="#22c55e" class="w-9 h-9 rounded-lg bg-transparent border-0 cursor-pointer">
+                                <div class="flex flex-wrap gap-1 flex-1">
+                                    <button onclick="setPresetColor('#333333')" class="w-5 h-5 rounded-full bg-[#333333] border border-slate-600 hover:scale-110 transition" title="Cinza Escuro"></button>
+                                    <button onclick="setPresetColor('#777777')" class="w-5 h-5 rounded-full bg-[#777777] border border-slate-600 hover:scale-110 transition" title="Cinza Médio"></button>
+                                    <button onclick="setPresetColor('#cccccc')" class="w-5 h-5 rounded-full bg-[#cccccc] border border-slate-600 hover:scale-110 transition" title="Cinza Claro"></button>
+                                    <button onclick="setPresetColor('#22c55e')" class="w-5 h-5 rounded-full bg-green-500 border border-slate-600 hover:scale-110 transition" title="Grama"></button>
+                                    <button onclick="setPresetColor('#8b4513')" class="w-5 h-5 rounded-full bg-[#8b4513] border border-slate-600 hover:scale-110 transition" title="Terra"></button>
+                                    <button onclick="setPresetColor('#3b82f6')" class="w-5 h-5 rounded-full bg-blue-500 border border-slate-600 hover:scale-110 transition" title="Água"></button>
+                                    <button onclick="setPresetColor('#eab308')" class="w-5 h-5 rounded-full bg-yellow-500 border border-slate-600 hover:scale-110 transition" title="Areia"></button>
+                                    <button onclick="setPresetColor('#ef4444')" class="w-5 h-5 rounded-full bg-red-500 border border-slate-600 hover:scale-110 transition" title="Lava"></button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 30 Textures Selection -->
+                        <div>
+                            <label class="text-[11px] font-semibold text-slate-300 mb-1.5 block">Textura Padrão (30 Opções)</label>
+                            <select id="texture-select" onchange="applySelectedTexture(this.value)" class="w-full bg-dark-700 border border-dark-600 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
+                                <!-- Populated dynamically by JS -->
+                            </select>
+                        </div>
+
+                        <!-- Custom Image Texture Upload -->
+                        <div>
+                            <label class="text-[11px] font-semibold text-slate-300 mb-1.5 block">Carregar Imagem como Textura</label>
+                            <label class="w-full py-2 px-3 bg-dark-700 hover:bg-dark-600 border border-dark-600 text-slate-200 rounded-lg text-xs font-medium transition flex items-center justify-center space-x-2 cursor-pointer">
+                                <i class="fa-solid fa-image text-indigo-400"></i>
+                                <span>Selecionar Imagem...</span>
+                                <input type="file" id="custom-texture-file" accept="image/*" onchange="loadCustomImageTexture(event)" class="hidden">
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mesh & Dimensions Settings -->
+                <div class="space-y-3.5 bg-dark-900/60 p-3.5 rounded-xl border border-dark-700">
+                    <h2 class="text-[11px] font-semibold text-slate-300 uppercase tracking-wider">Configuração da Malha</h2>
+                    
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-slate-300">Exibir Linhas da Malha (Wireframe)</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="wireframe-toggle" onchange="toggleWireframe(this.checked)" class="sr-only peer">
+                            <div class="w-9 h-5 bg-dark-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                        </label>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400">Resolução da Malha</span>
+                            <span id="grid-res-val" class="font-mono text-indigo-400">64</span>
+                        </div>
+                        <input type="range" id="grid-res" min="16" max="128" step="16" value="64" oninput="document.getElementById('grid-res-val').innerText = this.value" onchange="rebuildTerrain()" class="w-full accent-indigo-500 bg-dark-700 h-1.5 rounded-lg cursor-pointer">
+                    </div>
+
+                    <!-- Largura X e Comprimento Z -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <div class="flex justify-between text-[11px] mb-1">
+                                <span class="text-slate-400">Largura (X)</span>
+                                <span id="size-x-val" class="font-mono text-indigo-400">50</span>
+                            </div>
+                            <input type="range" id="size-x" min="20" max="150" step="5" value="50" oninput="updateTerrainDimensions()" class="w-full accent-indigo-500 bg-dark-700 h-1.5 rounded-lg cursor-pointer">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-[11px] mb-1">
+                                <span class="text-slate-400">Comp. (Z)</span>
+                                <span id="size-z-val" class="font-mono text-indigo-400">50</span>
+                            </div>
+                            <input type="range" id="size-z" min="20" max="150" step="5" value="50" oninput="updateTerrainDimensions()" class="w-full accent-indigo-500 bg-dark-700 h-1.5 rounded-lg cursor-pointer">
+                        </div>
+                    </div>
+
+                    <!-- Ajuste Global de Alturas -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400">Ajuste Global de Alturas</span>
+                            <span id="height-scale-val" class="font-mono text-indigo-400">1.0x</span>
+                        </div>
+                        <input type="range" id="height-scale" min="0" max="3" step="0.1" value="1.0" oninput="applyGlobalHeightAdjustment(this.value)" class="w-full accent-indigo-500 bg-dark-700 h-1.5 rounded-lg cursor-pointer">
+                    </div>
+
+                    <button onclick="resetTerrain()" class="w-full py-2 bg-rose-600/20 border border-rose-500/30 text-rose-300 hover:bg-rose-600 hover:text-white rounded-lg text-xs font-medium transition flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-rotate-right"></i>
+                        <span>Resetar Terreno (Padrão Cinza)</span>
+                    </button>
+                </div>
+
+                <!-- Persistence (Save/Load) -->
+                <div class="space-y-3 bg-dark-900/60 p-3.5 rounded-xl border border-dark-700">
+                    <h2 class="text-[11px] font-semibold text-slate-300 uppercase tracking-wider">Persistência</h2>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="saveTerrainModel()" class="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium transition flex items-center justify-center space-x-2 shadow">
+                            <i class="fa-solid fa-download"></i>
+                            <span>Salvar JSON</span>
+                        </button>
+                        <label class="py-2.5 px-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium transition flex items-center justify-center space-x-2 shadow cursor-pointer text-center">
+                            <i class="fa-solid fa-upload"></i>
+                            <span>Carregar</span>
+                            <input type="file" id="load-file" accept=".json" onchange="loadTerrainModel(event)" class="hidden">
+                        </label>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Footer Credits -->
+            <div class="p-3 border-t border-dark-700 text-center text-[11px] text-slate-400 bg-dark-800">
+                Desenvolvido por <span class="text-indigo-400 font-medium">Rogério B. de Andrade</span>
+            </div>
+        </aside>
+
+        <!-- Viewport -->
+        <main class="flex-1 relative bg-gradient-to-br from-dark-900 to-dark-800" id="canvas-container">
+            
+            <!-- Instructions HUD & Mode Toggle Switch -->
+            <div class="absolute top-4 left-4 z-10 flex items-center space-x-3">
+                <div class="bg-dark-800/90 backdrop-blur-md border border-dark-700 px-4 py-2 rounded-xl shadow-lg flex items-center space-x-4 text-xs">
+                    <div class="flex items-center space-x-1.5 text-slate-300" id="hud-mode-indicator">
+                        <i class="fa-solid fa-paintbrush text-indigo-400"></i>
+                        <span><strong>Modo Atual:</strong> <span id="current-mode-label" class="text-indigo-300 font-medium">Escultura / Edição</span></span>
+                    </div>
+                </div>
+                <!-- Mode Toggle Button -->
+                <button id="btn-toggle-mode" onclick="toggleInteractionMode()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl shadow-lg font-medium text-xs flex items-center space-x-2 transition border border-indigo-400/40">
+                    <i class="fa-solid fa-camera" id="mode-icon"></i>
+                    <span id="mode-btn-text">Alternar para Câmera</span>
+                </button>
+            </div>
+
+            <!-- Toast Modal -->
+            <div id="toast" class="absolute bottom-6 right-6 z-30 transform translate-y-20 opacity-0 transition-all duration-300 bg-dark-800 border border-indigo-500/50 text-slate-100 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3">
+                <div id="toast-icon" class="text-indigo-400 text-lg">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+                <div>
+                    <h4 id="toast-title" class="font-semibold text-xs">Sucesso</h4>
+                    <p id="toast-desc" class="text-[11px] text-slate-400">Ação realizada.</p>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        // --- 30 Textures Definition ---
+        const textureList = [
+            "Grama", "Terra", "Madeira", "Gelo", "Areia", "Rocha", "Asfalto", "Neve", 
+            "Lã", "Tijolo", "Água", "Mármore", "Concreto", "Metal Enferrujado", "Cascalho", 
+            "Lava", "Musgo", "Ferrugem", "Cerâmica", "Borracha", "Palha", "Cortiça", 
+            "Ouro", "Cobre", "Cristal", "Vidro", "Areia Molhada", "Pedra de Rio", "Lama", "Granito"
+        ];
+
+        let proceduralTextures = {};
+
+        // --- Application State ---
+        let scene, camera, renderer, controls;
+        let terrainMesh, terrainGeometry, terrainMaterial;
+        let raycaster = new THREE.Raycaster();
+        let mouse = new THREE.Vector2();
+        let isMouseDown = false;
+        let animationFrameId = null;
+
+        // Tool & Mode settings
+        let currentTool = 'raise'; // 'raise', 'lower', 'smooth', 'paint'
+        let interactionMode = 'edit'; // 'edit' vs 'camera'
+        let brushSize = 3.0;
+        let brushIntensity = 1.0;
+        let brushColor = new THREE.Color('#22c55e');
+        let gridResolution = 64;
+        let terrainSizeX = 50;
+        let terrainSizeZ = 50;
+        let wireframeEnabled = false;
+        let activeTextureName = "Grama";
+        let lastBaseHeights = null; // Para o ajuste global de altura
+
+        let brushCursorMesh;
+
+        // History / Undo Stack
+        let historyStack = [];
+        const MAX_HISTORY_STEPS = 20;
+
+        window.onload = function() {
+            generateAllProceduralTextures();
+            populateTextureDropdown();
+            initThreeJS();
+            setupEventListeners();
+            setupKeyboardShortcuts();
+            animate();
+        };
+
+        // --- Generate 30 Procedural Textures via HTML5 Canvas ---
+        function generateAllProceduralTextures() {
+            textureList.forEach(name => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 256;
+                canvas.height = 256;
+                const ctx = canvas.getContext('2d');
+                renderTexturePattern(ctx, name, 256, 256);
+
+                const texture = new THREE.CanvasTexture(canvas);
+                texture.wrapS = THREE.RepeatWrapping;
+                texture.wrapT = THREE.RepeatWrapping;
+                texture.repeat.set(4, 4);
+                proceduralTextures[name] = texture;
+            });
+        }
+
+        function renderTexturePattern(ctx, name, w, h) {
+            ctx.fillStyle = '#555555';
+            ctx.fillRect(0, 0, w, h);
+
+            switch(name) {
+                case "Grama":
+                    ctx.fillStyle = '#22c55e'; ctx.fillRect(0, 0, w, h);
+                    ctx.fillStyle = '#16a34a';
+                    for(let i=0; i<500; i++) ctx.fillRect(Math.random()*w, Math.random()*h, 2, 6);
+                    break;
+                case "Terra":
+                    ctx.fillStyle = '#8b4513'; ctx.fillRect(0, 0, w, h);
+                    ctx.fillStyle = '#65300b';
+                    for(let i=0; i<800; i++) ctx.fillRect(Math.random()*w, Math.random()*h, 3, 3);
+                    break;
+                case "Madeira":
+                    ctx.fillStyle = '#a0522d'; ctx.fillRect(0, 0, w, h);
+                    ctx.fillStyle = '#803e1b';
+                    for(let i=0; i<h; i+=12) { ctx.fillRect(0, i, w, 4); }
+                    break;
+                case "Gelo":
+                    ctx.fillStyle = '#e0f2fe'; ctx.fillRect(0, 0, w, h);
+                    ctx.strokeStyle = '#bae6fd'; ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(w, h); ctx.stroke();
+                    break;
+                case "Areia":
+                    ctx.fillStyle = '#fde047'; ctx.fillRect(0, 0, w, h);
+                    ctx.fillStyle = '#ca8a04';
+                    for(let i=0; i<1000; i++) ctx.fillRect(Math.random()*w, Math.random()*h, 1.5, 1.5);
+                    break;
+                case "Rocha":
+                    ctx.fillStyle = '#78716c'; ctx.fillRect(0, 0, w, h);
+                    ctx.fillStyle = '#44403c';
+                    for(let i=0; i<300; i++) { ctx.fillRect(Math.random()*w, Math.random()*h, Math.random()*15, Math.random()*15); }
+                    break;
+                case "Asfalto":
+                    ctx.fillStyle = '#1f2937'; ctx.fillRect(0, 0, w, h);
+                    ctx.fillStyle = '#374151';
+                    for(let i=0; i<1500; i++) ctx.fillRect(Math.random()*w, Math.random()*h, 2, 2);
+                    break;
+                case "Neve":
+                    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h);
+                    ctx.fillStyle = '#f1f5f9';
+                    for(let i=0; i<400; i++) ctx.fillRect(Math.random()*w, Math.random()*h, 3, 3);
+                    break;
+                case "Tijolo":
+                    ctx.fillStyle = '#991b1b'; ctx.fillRect(0, 0, w, h);
+                    ctx.strokeStyle = '#f8fafc'; ctx.lineWidth = 3;
+                    for(let y=0; y<h; y+=32) {
+                        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+                        let offset = (y/32)%2 === 0 ? 0 : 32;
+                        for(let x=offset; x<w; x+=64) {
+                            ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y+32); ctx.stroke();
+                        }
+                    }
+                    break;
+                case "Água":
+                    ctx.fillStyle = '#3b82f6'; ctx.fillRect(0, 0, w, h);
+                    ctx.fillStyle = '#60a5fa';
+                    for(let i=0; i<20; i++) {
+                        ctx.beginPath(); ctx.arc(Math.random()*w, Math.random()*h, Math.random()*20, 0, Math.PI); ctx.fill();
+                    }
+                    break;
+                case "Mármore":
+                    ctx.fillStyle = '#f8fafc'; ctx.fillRect(0, 0, w, h);
+                    ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 4;
+                    ctx.beginPath(); ctx.moveTo(0, 50); ctx.bezierCurveTo(100, 100, 150, 0, w, 200); ctx.stroke();
+                    break;
+                case "Concreto":
+                    ctx.fillStyle = '#9ca3af'; ctx.fillRect(0, 0, w, h);
+                    ctx.fillStyle = '#6b7280';
+                    for(let i=0; i<600; i++) ctx.fillRect(Math.random()*w, Math.random()*h, 2, 2);
+                    break;
+                case "Metal Enferrujado":
+                    ctx.fillStyle = '#7c2d12'; ctx.fillRect(0, 0, w, h);
+                    ctx.fillStyle = '#ea580c';
+                    for(let i=0; i<400; i++) ctx.fillRect(Math.random()*w, Math.random()*h, 4, 4);
+                    break;
+                case "Lava":
+                    ctx.fillStyle = '#b91c1c'; ctx.fillRect(0, 0, w, h);
+                    ctx.fillStyle = '#f97316';
+                    for(let i=0; i<15; i++) {
+                        ctx.beginPath(); ctx.arc(Math.random()*w, Math.random()*h, Math.random()*30, 0, Math.PI*2); ctx.fill();
+                    }
+                    break;
+                case "Musgo":
+                    ctx.fillStyle = '#14532d'; ctx.fillRect(0, 0, w, h);
+                    ctx.fillStyle = '#15803d';
+                    for(let i=0; i<800; i++) ctx.fillRect(Math.random()*w, Math.random()*h, 3, 3);
+                    break;
+                case "Ouro":
+                    ctx.fillStyle = '#eab308'; ctx.fillRect(0, 0, w, h);
+                    ctx.fillStyle = '#fef08a';
+                    for(let i=0; i<200; i++) ctx.fillRect(Math.random()*w, Math.random()*h, 2, 2);
+                    break;
+                case "Cobre":
+                    ctx.fillStyle = '#c2410c'; ctx.fillRect(0, 0, w, h);
+                    ctx.fillStyle = '#fdba74';
+                    for(let i=0; i<300; i++) ctx.fillRect(Math.random()*w, Math.random()*h, 2, 2);
+                    break;
+                case "Cristal":
+                    ctx.fillStyle = '#c084fc'; ctx.fillRect(0, 0, w, h);
+                    ctx.fillStyle = '#f3e8ff';
+                    for(let i=0; i<100; i++) { ctx.fillRect(Math.random()*w, Math.random()*h, 5, 5); }
+                    break;
+                default:
+                    ctx.fillStyle = '#64748b'; ctx.fillRect(0, 0, w, h);
+                    ctx.fillStyle = '#334155';
+                    for(let i=0; i<500; i++) ctx.fillRect(Math.random()*w, Math.random()*h, 3, 3);
+                    break;
+            }
+        }
+
+        function populateTextureDropdown() {
+            const select = document.getElementById('texture-select');
+            select.innerHTML = '';
+            textureList.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.innerText = name;
+                select.appendChild(opt);
+            });
+        }
+
+        // --- Custom Image Texture Loader ---
+        function loadCustomImageTexture(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+
+                    const texture = new THREE.CanvasTexture(canvas);
+                    texture.wrapS = THREE.RepeatWrapping;
+                    texture.wrapT = THREE.RepeatWrapping;
+                    texture.repeat.set(4, 4);
+
+                    const customName = "Custom_" + Date.now();
+                    proceduralTextures[customName] = texture;
+                    
+                    // Adicionar ao select e selecionar
+                    const select = document.getElementById('texture-select');
+                    const opt = document.createElement('option');
+                    opt.value = customName;
+                    opt.innerText = file.name;
+                    select.prepend(opt);
+                    select.value = customName;
+
+                    applySelectedTexture(customName);
+                    showToast("Textura Carregada", "Imagem aplicada com sucesso!");
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // --- Three.js Init ---
+        function initThreeJS() {
+            const container = document.getElementById('canvas-container');
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color('#090d16');
+            scene.fog = new THREE.FogExp2('#090d16', 0.015);
+
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(40, 35, 45);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2 - 0.05;
+            controls.minDistance = 10;
+            controls.maxDistance = 200;
+            controls.enableRotate = false;
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            const sunLight = new THREE.DirectionalLight(0xfff5ea, 0.8);
+            sunLight.position.set(60, 80, 40);
+            sunLight.castShadow = true;
+            scene.add(sunLight);
+
+            createTerrain(gridResolution, terrainSizeX, terrainSizeZ);
+
+            // Brush cursor ring
+            const ringGeo = new THREE.RingGeometry(0.1, 0.15, 32);
+            ringGeo.rotateX(-Math.PI / 2);
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0x6366f1, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+            brushCursorMesh = new THREE.Mesh(ringGeo, ringMat);
+            brushCursorMesh.visible = false;
+            scene.add(brushCursorMesh);
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function createTerrain(res, sizeX, sizeZ, existingPositions = null, existingColors = null) {
+            if (terrainMesh) {
+                scene.remove(terrainMesh);
+                terrainGeometry.dispose();
+            }
+
+            gridResolution = res;
+            terrainSizeX = sizeX;
+            terrainSizeZ = sizeZ;
+
+            document.getElementById('grid-res').value = gridResolution;
+            document.getElementById('grid-res-val').innerText = gridResolution;
+            document.getElementById('size-x').value = terrainSizeX;
+            document.getElementById('size-x-val').innerText = terrainSizeX;
+            document.getElementById('size-z').value = terrainSizeZ;
+            document.getElementById('size-z-val').innerText = terrainSizeZ;
+
+            terrainGeometry = new THREE.PlaneGeometry(terrainSizeX, terrainSizeZ, res, res);
+            terrainGeometry.rotateX(-Math.PI / 2);
+
+            const count = terrainGeometry.attributes.position.count;
+            const colors = new Float32Array(count * 3);
+            const positions = terrainGeometry.attributes.position;
+
+            if (existingPositions) {
+                positions.array.set(existingPositions);
+            } else {
+                for (let i = 0; i < count; i++) {
+                    const x = positions.getX(i);
+                    const z = positions.getZ(i);
+                    const y = Math.sin(x * 0.1) * Math.cos(z * 0.1) * 1.0;
+                    positions.setY(i, y);
+                }
+            }
+
+            if (existingColors) {
+                colors.set(existingColors);
+            } else {
+                for (let i = 0; i < count; i++) {
+                    colors[i * 3]     = 0.5;
+                    colors[i * 3 + 1] = 0.5;
+                    colors[i * 3 + 2] = 0.5;
+                }
+            }
+
+            terrainGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            terrainGeometry.computeVertexNormals();
+
+            // Salvar alturas base para o ajuste global
+            lastBaseHeights = new Float32Array(positions.array);
+
+            terrainMaterial = new THREE.MeshStandardMaterial({
+                vertexColors: true,
+                roughness: 0.7,
+                metalness: 0.1,
+                wireframe: wireframeEnabled,
+                map: proceduralTextures[activeTextureName] || null
+            });
+
+            terrainMesh = new THREE.Mesh(terrainGeometry, terrainMaterial);
+            terrainMesh.receiveShadow = true;
+            terrainMesh.castShadow = true;
+            scene.add(terrainMesh);
+
+            pushHistoryState();
+        }
+
+        // --- Atualizar Dimensões (Largura X e Comprimento Z) ---
+        function updateTerrainDimensions() {
+            const newSizeX = parseFloat(document.getElementById('size-x').value);
+            const newSizeZ = parseFloat(document.getElementById('size-z').value);
+            
+            document.getElementById('size-x-val').innerText = newSizeX;
+            document.getElementById('size-z-val').innerText = newSizeZ;
+
+            if (terrainGeometry) {
+                const currentPos = Array.from(terrainGeometry.attributes.position.array);
+                const currentCols = Array.from(terrainGeometry.attributes.color.array);
+                createTerrain(gridResolution, newSizeX, newSizeZ, currentPos, currentCols);
+            }
+        }
+
+        // --- Ajuste Global de Alturas ---
+        function applyGlobalHeightAdjustment(multiplierVal) {
+            const mult = parseFloat(multiplierVal);
+            document.getElementById('height-scale-val').innerText = mult.toFixed(1) + 'x';
+
+            if (!terrainGeometry || !lastBaseHeights) return;
+            const positions = terrainGeometry.attributes.position;
+            const count = positions.count;
+
+            for (let i = 0; i < count; i++) {
+                // Multiplica a altura base original
+                const baseY = lastBaseHeights[i * 3 + 1] !== undefined ? lastBaseHeights[i * 3 + 1] : positions.getY(i);
+                positions.setY(i, baseY * mult);
+            }
+
+            positions.needsUpdate = true;
+            terrainGeometry.computeVertexNormals();
+        }
+
+        // --- History & Undo System ---
+        function pushHistoryState() {
+            if (!terrainGeometry) return;
+            const positions = Array.from(terrainGeometry.attributes.position.array);
+            const colors = Array.from(terrainGeometry.attributes.color.array);
+
+            historyStack.push({ positions, colors });
+            if (historyStack.length > MAX_HISTORY_STEPS) {
+                historyStack.shift();
+            }
+        }
+
+        function undoAction() {
+            if (historyStack.length <= 1) {
+                showToast("Histórico", "Nenhuma ação anterior para desfazer.", true);
+                return;
+            }
+
+            historyStack.pop();
+            const prevState = historyStack[historyStack.length - 1];
+
+            const positions = terrainGeometry.attributes.position;
+            const colors = terrainGeometry.attributes.color;
+
+            positions.array.set(prevState.positions);
+            colors.array.set(prevState.colors);
+
+            positions.needsUpdate = true;
+            colors.needsUpdate = true;
+            terrainGeometry.computeVertexNormals();
+
+            showToast("Desfeito", "Ação anterior revertida com sucesso.");
+        }
+
+        // --- Keyboard Shortcuts ---
+        function setupKeyboardShortcuts() {
+            window.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                    e.preventDefault();
+                    undoAction();
+                }
+            });
+        }
+
+        // --- Mode Toggle (Camera vs Edit) ---
+        function toggleInteractionMode() {
+            if (interactionMode === 'edit') {
+                interactionMode = 'camera';
+                controls.enableRotate = true;
+                brushCursorMesh.visible = false;
+
+                document.getElementById('btn-toggle-mode').className = "bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl shadow-lg font-medium text-xs flex items-center space-x-2 transition border border-emerald-400/40";
+                document.getElementById('mode-icon').className = "fa-solid fa-paintbrush";
+                document.getElementById('mode-btn-text').innerText = "Alternar para Edição";
+                document.getElementById('current-mode-label').innerText = "Câmera (Orbitando)";
+                document.getElementById('current-mode-label').className = "text-emerald-300 font-medium";
+                showToast("Modo Câmera", "Arraste com o mouse para orbitar a cena livremente.");
+            } else {
+                interactionMode = 'edit';
+                controls.enableRotate = false;
+
+                document.getElementById('btn-toggle-mode').className = "bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl shadow-lg font-medium text-xs flex items-center space-x-2 transition border border-indigo-400/40";
+                document.getElementById('mode-icon').className = "fa-solid fa-camera";
+                document.getElementById('mode-btn-text').innerText = "Alternar para Câmera";
+                document.getElementById('current-mode-label').innerText = "Escultura / Edição";
+                document.getElementById('current-mode-label').className = "text-indigo-300 font-medium";
+                showToast("Modo Edição", "Pincéis e ferramentas de escultura reativados.");
+            }
+        }
+
+        // --- Animation Loop ---
+        function animate() {
+            animationFrameId = requestAnimationFrame(animate);
+
+            if (isMouseDown && interactionMode === 'edit' && currentTool === 'smooth') {
+                applyBrushContinuous();
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // --- Event Listeners ---
+        function setupEventListeners() {
+            const dom = renderer.domElement;
+
+            dom.addEventListener('pointerdown', (e) => {
+                if (e.button === 0 && interactionMode === 'edit') {
+                    isMouseDown = true;
+                    if (currentTool !== 'smooth') {
+                        applyBrushOnce(e);
+                    }
+                }
+            });
+
+            dom.addEventListener('pointermove', (e) => {
+                updateMouseCoords(e);
+                if (interactionMode === 'edit') {
+                    updateBrushCursor();
+                    if (isMouseDown && currentTool !== 'smooth') {
+                        applyBrushOnce(e);
+                    }
+                }
+            });
+
+            window.addEventListener('pointerup', () => {
+                if (isMouseDown && interactionMode === 'edit') {
+                    isMouseDown = false;
+                    pushHistoryState();
+                }
+                isMouseDown = false;
+            });
+
+            dom.addEventListener('pointerleave', () => {
+                if (isMouseDown && interactionMode === 'edit') {
+                    pushHistoryState();
+                }
+                isMouseDown = false;
+                if (brushCursorMesh) brushCursorMesh.visible = false;
+            });
+        }
+
+        function updateMouseCoords(e) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+        }
+
+        function updateBrushCursor() {
+            if (interactionMode !== 'edit') return;
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(terrainMesh);
+
+            if (intersects.length > 0) {
+                const point = intersects[0].point;
+                brushCursorMesh.position.copy(point);
+                brushCursorMesh.position.y += 0.05;
+                const scale = brushSize;
+                brushCursorMesh.scale.set(scale, scale, scale);
+                brushCursorMesh.visible = true;
+            } else {
+                brushCursorMesh.visible = false;
+            }
+        }
+
+        // --- Brush Execution ---
+        function applyBrushOnce(e) {
+            executeBrushLogic();
+        }
+
+        function applyBrushContinuous() {
+            executeBrushLogic();
+        }
+
+        function executeBrushLogic() {
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(terrainMesh);
+
+            if (intersects.length === 0) return;
+
+            const hitPoint = intersects[0].point;
+            const positions = terrainGeometry.attributes.position;
+            const colors = terrainGeometry.attributes.color;
+            const count = positions.count;
+
+            let modified = false;
+
+            let sumY = 0, countNearby = 0;
+            if (currentTool === 'smooth') {
+                for (let i = 0; i < count; i++) {
+                    const dx = positions.getX(i) - hitPoint.x;
+                    const dz = positions.getZ(i) - hitPoint.z;
+                    if (Math.sqrt(dx * dx + dz * dz) < brushSize) {
+                        sumY += positions.getY(i);
+                        countNearby++;
+                    }
+                }
+            }
+            const avgY = countNearby > 0 ? sumY / countNearby : 0;
+
+            for (let i = 0; i < count; i++) {
+                const vx = positions.getX(i);
+                const vz = positions.getZ(i);
+                const dx = vx - hitPoint.x;
+                const dz = vz - hitPoint.z;
+                const dist = Math.sqrt(dx * dx + dz * dz);
+
+                if (dist < brushSize) {
+                    const factor = Math.cos((dist / brushSize) * (Math.PI / 2)) * brushIntensity * 0.15;
+
+                    if (currentTool === 'raise') {
+                        positions.setY(i, positions.getY(i) + factor);
+                        modified = true;
+                    } else if (currentTool === 'lower') {
+                        positions.setY(i, positions.getY(i) - factor);
+                        modified = true;
+                    } else if (currentTool === 'smooth') {
+                        let currentY = positions.getY(i);
+                        let targetY = currentY + (avgY - currentY) * (factor * 0.5);
+                        positions.setY(i, targetY);
+                        modified = true;
+                    } else if (currentTool === 'paint') {
+                        // Pintura de cor sólida estrita apenas na área exata do pincel
+                        const intensityWeight = Math.max(0, 1.0 - (dist / brushSize));
+                        const curCol = new THREE.Color(colors.getX(i), colors.getY(i), colors.getZ(i));
+                        curCol.lerp(brushColor, intensityWeight * Math.min(brushIntensity, 1.0));
+                        colors.setXYZ(i, curCol.r, curCol.g, curCol.b);
+                        modified = true;
+                    }
+                }
+            }
+
+            if (modified) {
+                positions.needsUpdate = true;
+                if (currentTool === 'paint') {
+                    colors.needsUpdate = true;
+                }
+                terrainGeometry.computeVertexNormals();
+            }
+        }
+
+        // --- UI & Tool Controls ---
+        function setTool(toolName) {
+            currentTool = toolName;
+            const tools = ['raise', 'lower', 'smooth', 'paint'];
+            tools.forEach(t => {
+                const btn = document.getElementById(`tool-${t}`);
+                if (t === toolName) {
+                    btn.className = "flex items-center space-x-2 p-2.5 rounded-lg border border-indigo-500 bg-indigo-600 text-white text-xs font-medium transition shadow";
+                } else {
+                    btn.className = "flex items-center space-x-2 p-2.5 rounded-lg border border-dark-600 bg-dark-700 text-slate-300 text-xs font-medium hover:bg-dark-600 transition";
+                }
+            });
+
+            const paintOpts = document.getElementById('paint-options-container');
+            if (toolName === 'paint') {
+                paintOpts.classList.remove('hidden');
+            } else {
+                paintOpts.classList.add('hidden');
+            }
+        }
+
+        function updateBrushSize(val) {
+            brushSize = parseFloat(val);
+            document.getElementById('brush-size-val').innerText = brushSize.toFixed(1);
+        }
+
+        function updateBrushIntensity(val) {
+            brushIntensity = parseFloat(val);
+            document.getElementById('brush-intensity-val').innerText = brushIntensity.toFixed(1);
+        }
+
+        function setPresetColor(hex) {
+            document.getElementById('brush-color').value = hex;
+            brushColor.set(hex);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const colorInput = document.getElementById('brush-color');
+            if (colorInput) {
+                colorInput.addEventListener('input', (e) => {
+                    brushColor.set(e.target.value);
+                });
+            }
+        });
+
+        function toggleWireframe(enabled) {
+            wireframeEnabled = enabled;
+            if (terrainMaterial) {
+                terrainMaterial.wireframe = wireframeEnabled;
+            }
+            showToast("Wireframe", enabled ? "Malha de linhas ativada" : "Malha de linhas desativada");
+        }
+
+        function applySelectedTexture(texName) {
+            activeTextureName = texName;
+            const tex = proceduralTextures[texName];
+            if (tex && terrainMaterial) {
+                terrainMaterial.map = tex;
+                terrainMaterial.needsUpdate = true;
+                showToast("Textura Aplicada", `Globalmente definida para: ${texName}`);
+            }
+        }
+
+        function rebuildTerrain() {
+            const res = parseInt(document.getElementById('grid-res').value);
+            createTerrain(res, terrainSizeX, terrainSizeZ);
+            showToast("Malha Atualizada", `Resolução alterada para ${res}x${res}`);
+        }
+
+        function resetTerrain() {
+            document.getElementById('height-scale').value = 1.0;
+            document.getElementById('height-scale-val').innerText = "1.0x";
+            createTerrain(gridResolution, terrainSizeX, terrainSizeZ);
+            showToast("Terreno Resetado", "Retornou ao padrão inicial.");
+        }
+
+        // --- Save / Load JSON Persistence ---
+        function saveTerrainModel() {
+            const positions = terrainGeometry.attributes.position.array;
+            const colors = terrainGeometry.attributes.color.array;
+
+            const modelData = {
+                version: "2.2",
+                gridResolution: gridResolution,
+                terrainSizeX: terrainSizeX,
+                terrainSizeZ: terrainSizeZ,
+                wireframeEnabled: wireframeEnabled,
+                activeTextureName: activeTextureName,
+                positions: Array.from(positions),
+                colors: Array.from(colors)
+            };
+
+            const jsonString = JSON.stringify(modelData);
+            const blob = new Blob([jsonString], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `terreno-avancado-${Date.now()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showToast("Modelo Salvo", "Arquivo JSON exportado com sucesso.");
+        }
+
+        function loadTerrainModel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (!data.positions || !data.colors || !data.gridResolution) {
+                        throw new Error("Formato inválido.");
+                    }
+
+                    gridResolution = data.gridResolution;
+                    terrainSizeX = data.terrainSizeX || data.terrainSize || 50;
+                    terrainSizeZ = data.terrainSizeZ || data.terrainSize || 50;
+                    wireframeEnabled = data.wireframeEnabled || false;
+                    activeTextureName = data.activeTextureName || "Grama";
+
+                    document.getElementById('wireframe-toggle').checked = wireframeEnabled;
+                    document.getElementById('texture-select').value = activeTextureName;
+                    document.getElementById('height-scale').value = 1.0;
+                    document.getElementById('height-scale-val').innerText = "1.0x";
+
+                    createTerrain(gridResolution, terrainSizeX, terrainSizeZ, data.positions, data.colors);
+
+                    historyStack = [];
+                    pushHistoryState();
+
+                    showToast("Modelo Carregado", "Terreno restaurado com sucesso!");
+                } catch (err) {
+                    console.error(err);
+                    showToast("Erro ao Carregar", "Arquivo JSON incompatível.", true);
+                }
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        // --- Toast Notifier ---
+        function showToast(title, desc, isError = false) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-title').innerText = title;
+            document.getElementById('toast-desc').innerText = desc;
+            const iconEl = document.getElementById('toast-icon');
+
+            if (isError) {
+                iconEl.innerHTML = '<i class="fa-solid fa-circle-exclamation text-rose-500"></i>';
+                toast.className = "absolute bottom-6 right-6 z-30 transform translate-y-0 opacity-100 transition-all duration-300 bg-dark-800 border border-rose-500/50 text-slate-100 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3";
+            } else {
+                iconEl.innerHTML = '<i class="fa-solid fa-circle-check text-indigo-400"></i>';
+                toast.className = "absolute bottom-6 right-6 z-30 transform translate-y-0 opacity-100 transition-all duration-300 bg-dark-800 border border-indigo-500/50 text-slate-100 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3";
+            }
+
+            setTimeout(() => {
+                toast.className = "absolute bottom-6 right-6 z-30 transform translate-y-20 opacity-0 transition-all duration-300 bg-dark-800 border border-indigo-500/50 text-slate-100 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3";
+            }, 3500);
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+    </script>
+</body>
+</html>
