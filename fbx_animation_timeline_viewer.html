@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador de Animações FBX</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darker: '#090d16',
+                        card: '#131b2e',
+                        accent: '#3b82f6',
+                        accentHover: '#2563eb'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Three.js and Addons (fflate required for FBX binary decompression) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fflate@0.7.4/umd/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #090d16; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #334155; }
+        input[type=range] { accent-color: #3b82f6; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 h-screen flex flex-col overflow-hidden">
+
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-3 flex items-center justify-between shrink-0 shadow-lg z-20">
+        <div class="flex items-center space-x-3">
+            <div class="bg-gradient-to-br from-blue-500 to-indigo-600 p-2.5 rounded-2xl text-white shadow-lg shadow-blue-500/30">
+                <i class="fa-solid fa-cube text-lg"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-base tracking-tight bg-gradient-to-r from-blue-400 via-indigo-300 to-sky-400 bg-clip-text text-transparent">FBX Studio & Timeline</h1>
+                <p class="text-xs text-slate-400">Leitor e Timeline de Animações 3D</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-3">
+            <!-- Settings Panel Toggle -->
+            <button id="toggleConfigBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium px-3.5 py-2 rounded-xl text-xs transition border border-slate-700 flex items-center space-x-2 cursor-pointer">
+                <i class="fa-solid fa-sliders text-blue-400 text-sm"></i>
+                <span>Configurações & Luzes</span>
+            </button>
+
+            <!-- Texture Upload Button -->
+            <label class="cursor-pointer bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium px-3.5 py-2 rounded-xl text-xs transition border border-slate-700 flex items-center space-x-2">
+                <i class="fa-solid fa-image text-emerald-400 text-sm"></i>
+                <span>Aplicar Textura</span>
+                <input type="file" id="textureInput" accept="image/png, image/jpeg, image/jpg" class="hidden">
+            </label>
+
+            <!-- FBX & Assets Upload Button -->
+            <label class="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white font-medium px-4 py-2 rounded-xl text-xs transition shadow-lg shadow-blue-600/20 flex items-center space-x-2">
+                <i class="fa-solid fa-folder-open text-sm"></i>
+                <span>Carregar Arquivo(s) .FBX / Textura</span>
+                <input type="file" id="fileInput" accept=".fbx,image/png,image/jpeg,image/jpg" multiple class="hidden">
+            </label>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden relative">
+
+        <!-- Configuration Sidebar Drawer (Collapsible) -->
+        <div id="config-panel" class="w-80 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 z-20 shadow-2xl transition-all duration-300">
+            <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/80">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-gear text-blue-400"></i>
+                    <span class="text-xs font-bold text-slate-200 tracking-wider uppercase">Painel de Configurações</span>
+                </div>
+                <button id="closeConfigBtn" class="text-slate-500 hover:text-slate-300 text-sm"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-4 space-y-6 text-xs text-slate-300">
+                <!-- Ambiente e Fundo -->
+                <div class="space-y-3">
+                    <h3 class="font-bold text-blue-400 uppercase tracking-wider text-[10px]">Ambiente e Exibição</h3>
+                    
+                    <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                        <span>Cor de Fundo</span>
+                        <input type="color" id="bgColorPicker" value="#070b14" class="w-6 h-6 rounded border-0 bg-transparent cursor-pointer">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex items-center space-x-2 bg-slate-950 p-2.5 rounded-xl border border-slate-800 cursor-pointer">
+                            <input type="checkbox" id="toggleGrid" checked class="rounded border-slate-700 bg-slate-900">
+                            <span>Exibir Grid</span>
+                        </label>
+                        <label class="flex items-center space-x-2 bg-slate-950 p-2.5 rounded-xl border border-slate-800 cursor-pointer">
+                            <input type="checkbox" id="toggleWireframe" class="rounded border-slate-700 bg-slate-900">
+                            <span>Wireframe</span>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                        <span>Intensidade Metálica (Base)</span>
+                        <input type="range" id="metalnessRange" min="0" max="1" step="0.05" value="0.1" class="w-28">
+                    </div>
+
+                    <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                        <span>Rugosidade (Roughness)</span>
+                        <input type="range" id="roughnessRange" min="0" max="1" step="0.05" value="0.6" class="w-28">
+                    </div>
+                </div>
+
+                <!-- Iluminação Estúdio -->
+                <div class="space-y-3">
+                    <h3 class="font-bold text-blue-400 uppercase tracking-wider text-[10px]">Iluminação de Estúdio</h3>
+
+                    <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                        <span>Luz Ambiente</span>
+                        <input type="range" id="ambientIntensityRange" min="0" max="3" step="0.1" value="1.2" class="w-28">
+                    </div>
+
+                    <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                        <span>Luz Direcional (Principal)</span>
+                        <input type="range" id="dirLightIntensityRange" min="0" max="4" step="0.1" value="2.0" class="w-28">
+                    </div>
+
+                    <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                        <span>Luz de Preenchimento (Hemi)</span>
+                        <input type="range" id="hemiIntensityRange" min="0" max="3" step="0.1" value="1.0" class="w-28">
+                    </div>
+
+                    <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                        <span>Sombras no Piso</span>
+                        <input type="checkbox" id="toggleShadows" checked class="rounded border-slate-700 bg-slate-900">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3D Canvas Viewport -->
+        <div id="canvas-container" class="flex-1 h-full relative bg-slate-950">
+            <!-- Loading Overlay -->
+            <div id="loading-overlay" class="absolute inset-0 bg-slate-950/85 backdrop-blur-md z-40 flex flex-col items-center justify-center transition-opacity duration-300 hidden">
+                <div class="w-14 h-14 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4 shadow-xl shadow-blue-500/20"></div>
+                <p id="loading-text" class="text-slate-200 font-medium text-sm tracking-wide">Carregando arquivo FBX...</p>
+                <div class="w-72 bg-slate-900 rounded-full h-2 mt-4 overflow-hidden border border-slate-800">
+                    <div id="loading-bar" class="bg-gradient-to-r from-blue-500 to-indigo-500 h-full w-0 transition-all duration-300"></div>
+                </div>
+            </div>
+
+            <!-- Drag & Drop Zone Overlay -->
+            <div id="dropzone" class="absolute inset-0 border-2 border-dashed border-slate-700/50 m-6 rounded-3xl flex flex-col items-center justify-center bg-slate-900/50 backdrop-blur-md transition pointer-events-none opacity-0 z-30">
+                <div class="w-20 h-20 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mb-4 animate-bounce">
+                    <i class="fa-solid fa-cloud-arrow-up text-3xl"></i>
+                </div>
+                <p class="text-xl font-bold text-slate-100">Solte o arquivo FBX ou Textura aqui</p>
+                <p class="text-xs text-slate-400 mt-1">Arquivos .fbx e imagens serão mapeados automaticamente via LoadingManager</p>
+            </div>
+
+            <!-- Empty State Prompt -->
+            <div id="empty-state" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center pointer-events-none z-10">
+                <div class="w-24 h-24 bg-slate-900/90 border border-slate-800 rounded-3xl flex items-center justify-center text-slate-500 mb-5 shadow-2xl">
+                    <i class="fa-solid fa-file-arrow-up text-4xl text-blue-500/60"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-200 mb-2">Nenhum Modelo Carregado</h3>
+                <p class="text-xs text-slate-400 max-w-md mb-6 leading-relaxed">Arraste e solte um arquivo .fbx e sua textura correspondente (ex: textura_sonic.png) simultaneamente.</p>
+                <div class="flex items-center space-x-2 text-xs text-blue-400/90 bg-blue-500/10 px-4 py-2.5 rounded-xl border border-blue-500/20 pointer-events-auto">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span>Câmera centralizada automaticamente no personagem e iluminação otimizada.</span>
+                </div>
+            </div>
+
+            <!-- Floating Status Badge -->
+            <div class="absolute top-4 left-4 bg-slate-900/90 backdrop-blur-md border border-slate-800/80 px-3.5 py-2 rounded-2xl shadow-xl flex items-center space-x-3 text-xs text-slate-300 z-10">
+                <span class="flex items-center space-x-1.5"><i class="fa-solid fa-cube text-blue-400"></i> <span id="info-mesh">0 malhas</span></span>
+                <span class="text-slate-700">|</span>
+                <span class="flex items-center space-x-1.5"><i class="fa-solid fa-bone text-indigo-400"></i> <span id="info-bones">0 ossos</span></span>
+                <span class="text-slate-700">|</span>
+                <span class="flex items-center space-x-1.5"><i class="fa-solid fa-film text-emerald-400"></i> <span id="info-anim">0</span> Animações</span>
+            </div>
+        </div>
+
+        <!-- Sidebar / Animation list -->
+        <aside class="w-80 bg-slate-900 border-l border-slate-800 flex flex-col shrink-0 z-20 shadow-2xl">
+            <div class="p-3.5 border-b border-slate-800/60 flex items-center justify-between bg-slate-900/40">
+                <span class="text-xs font-semibold text-slate-300">Clipes de Animação</span>
+                <span id="anim-count-badge" class="bg-blue-500/10 text-blue-400 text-xs font-bold px-2.5 py-0.5 rounded-full border border-blue-500/20">0</span>
+            </div>
+            <div id="animation-list" class="flex-1 overflow-y-auto p-3 space-y-2">
+                <div class="text-center py-16 text-slate-500 text-xs leading-relaxed">
+                    Nenhuma animação identificada.<br>Carregue um arquivo FBX.
+                </div>
+            </div>
+
+            <!-- Playback Speed Control -->
+            <div class="p-4 border-t border-slate-800 bg-slate-900/60">
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between text-xs text-slate-400">
+                        <span>Velocidade de Reprodução</span>
+                        <span id="speed-value" class="font-mono font-bold text-slate-200">1.0x</span>
+                    </div>
+                    <input type="range" id="speedRange" min="0.1" max="2.0" step="0.1" value="1.0" class="w-full bg-slate-800 h-1.5 rounded-lg appearance-none cursor-pointer">
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <footer class="bg-slate-900 border-t border-slate-800 px-6 py-4 flex flex-col space-y-3 shrink-0 shadow-2xl z-30">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <button id="playBtn" disabled class="w-10 h-10 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-600 text-white flex items-center justify-center transition shadow-lg shadow-blue-600/20 cursor-pointer disabled:cursor-not-allowed">
+                    <i id="playIcon" class="fa-solid fa-play"></i>
+                </button>
+                <button id="stopBtn" disabled class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:bg-slate-800/50 disabled:text-slate-700 text-slate-200 flex items-center justify-center transition border border-slate-700 cursor-pointer disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-stop"></i>
+                </button>
+                <button id="loopBtn" disabled class="w-10 h-10 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/40 hover:bg-blue-600/30 disabled:bg-slate-800 disabled:text-slate-700 disabled:border-slate-700 flex items-center justify-center transition cursor-pointer disabled:cursor-not-allowed active" title="Alternar Loop">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+
+            <div class="flex items-center space-x-2 font-mono text-xs text-slate-300 bg-slate-950 px-4 py-2 rounded-xl border border-slate-800 shadow-inner">
+                <span id="current-time" class="text-blue-400 font-bold">0.00s</span>
+                <span class="text-slate-600">/</span>
+                <span id="total-time">0.00s</span>
+            </div>
+
+            <div class="text-xs text-slate-400 flex items-center space-x-2">
+                <span id="active-anim-name" class="font-medium text-slate-300 truncate max-w-[240px]">Nenhuma animação selecionada</span>
+            </div>
+        </div>
+
+        <!-- Scrubber -->
+        <div class="flex items-center space-x-4">
+            <span class="text-xs font-mono text-slate-500">0s</span>
+            <div class="flex-1 relative flex items-center">
+                <input type="range" id="timelineScrubber" min="0" max="100" value="0" step="0.001" disabled class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-50">
+            </div>
+            <span id="max-time-label" class="text-xs font-mono text-slate-500">0s</span>
+        </div>
+    </footer>
+
+    <script>
+        let scene, camera, renderer, controls, grid;
+        let ambientLight, dirLight, hemiLight;
+        let floor, floorMaterial;
+        let currentModel = null;
+        let mixer = null;
+        let animations = [];
+        let activeAction = null;
+        let clock = new THREE.Clock();
+        let isDraggingScrubber = false;
+        let isLooping = true;
+        let playbackSpeed = 1.0;
+
+        const globalTextureMap = new Map();
+
+        const container = document.getElementById('canvas-container');
+        const fileInput = document.getElementById('fileInput');
+        const textureInput = document.getElementById('textureInput');
+        const bgColorPicker = document.getElementById('bgColorPicker');
+        const toggleGrid = document.getElementById('toggleGrid');
+        const toggleWireframe = document.getElementById('toggleWireframe');
+        const toggleShadows = document.getElementById('toggleShadows');
+        const metalnessRange = document.getElementById('metalnessRange');
+        const roughnessRange = document.getElementById('roughnessRange');
+        const ambientIntensityRange = document.getElementById('ambientIntensityRange');
+        const dirLightIntensityRange = document.getElementById('dirLightIntensityRange');
+        const hemiIntensityRange = document.getElementById('hemiIntensityRange');
+        const configPanel = document.getElementById('config-panel');
+        const toggleConfigBtn = document.getElementById('toggleConfigBtn');
+        const closeConfigBtn = document.getElementById('closeConfigBtn');
+
+        const dropzone = document.getElementById('dropzone');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const loadingBar = document.getElementById('loading-bar');
+        const loadingText = document.getElementById('loading-text');
+        const emptyState = document.getElementById('empty-state');
+        const animationList = document.getElementById('animation-list');
+        const animCountBadge = document.getElementById('anim-count-badge');
+        const playBtn = document.getElementById('playBtn');
+        const playIcon = document.getElementById('playIcon');
+        const stopBtn = document.getElementById('stopBtn');
+        const loopBtn = document.getElementById('loopBtn');
+        const speedRange = document.getElementById('speedRange');
+        const speedValue = document.getElementById('speed-value');
+        const timelineScrubber = document.getElementById('timelineScrubber');
+        const currentTimeEl = document.getElementById('current-time');
+        const totalTimeEl = document.getElementById('total-time');
+        const maxTimeLabel = document.getElementById('max-time-label');
+        const activeAnimNameEl = document.getElementById('active-anim-name');
+        const infoMesh = document.getElementById('info-mesh');
+        const infoBones = document.getElementById('info-bones');
+        const infoAnim = document.getElementById('info-anim');
+
+        function initScene() {
+            scene = new THREE.Scene();
+            updateBackgroundColor(bgColorPicker.value);
+
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 10000);
+            camera.position.set(150, 200, 400);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.2;
+            container.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.target.set(0, 50, 0);
+
+            // Lighting Setup with high visibility defaults
+            ambientLight = new THREE.AmbientLight(0xffffff, parseFloat(ambientIntensityRange.value));
+            scene.add(ambientLight);
+
+            dirLight = new THREE.DirectionalLight(0xffffff, parseFloat(dirLightIntensityRange.value));
+            dirLight.position.set(300, 600, 400);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            dirLight.shadow.camera.near = 0.5;
+            dirLight.shadow.camera.far = 2500;
+            const d = 600;
+            dirLight.shadow.camera.left = -d;
+            dirLight.shadow.camera.right = d;
+            dirLight.shadow.camera.top = d;
+            dirLight.shadow.camera.bottom = -d;
+            dirLight.shadow.bias = -0.0005;
+            scene.add(dirLight);
+
+            hemiLight = new THREE.HemisphereLight(0xffffff, 0x1e293b, parseFloat(hemiIntensityRange.value));
+            hemiLight.position.set(0, 500, 0);
+            scene.add(hemiLight);
+
+            grid = new THREE.GridHelper(2000, 50, 0x3b82f6, 0x1e293b);
+            scene.add(grid);
+
+            const floorGeometry = new THREE.PlaneGeometry(5000, 5000);
+            floorMaterial = new THREE.ShadowMaterial({ opacity: 0.3 });
+            floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            setupEventListeners();
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function updateBackgroundColor(hexColor) {
+            const color = new THREE.Color(hexColor);
+            scene.background = color;
+            scene.fog = new THREE.FogExp2(color, 0.005);
+        }
+
+        function setupEventListeners() {
+            bgColorPicker.addEventListener('input', (e) => updateBackgroundColor(e.target.value));
+
+            toggleConfigBtn.addEventListener('click', () => {
+                configPanel.classList.toggle('-translate-x-full');
+            });
+            closeConfigBtn.addEventListener('click', () => {
+                configPanel.classList.add('-translate-x-full');
+            });
+
+            toggleGrid.addEventListener('change', (e) => {
+                grid.visible = e.target.checked;
+            });
+
+            toggleWireframe.addEventListener('change', (e) => {
+                if (!currentModel) return;
+                currentModel.traverse(child => {
+                    if (child.isMesh && child.material) {
+                        const mats = Array.isArray(child.material) ? child.material : [child.material];
+                        mats.forEach(m => m.wireframe = e.target.checked);
+                    }
+                });
+            });
+
+            toggleShadows.addEventListener('change', (e) => {
+                floorMaterial.opacity = e.target.checked ? 0.3 : 0;
+            });
+
+            metalnessRange.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                if (!currentModel) return;
+                currentModel.traverse(child => {
+                    if (child.isMesh && child.material) {
+                        const mats = Array.isArray(child.material) ? child.material : [child.material];
+                        mats.forEach(m => { if ('metalness' in m) m.metalness = val; });
+                    }
+                });
+            });
+
+            roughnessRange.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                if (!currentModel) return;
+                currentModel.traverse(child => {
+                    if (child.isMesh && child.material) {
+                        const mats = Array.isArray(child.material) ? child.material : [child.material];
+                        mats.forEach(m => { if ('roughness' in m) m.roughness = val; });
+                    }
+                });
+            });
+
+            ambientIntensityRange.addEventListener('input', (e) => {
+                ambientLight.intensity = parseFloat(e.target.value);
+            });
+
+            dirLightIntensityRange.addEventListener('input', (e) => {
+                dirLight.intensity = parseFloat(e.target.value);
+            });
+
+            hemiIntensityRange.addEventListener('input', (e) => {
+                hemiLight.intensity = parseFloat(e.target.value);
+            });
+        }
+
+        function onWindowResize() {
+            if (!container) return;
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const delta = clock.getDelta();
+            if (mixer) {
+                mixer.update(delta * playbackSpeed);
+                updateTimelineUI();
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function processFiles(fileList) {
+            let fbxFile = null;
+            const textureFiles = [];
+
+            for (const file of fileList) {
+                const ext = file.name.split('.').pop().toLowerCase();
+                if (ext === 'fbx') {
+                    fbxFile = file;
+                } else if (['png', 'jpg', 'jpeg'].includes(ext)) {
+                    textureFiles.push(file);
+                }
+            }
+
+            textureFiles.forEach(file => {
+                const blobUrl = URL.createObjectURL(file);
+                globalTextureMap.set(file.name, blobUrl);
+                globalTextureMap.set(file.name.toLowerCase(), blobUrl);
+            });
+
+            if (textureFiles.length > 0) {
+                showNotification(`${textureFiles.length} textura(s) mapeada(s) com sucesso!`);
+            }
+
+            if (fbxFile) {
+                const reader = new FileReader();
+                showLoading(true, "Lendo arquivo FBX...", 20);
+                reader.onload = (event) => {
+                    loadFBXData(event.target.result, fbxFile.name);
+                };
+                reader.readAsArrayBuffer(fbxFile);
+            } else if (textureFiles.length > 0 && currentModel) {
+                applyTextureToModel(textureFiles[textureFiles.length - 1]);
+            }
+        }
+
+        function loadFBXData(arrayBuffer, filename) {
+            updateLoadingProgress(40, "Configurando LoadingManager...");
+
+            try {
+                const manager = new THREE.LoadingManager();
+
+                manager.setURLModifier((url) => {
+                    const cleanName = url.split('/').pop().split('\\').pop();
+                    if (globalTextureMap.has(cleanName)) return globalTextureMap.get(cleanName);
+                    if (globalTextureMap.has(cleanName.toLowerCase())) return globalTextureMap.get(cleanName.toLowerCase());
+                    return url;
+                });
+
+                manager.onProgress = (item, loaded, total) => {
+                    const percent = Math.round((loaded / total) * 100);
+                    updateLoadingProgress(50 + (percent * 0.4), `Carregando dependências: ${item}`);
+                };
+
+                const loader = new THREE.FBXLoader(manager);
+                updateLoadingProgress(60, "Interpretando malhas e esqueleto...");
+
+                const object = loader.parse(arrayBuffer, '');
+                setupLoadedModel(object, filename);
+            } catch (err) {
+                console.error("Erro no FBXLoader:", err);
+                showLoading(false);
+                showNotification("Erro ao processar o arquivo FBX. Verifique se o arquivo está corrompido.", true);
+            }
+        }
+
+        function setupLoadedModel(object, filename) {
+            if (currentModel) {
+                scene.remove(currentModel);
+                currentModel = null;
+            }
+            if (mixer) {
+                mixer.stopAllAction();
+                mixer = null;
+            }
+
+            currentModel = object;
+            animations = object.animations || [];
+
+            let meshCount = 0;
+            let boneCount = 0;
+
+            const baseMetalness = parseFloat(metalnessRange.value);
+            const baseRoughness = parseFloat(roughnessRange.value);
+            const isWire = toggleWireframe.checked;
+
+            currentModel.traverse((child) => {
+                if (child.isMesh || child.isSkinnedMesh) {
+                    meshCount++;
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                    child.frustumCulled = false;
+
+                    if (child.material) {
+                        const mats = Array.isArray(child.material) ? child.material : [child.material];
+                        mats.forEach(m => {
+                            m.side = THREE.DoubleSide;
+                            m.depthWrite = true;
+                            m.wireframe = isWire;
+                            
+                            // Garante visibilidade e brilho realista
+                            if ('metalness' in m) m.metalness = baseMetalness;
+                            if ('roughness' in m) m.roughness = baseRoughness;
+
+                            if (m.map) {
+                                m.map.colorSpace = THREE.SRGBColorSpace;
+                                m.map.flipY = false;
+                                m.map.needsUpdate = true;
+                            }
+                            m.needsUpdate = true;
+                        });
+                    }
+                }
+                if (child.isBone) {
+                    boneCount++;
+                }
+            });
+
+            scene.add(currentModel);
+            currentModel.updateMatrixWorld(true);
+
+            // Perfeita centralização geométrica e posicionamento exato sobre a grid
+            const box = new THREE.Box3().setFromObject(currentModel);
+            const size = box.getSize(new THREE.Vector3());
+            const center = box.getCenter(new THREE.Vector3());
+
+            const maxDim = Math.max(size.x, size.y, size.z);
+            if (maxDim > 0 && maxDim !== Infinity) {
+                const scaleFactor = 160 / maxDim;
+                currentModel.scale.set(scaleFactor, scaleFactor, scaleFactor);
+            }
+
+            currentModel.updateMatrixWorld(true);
+            box.setFromObject(currentModel);
+            box.getCenter(center);
+
+            currentModel.position.x -= center.x;
+            currentModel.position.y -= box.min.y; // Encaixa exatamente na base y=0
+            currentModel.position.z -= center.z;
+            currentModel.updateMatrixWorld(true);
+
+            // Câmera perfeitamente focada no centro exato do personagem
+            const finalBox = new THREE.Box3().setFromObject(currentModel);
+            const finalSize = finalBox.getSize(new THREE.Vector3());
+            const finalCenter = finalBox.getCenter(new THREE.Vector3());
+            const dist = Math.max(finalSize.x, finalSize.y, finalSize.z) * 2.2;
+
+            camera.position.set(finalCenter.x, finalCenter.y + finalSize.y * 0.2, finalCenter.z + dist);
+            controls.target.copy(finalCenter);
+            controls.update();
+
+            infoMesh.textContent = `${meshCount} malhas`;
+            infoBones.textContent = `${boneCount} ossos`;
+            infoAnim.textContent = animations.length;
+            emptyState.classList.add('hidden');
+
+            if (animations.length > 0) {
+                mixer = new THREE.AnimationMixer(currentModel);
+                populateAnimationList(animations);
+                selectAnimation(0);
+            } else {
+                animationList.innerHTML = `<div class="text-center py-16 text-slate-500 text-xs">O arquivo carregado não possui clipes de animação integrados.</div>`;
+                animCountBadge.textContent = '0';
+                disableControls(true);
+                activeAnimNameEl.textContent = "Sem animações no modelo";
+            }
+
+            showLoading(false);
+            showNotification(`Modelo "${filename}" carregado e centralizado!`);
+        }
+
+        function applyTextureToModel(textureFile) {
+            if (!currentModel) {
+                showNotification("Carregue um modelo FBX primeiro antes de aplicar a textura.", true);
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const textureLoader = new THREE.TextureLoader();
+                textureLoader.load(e.target.result, (texture) => {
+                    texture.colorSpace = THREE.SRGBColorSpace;
+                    texture.flipY = false;
+
+                    let appliedCount = 0;
+                    currentModel.traverse((child) => {
+                        if (child.isMesh && child.material) {
+                            const mats = Array.isArray(child.material) ? child.material : [child.material];
+                            mats.forEach(mat => {
+                                mat.map = texture;
+                                mat.needsUpdate = true;
+                            });
+                            appliedCount++;
+                        }
+                    });
+
+                    showNotification(`Textura "${textureFile.name}" aplicada em ${appliedCount} malhas!`);
+                }, undefined, (err) => {
+                    console.error("Erro ao carregar textura:", err);
+                    showNotification("Erro ao ler o arquivo de imagem da textura.", true);
+                });
+            };
+            reader.readAsDataURL(textureFile);
+        }
+
+        function showLoading(show, text = "Carregando...", percent = 0) {
+            if (show) {
+                loadingOverlay.classList.remove('hidden');
+                loadingText.textContent = text;
+                loadingBar.style.width = percent + '%';
+            } else {
+                loadingOverlay.classList.add('hidden');
+            }
+        }
+
+        function updateLoadingProgress(percent, text) {
+            loadingBar.style.width = percent + '%';
+            if (text) loadingText.textContent = text;
+        }
+
+        function populateAnimationList(animArray) {
+            animationList.innerHTML = '';
+            animCountBadge.textContent = animArray.length;
+
+            animArray.forEach((clip, index) => {
+                const item = document.createElement('div');
+                item.className = `p-3.5 rounded-xl border border-slate-800 bg-slate-950/45 hover:bg-slate-800/60 transition cursor-pointer flex items-center justify-between group anim-item-${index}`;
+                
+                item.innerHTML = `
+                    <div class="flex items-center space-x-3 overflow-hidden">
+                        <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0 group-hover:bg-blue-600 group-hover:text-white transition">
+                            <i class="fa-solid fa-film text-xs"></i>
+                        </div>
+                        <div class="truncate">
+                            <h4 class="text-xs font-semibold text-slate-200 truncate">${clip.name || `Animação ${index + 1}`}</h4>
+                            <p class="text-[10px] text-slate-400">${clip.duration.toFixed(2)}s (${Math.round(clip.duration * 30)} quadros)</p>
+                        </div>
+                    </div>
+                    <span class="text-xs text-slate-500 font-mono">#${index + 1}</span>
+                `;
+
+                item.addEventListener('click', () => selectAnimation(index));
+                animationList.appendChild(item);
+            });
+        }
+
+        function selectAnimation(index) {
+            if (!animations[index] || !mixer) return;
+
+            document.querySelectorAll('[class*="anim-item-"]').forEach((el, idx) => {
+                if (idx === index) {
+                    el.classList.add('border-blue-500/80', 'bg-blue-600/15');
+                } else {
+                    el.classList.remove('border-blue-500/80', 'bg-blue-600/15');
+                }
+            });
+
+            const clip = animations[index];
+            activeAnimNameEl.textContent = clip.name || `Animação ${index + 1}`;
+
+            if (activeAction) {
+                activeAction.stop();
+            }
+
+            activeAction = mixer.clipAction(clip);
+            activeAction.setLoop(isLooping ? THREE.LoopRepeat : THREE.LoopOnce, isLooping ? Infinity : 0);
+            activeAction.clampWhenFinished = true;
+            activeAction.reset();
+            activeAction.play();
+
+            playIcon.className = "fa-solid fa-pause";
+            disableControls(false);
+
+            totalTimeEl.textContent = clip.duration.toFixed(2) + 's';
+            maxTimeLabel.textContent = clip.duration.toFixed(2) + 's';
+            timelineScrubber.max = clip.duration;
+            timelineScrubber.value = 0;
+        }
+
+        function disableControls(disabled) {
+            playBtn.disabled = disabled;
+            stopBtn.disabled = disabled;
+            loopBtn.disabled = disabled;
+            timelineScrubber.disabled = disabled;
+        }
+
+        function updateTimelineUI() {
+            if (!activeAction || isDraggingScrubber) return;
+
+            const time = activeAction.time;
+            const duration = activeAction.getClip().duration;
+
+            timelineScrubber.value = time;
+            currentTimeEl.textContent = time.toFixed(2) + 's';
+
+            if (!isLooping && time >= duration) {
+                playIcon.className = "fa-solid fa-play";
+            }
+        }
+
+        playBtn.addEventListener('click', () => {
+            if (!activeAction) return;
+            if (activeAction.isRunning()) {
+                activeAction.paused = !activeAction.paused;
+                playIcon.className = activeAction.paused ? "fa-solid fa-play" : "fa-solid fa-pause";
+            } else {
+                activeAction.reset();
+                activeAction.play();
+                activeAction.paused = false;
+                playIcon.className = "fa-solid fa-pause";
+            }
+        });
+
+        stopBtn.addEventListener('click', () => {
+            if (!activeAction) return;
+            activeAction.stop();
+            activeAction.time = 0;
+            activeAction.play();
+            activeAction.paused = true;
+            playIcon.className = "fa-solid fa-play";
+            timelineScrubber.value = 0;
+            currentTimeEl.textContent = "0.00s";
+        });
+
+        loopBtn.addEventListener('click', () => {
+            isLooping = !isLooping;
+            loopBtn.classList.toggle('bg-blue-600/20', isLooping);
+            loopBtn.classList.toggle('text-blue-400', isLooping);
+            loopBtn.classList.toggle('border-blue-500/40', isLooping);
+
+            if (activeAction) {
+                activeAction.setLoop(isLooping ? THREE.LoopRepeat : THREE.LoopOnce, isLooping ? Infinity : 0);
+            }
+        });
+
+        speedRange.addEventListener('input', (e) => {
+            playbackSpeed = parseFloat(e.target.value);
+            speedValue.textContent = playbackSpeed.toFixed(1) + 'x';
+        });
+
+        timelineScrubber.addEventListener('mousedown', () => { isDraggingScrubber = true; });
+        timelineScrubber.addEventListener('touchstart', () => { isDraggingScrubber = true; });
+
+        timelineScrubber.addEventListener('input', (e) => {
+            if (!activeAction) return;
+            const targetTime = parseFloat(e.target.value);
+            activeAction.time = targetTime;
+            currentTimeEl.textContent = targetTime.toFixed(2) + 's';
+        });
+
+        window.addEventListener('mouseup', () => { isDraggingScrubber = false; });
+        window.addEventListener('touchend', () => { isDraggingScrubber = false; });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                processFiles(e.target.files);
+            }
+        });
+
+        textureInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                applyTextureToModel(file);
+            }
+        });
+
+        window.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('opacity-0', 'pointer-events-none');
+            dropzone.classList.add('opacity-100');
+        });
+
+        window.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            if (e.relatedTarget === null || e.target === dropzone) {
+                dropzone.classList.remove('opacity-100');
+                dropzone.classList.add('opacity-0', 'pointer-events-none');
+            }
+        });
+
+        window.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('opacity-100');
+            dropzone.classList.add('opacity-0', 'pointer-events-none');
+
+            if (e.dataTransfer.files.length > 0) {
+                processFiles(e.dataTransfer.files);
+            }
+        });
+
+        function showNotification(message, isError = false) {
+            const toast = document.createElement('div');
+            toast.className = `fixed bottom-24 right-6 px-4 py-3 rounded-xl shadow-2xl text-xs font-medium z-50 flex items-center space-x-2 border transition-all duration-300 transform translate-y-2 opacity-0 ${
+                isError ? 'bg-red-950/90 border-red-800 text-red-200' : 'bg-slate-900/90 border-slate-700 text-slate-200 backdrop-blur-md'
+            }`;
+            toast.innerHTML = `<i class="fa-solid ${isError ? 'fa-circle-exclamation text-red-400' : 'fa-circle-check text-blue-400'} text-sm"></i><span>${message}</span>`;
+            document.body.appendChild(toast);
+
+            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 50);
+            setTimeout(() => {
+                toast.classList.add('translate-y-2', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        window.onload = function () {
+            initScene();
+            animate();
+        };
+    </script>
+</body>
+</html>
