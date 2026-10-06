@@ -50,7 +50,7 @@
     <div class="flex-1 flex relative overflow-hidden">
         
         <!-- Sidebar -->
-        <aside aria-label="Painel de Controle" class="w-84 bg-dark-800 border-r border-dark-700 flex flex-col z-20 shadow-2xl w-80">
+        <aside aria-label="Painel de Controle" class="w-80 bg-dark-800 border-r border-dark-700 flex flex-col z-20 shadow-2xl">
             <!-- Header -->
             <div class="p-4 border-b border-dark-700 flex items-center justify-between bg-dark-800">
                 <div class="flex items-center space-x-2.5">
@@ -59,7 +59,7 @@
                     </div>
                     <div>
                         <h1 class="font-bold text-xs tracking-wide">Editor de Terreno 3D</h1>
-                        <p class="text-[10px] text-slate-400">Escultura, Texturas & Cores</p>
+                        <p class="text-[10px] text-slate-400">Escultura, Texturas & Iluminação</p>
                     </div>
                 </div>
             </div>
@@ -88,6 +88,73 @@
                             <span>Pintar Cor/Tex</span>
                         </button>
                     </div>
+                </div>
+
+                <!-- Ground Hole Protection Setting -->
+                <div class="space-y-2 bg-dark-900/60 p-3.5 rounded-xl border border-dark-700">
+                    <div class="flex items-center justify-between">
+                        <div class="flex flex-col">
+                            <span class="text-xs font-medium text-slate-200">Proteção de Nível (Sem Buracos)</span>
+                            <span class="text-[10px] text-slate-400">Impede escavar abaixo do plano plano (Y=0)</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="hole-protection-toggle" checked onchange="toggleHoleProtection(this.checked)" class="sr-only peer">
+                            <div class="w-9 h-5 bg-dark-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Background Color Control -->
+                <div class="space-y-3 bg-dark-900/60 p-3.5 rounded-xl border border-dark-700">
+                    <h2 class="text-[11px] font-semibold text-slate-300 uppercase tracking-wider flex items-center space-x-1.5">
+                        <i class="fa-solid fa-fill-drip text-indigo-400"></i>
+                        <span>Aparência & Cor do Fundo</span>
+                    </h2>
+                    
+                    <!-- Color Picker Direct Selection -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="text-[11px] text-slate-400">Cor Personalizada</label>
+                            <span id="bg-color-hex" class="text-xs font-mono text-slate-300">#090d16</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <input type="color" id="bg-color-picker" value="#090d16" oninput="changeBackgroundColor(this.value)" class="w-full h-8 rounded-lg bg-transparent border-0 cursor-pointer">
+                        </div>
+                    </div>
+
+                    <!-- Preset Background Palette -->
+                    <div>
+                        <div class="text-[10px] text-slate-400 mb-1.5">Cores Predefinidas:</div>
+                        <div class="flex flex-wrap gap-1.5 p-2 bg-dark-800 rounded-lg border border-dark-700">
+                            <button onclick="changeBackgroundColor('#090d16')" class="w-6 h-6 rounded-full bg-[#090d16] border border-slate-600 hover:scale-110 transition" title="Escuro Padrão"></button>
+                            <button onclick="changeBackgroundColor('#000000')" class="w-6 h-6 rounded-full bg-black border border-slate-600 hover:scale-110 transition" title="Preto Absoluto"></button>
+                            <button onclick="changeBackgroundColor('#020617')" class="w-6 h-6 rounded-full bg-[#020617] border border-slate-600 hover:scale-110 transition" title="Azul Noite"></button>
+                            <button onclick="changeBackgroundColor('#18181b')" class="w-6 h-6 rounded-full bg-[#18181b] border border-slate-600 hover:scale-110 transition" title="Cinza Estúdio"></button>
+                            <button onclick="changeBackgroundColor('#38bdf8')" class="w-6 h-6 rounded-full bg-sky-400 border border-slate-600 hover:scale-110 transition" title="Céu Claro"></button>
+                            <button onclick="changeBackgroundColor('#022c22')" class="w-6 h-6 rounded-full bg-[#022c22] border border-slate-600 hover:scale-110 transition" title="Verde Floresta"></button>
+                            <button onclick="changeBackgroundColor('#0d021a')" class="w-6 h-6 rounded-full bg-[#0d021a] border border-slate-600 hover:scale-110 transition" title="Roxo Cyberpunk"></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Preset Lighting Models -->
+                <div class="space-y-2.5 bg-dark-900/60 p-3.5 rounded-xl border border-dark-700">
+                    <h2 class="text-[11px] font-semibold text-slate-300 uppercase tracking-wider flex items-center space-x-1.5">
+                        <i class="fa-solid fa-sun text-amber-400"></i>
+                        <span>Modelos de Iluminação (10 Opções)</span>
+                    </h2>
+                    <select id="lighting-preset-select" onchange="applyLightingPreset(this.value)" class="w-full bg-dark-700 border border-dark-600 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
+                        <option value="sunny">1. Dia Ensolarado (Padrão)</option>
+                        <option value="sunset">2. Pôr do Sol Caloroso</option>
+                        <option value="night">3. Noite Estelar / Luar</option>
+                        <option value="cyberpunk">4. Estúdio Cyberpunk (Neon)</option>
+                        <option value="forest">5. Floresta Misteriosa</option>
+                        <option value="desert">6. Deserto Quente</option>
+                        <option value="neon">7. Neon Futurista (Magenta/Verde)</option>
+                        <option value="storm">8. Tempestade / Gótico</option>
+                        <option value="aurora">9. Aurora Boreal</option>
+                        <option value="studio">10. Luz Neutra de Modelagem</option>
+                    </select>
                 </div>
 
                 <!-- History / Undo Toolbar -->
@@ -119,22 +186,36 @@
                         <input type="range" id="brush-intensity" min="0.1" max="5" step="0.1" value="1.0" oninput="updateBrushIntensity(this.value)" class="w-full accent-indigo-500 bg-dark-700 h-1.5 rounded-lg cursor-pointer">
                     </div>
 
-                    <!-- Color Picker & Advanced Palette (Active in Paint Mode) -->
+                    <!-- Color Picker & Palette (Active in Paint Mode) -->
                     <div id="paint-options-container" class="pt-2 border-t border-dark-700/60 hidden space-y-3">
                         <div>
-                            <label class="text-[11px] font-semibold text-slate-300 mb-1.5 block">Cor Sólida do Pincel (Área Exata)</label>
-                            <div class="flex items-center space-x-3">
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="text-[11px] font-semibold text-slate-300">Cor do Pincel</label>
+                                <button onclick="addCustomColor()" class="text-[10px] text-indigo-400 hover:text-indigo-300 font-medium flex items-center space-x-1">
+                                    <i class="fa-solid fa-plus"></i>
+                                    <span>Salvar Cor</span>
+                                </button>
+                            </div>
+                            <div class="flex items-center space-x-3 mb-2">
                                 <input type="color" id="brush-color" value="#22c55e" class="w-9 h-9 rounded-lg bg-transparent border-0 cursor-pointer">
-                                <div class="flex flex-wrap gap-1 flex-1">
-                                    <button onclick="setPresetColor('#333333')" class="w-5 h-5 rounded-full bg-[#333333] border border-slate-600 hover:scale-110 transition" title="Cinza Escuro"></button>
-                                    <button onclick="setPresetColor('#777777')" class="w-5 h-5 rounded-full bg-[#777777] border border-slate-600 hover:scale-110 transition" title="Cinza Médio"></button>
-                                    <button onclick="setPresetColor('#cccccc')" class="w-5 h-5 rounded-full bg-[#cccccc] border border-slate-600 hover:scale-110 transition" title="Cinza Claro"></button>
-                                    <button onclick="setPresetColor('#22c55e')" class="w-5 h-5 rounded-full bg-green-500 border border-slate-600 hover:scale-110 transition" title="Grama"></button>
-                                    <button onclick="setPresetColor('#8b4513')" class="w-5 h-5 rounded-full bg-[#8b4513] border border-slate-600 hover:scale-110 transition" title="Terra"></button>
-                                    <button onclick="setPresetColor('#3b82f6')" class="w-5 h-5 rounded-full bg-blue-500 border border-slate-600 hover:scale-110 transition" title="Água"></button>
-                                    <button onclick="setPresetColor('#eab308')" class="w-5 h-5 rounded-full bg-yellow-500 border border-slate-600 hover:scale-110 transition" title="Areia"></button>
-                                    <button onclick="setPresetColor('#ef4444')" class="w-5 h-5 rounded-full bg-red-500 border border-slate-600 hover:scale-110 transition" title="Lava"></button>
-                                </div>
+                                <span id="brush-color-hex" class="text-xs font-mono text-slate-300">#22c55e</span>
+                            </div>
+                            
+                            <!-- Preset & Custom Palette -->
+                            <div class="text-[10px] text-slate-400 mb-1">Paleta de Cores Rápida:</div>
+                            <div id="color-palette" class="flex flex-wrap gap-1.5 p-2 bg-dark-800 rounded-lg border border-dark-700">
+                                <button onclick="setPresetColor('#333333')" class="w-5 h-5 rounded-full bg-[#333333] border border-slate-600 hover:scale-110 transition" title="Preto/Cinza Escuro"></button>
+                                <button onclick="setPresetColor('#777777')" class="w-5 h-5 rounded-full bg-[#777777] border border-slate-600 hover:scale-110 transition" title="Cinza Médio"></button>
+                                <button onclick="setPresetColor('#cccccc')" class="w-5 h-5 rounded-full bg-[#cccccc] border border-slate-600 hover:scale-110 transition" title="Cinza Claro"></button>
+                                <button onclick="setPresetColor('#ffffff')" class="w-5 h-5 rounded-full bg-white border border-slate-600 hover:scale-110 transition" title="Branco"></button>
+                                <button onclick="setPresetColor('#22c55e')" class="w-5 h-5 rounded-full bg-green-500 border border-slate-600 hover:scale-110 transition" title="Grama"></button>
+                                <button onclick="setPresetColor('#15803d')" class="w-5 h-5 rounded-full bg-green-700 border border-slate-600 hover:scale-110 transition" title="Verde Escuro"></button>
+                                <button onclick="setPresetColor('#8b4513')" class="w-5 h-5 rounded-full bg-[#8b4513] border border-slate-600 hover:scale-110 transition" title="Terra"></button>
+                                <button onclick="setPresetColor('#d97706')" class="w-5 h-5 rounded-full bg-amber-600 border border-slate-600 hover:scale-110 transition" title="Barro"></button>
+                                <button onclick="setPresetColor('#3b82f6')" class="w-5 h-5 rounded-full bg-blue-500 border border-slate-600 hover:scale-110 transition" title="Água"></button>
+                                <button onclick="setPresetColor('#eab308')" class="w-5 h-5 rounded-full bg-yellow-500 border border-slate-600 hover:scale-110 transition" title="Areia"></button>
+                                <button onclick="setPresetColor('#ef4444')" class="w-5 h-5 rounded-full bg-red-500 border border-slate-600 hover:scale-110 transition" title="Lava"></button>
+                                <button onclick="setPresetColor('#a855f7')" class="w-5 h-5 rounded-full bg-purple-500 border border-slate-600 hover:scale-110 transition" title="Místico"></button>
                             </div>
                         </div>
 
@@ -281,6 +362,7 @@
         // --- Application State ---
         let scene, camera, renderer, controls;
         let terrainMesh, terrainGeometry, terrainMaterial;
+        let ambientLight, mainLight, fillLight;
         let raycaster = new THREE.Raycaster();
         let mouse = new THREE.Vector2();
         let isMouseDown = false;
@@ -292,12 +374,15 @@
         let brushSize = 3.0;
         let brushIntensity = 1.0;
         let brushColor = new THREE.Color('#22c55e');
+        let currentBackgroundColor = '#090d16';
+        let holeProtectionEnabled = true; // Impede buracos abaixo de y = 0
+        let currentLightingPreset = 'sunny';
         let gridResolution = 64;
         let terrainSizeX = 50;
         let terrainSizeZ = 50;
         let wireframeEnabled = false;
         let activeTextureName = "Grama";
-        let lastBaseHeights = null; // Para o ajuste global de altura
+        let lastBaseHeights = null;
 
         let brushCursorMesh;
 
@@ -478,7 +563,6 @@
                     const customName = "Custom_" + Date.now();
                     proceduralTextures[customName] = texture;
                     
-                    // Adicionar ao select e selecionar
                     const select = document.getElementById('texture-select');
                     const opt = document.createElement('option');
                     opt.value = customName;
@@ -499,8 +583,8 @@
             const container = document.getElementById('canvas-container');
 
             scene = new THREE.Scene();
-            scene.background = new THREE.Color('#090d16');
-            scene.fog = new THREE.FogExp2('#090d16', 0.015);
+            scene.background = new THREE.Color(currentBackgroundColor);
+            scene.fog = new THREE.FogExp2(currentBackgroundColor, 0.012);
 
             camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
             camera.position.set(40, 35, 45);
@@ -519,13 +603,20 @@
             controls.maxDistance = 200;
             controls.enableRotate = false;
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            // Iluminação Inicial
+            ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
             scene.add(ambientLight);
 
-            const sunLight = new THREE.DirectionalLight(0xfff5ea, 0.8);
-            sunLight.position.set(60, 80, 40);
-            sunLight.castShadow = true;
-            scene.add(sunLight);
+            mainLight = new THREE.DirectionalLight(0xfff5ea, 0.8);
+            mainLight.position.set(60, 80, 40);
+            mainLight.castShadow = true;
+            scene.add(mainLight);
+
+            fillLight = new THREE.DirectionalLight(0x38bdf8, 0.2);
+            fillLight.position.set(-50, 40, -50);
+            scene.add(fillLight);
+
+            applyLightingPreset('sunny');
 
             createTerrain(gridResolution, terrainSizeX, terrainSizeZ);
 
@@ -538,6 +629,89 @@
             scene.add(brushCursorMesh);
 
             window.addEventListener('resize', onWindowResize);
+        }
+
+        // --- Background Color Controller ---
+        function changeBackgroundColor(hex) {
+            currentBackgroundColor = hex;
+            document.getElementById('bg-color-picker').value = hex;
+            document.getElementById('bg-color-hex').innerText = hex;
+
+            if (scene) {
+                scene.background.set(hex);
+                if (scene.fog) {
+                    scene.fog.color.set(hex);
+                }
+            }
+        }
+
+        // --- 10 Preset Lighting Models ---
+        function applyLightingPreset(preset) {
+            currentLightingPreset = preset;
+            if (!scene || !ambientLight || !mainLight || !fillLight) return;
+
+            switch(preset) {
+                case 'sunny': // 1. Dia Ensolarado
+                    ambientLight.color.set(0xffffff); ambientLight.intensity = 0.5;
+                    mainLight.color.set(0xfff5ea); mainLight.intensity = 0.9;
+                    mainLight.position.set(60, 80, 40);
+                    fillLight.color.set(0x38bdf8); fillLight.intensity = 0.2;
+                    break;
+                case 'sunset': // 2. Pôr do Sol
+                    ambientLight.color.set(0xfdba74); ambientLight.intensity = 0.4;
+                    mainLight.color.set(0xf97316); mainLight.intensity = 1.2;
+                    mainLight.position.set(80, 20, -50);
+                    fillLight.color.set(0xa855f7); fillLight.intensity = 0.4;
+                    break;
+                case 'night': // 3. Noite Estelar / Luar
+                    ambientLight.color.set(0x1e293b); ambientLight.intensity = 0.3;
+                    mainLight.color.set(0x38bdf8); mainLight.intensity = 0.5;
+                    mainLight.position.set(-40, 70, 30);
+                    fillLight.color.set(0x6366f1); fillLight.intensity = 0.2;
+                    break;
+                case 'cyberpunk': // 4. Cyberpunk
+                    ambientLight.color.set(0x581c87); ambientLight.intensity = 0.5;
+                    mainLight.color.set(0xec4899); mainLight.intensity = 1.1;
+                    mainLight.position.set(40, 50, 40);
+                    fillLight.color.set(0x06b6d4); fillLight.intensity = 0.8;
+                    break;
+                case 'forest': // 5. Floresta Misteriosa
+                    ambientLight.color.set(0x065f46); ambientLight.intensity = 0.6;
+                    mainLight.color.set(0xfef08a); mainLight.intensity = 0.7;
+                    mainLight.position.set(30, 90, 20);
+                    fillLight.color.set(0x10b981); fillLight.intensity = 0.3;
+                    break;
+                case 'desert': // 6. Deserto Quente
+                    ambientLight.color.set(0xfde047); ambientLight.intensity = 0.5;
+                    mainLight.color.set(0xfacc15); mainLight.intensity = 1.3;
+                    mainLight.position.set(20, 95, 20);
+                    fillLight.color.set(0xea580c); fillLight.intensity = 0.4;
+                    break;
+                case 'neon': // 7. Neon Futurista
+                    ambientLight.color.set(0x1e1b4b); ambientLight.intensity = 0.4;
+                    mainLight.color.set(0xd946ef); mainLight.intensity = 1.2;
+                    mainLight.position.set(-60, 40, 50);
+                    fillLight.color.set(0x22c55e); fillLight.intensity = 0.9;
+                    break;
+                case 'storm': // 8. Tempestade / Gótico
+                    ambientLight.color.set(0x334155); ambientLight.intensity = 0.3;
+                    mainLight.color.set(0x94a3b8); mainLight.intensity = 0.6;
+                    mainLight.position.set(10, 80, 10);
+                    fillLight.color.set(0x475569); fillLight.intensity = 0.3;
+                    break;
+                case 'aurora': // 9. Aurora Boreal
+                    ambientLight.color.set(0x0f766e); ambientLight.intensity = 0.5;
+                    mainLight.color.set(0x2dd4bf); mainLight.intensity = 0.9;
+                    mainLight.position.set(-50, 60, -40);
+                    fillLight.color.set(0x818cf8); fillLight.intensity = 0.6;
+                    break;
+                case 'studio': // 10. Luz Neutra de Modelagem
+                    ambientLight.color.set(0xffffff); ambientLight.intensity = 0.7;
+                    mainLight.color.set(0xffffff); mainLight.intensity = 0.6;
+                    mainLight.position.set(0, 100, 0);
+                    fillLight.color.set(0xa1a1aa); fillLight.intensity = 0.4;
+                    break;
+            }
         }
 
         function createTerrain(res, sizeX, sizeZ, existingPositions = null, existingColors = null) {
@@ -570,7 +744,7 @@
                 for (let i = 0; i < count; i++) {
                     const x = positions.getX(i);
                     const z = positions.getZ(i);
-                    const y = Math.sin(x * 0.1) * Math.cos(z * 0.1) * 1.0;
+                    const y = Math.max(0, Math.sin(x * 0.1) * Math.cos(z * 0.1) * 1.0);
                     positions.setY(i, y);
                 }
             }
@@ -588,7 +762,6 @@
             terrainGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
             terrainGeometry.computeVertexNormals();
 
-            // Salvar alturas base para o ajuste global
             lastBaseHeights = new Float32Array(positions.array);
 
             terrainMaterial = new THREE.MeshStandardMaterial({
@@ -607,7 +780,28 @@
             pushHistoryState();
         }
 
-        // --- Atualizar Dimensões (Largura X e Comprimento Z) ---
+        // --- Hole Protection Toggle ---
+        function toggleHoleProtection(enabled) {
+            holeProtectionEnabled = enabled;
+            showToast("Proteção de Terreno", enabled ? "Ativada (Mínimo no nível plano Y=0)" : "Desativada (Permite perfurar)");
+        }
+
+        // --- Custom Color Palette Management ---
+        function addCustomColor() {
+            const hex = document.getElementById('brush-color').value;
+            const palette = document.getElementById('color-palette');
+            
+            const btn = document.createElement('button');
+            btn.className = "w-5 h-5 rounded-full border border-slate-600 hover:scale-110 transition";
+            btn.style.backgroundColor = hex;
+            btn.title = `Cor Salva (${hex})`;
+            btn.onclick = () => setPresetColor(hex);
+
+            palette.appendChild(btn);
+            showToast("Cor Adicionada", `Cor ${hex} adicionada à paleta!`);
+        }
+
+        // --- Dimensions Update ---
         function updateTerrainDimensions() {
             const newSizeX = parseFloat(document.getElementById('size-x').value);
             const newSizeZ = parseFloat(document.getElementById('size-z').value);
@@ -622,7 +816,7 @@
             }
         }
 
-        // --- Ajuste Global de Alturas ---
+        // --- Global Height Adjustment ---
         function applyGlobalHeightAdjustment(multiplierVal) {
             const mult = parseFloat(multiplierVal);
             document.getElementById('height-scale-val').innerText = mult.toFixed(1) + 'x';
@@ -632,9 +826,10 @@
             const count = positions.count;
 
             for (let i = 0; i < count; i++) {
-                // Multiplica a altura base original
                 const baseY = lastBaseHeights[i * 3 + 1] !== undefined ? lastBaseHeights[i * 3 + 1] : positions.getY(i);
-                positions.setY(i, baseY * mult);
+                let newY = baseY * mult;
+                if (holeProtectionEnabled && newY < 0) newY = 0;
+                positions.setY(i, newY);
             }
 
             positions.needsUpdate = true;
@@ -835,15 +1030,21 @@
                         positions.setY(i, positions.getY(i) + factor);
                         modified = true;
                     } else if (currentTool === 'lower') {
-                        positions.setY(i, positions.getY(i) - factor);
+                        let newY = positions.getY(i) - factor;
+                        if (holeProtectionEnabled && newY < 0) {
+                            newY = 0;
+                        }
+                        positions.setY(i, newY);
                         modified = true;
                     } else if (currentTool === 'smooth') {
                         let currentY = positions.getY(i);
                         let targetY = currentY + (avgY - currentY) * (factor * 0.5);
+                        if (holeProtectionEnabled && targetY < 0) {
+                            targetY = 0;
+                        }
                         positions.setY(i, targetY);
                         modified = true;
                     } else if (currentTool === 'paint') {
-                        // Pintura de cor sólida estrita apenas na área exata do pincel
                         const intensityWeight = Math.max(0, 1.0 - (dist / brushSize));
                         const curCol = new THREE.Color(colors.getX(i), colors.getY(i), colors.getZ(i));
                         curCol.lerp(brushColor, intensityWeight * Math.min(brushIntensity, 1.0));
@@ -895,6 +1096,7 @@
 
         function setPresetColor(hex) {
             document.getElementById('brush-color').value = hex;
+            document.getElementById('brush-color-hex').innerText = hex;
             brushColor.set(hex);
         }
 
@@ -902,7 +1104,9 @@
             const colorInput = document.getElementById('brush-color');
             if (colorInput) {
                 colorInput.addEventListener('input', (e) => {
-                    brushColor.set(e.target.value);
+                    const hex = e.target.value;
+                    document.getElementById('brush-color-hex').innerText = hex;
+                    brushColor.set(hex);
                 });
             }
         });
@@ -944,12 +1148,15 @@
             const colors = terrainGeometry.attributes.color.array;
 
             const modelData = {
-                version: "2.2",
+                version: "2.4",
                 gridResolution: gridResolution,
                 terrainSizeX: terrainSizeX,
                 terrainSizeZ: terrainSizeZ,
                 wireframeEnabled: wireframeEnabled,
                 activeTextureName: activeTextureName,
+                holeProtectionEnabled: holeProtectionEnabled,
+                currentLightingPreset: currentLightingPreset,
+                currentBackgroundColor: currentBackgroundColor,
                 positions: Array.from(positions),
                 colors: Array.from(colors)
             };
@@ -960,7 +1167,7 @@
 
             const a = document.createElement('a');
             a.href = url;
-            a.download = `terreno-avancado-${Date.now()}.json`;
+            a.download = `terreno-iluminado-${Date.now()}.json`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -986,12 +1193,19 @@
                     terrainSizeZ = data.terrainSizeZ || data.terrainSize || 50;
                     wireframeEnabled = data.wireframeEnabled || false;
                     activeTextureName = data.activeTextureName || "Grama";
+                    holeProtectionEnabled = data.holeProtectionEnabled !== undefined ? data.holeProtectionEnabled : true;
+                    currentLightingPreset = data.currentLightingPreset || 'sunny';
+                    currentBackgroundColor = data.currentBackgroundColor || '#090d16';
 
                     document.getElementById('wireframe-toggle').checked = wireframeEnabled;
+                    document.getElementById('hole-protection-toggle').checked = holeProtectionEnabled;
                     document.getElementById('texture-select').value = activeTextureName;
+                    document.getElementById('lighting-preset-select').value = currentLightingPreset;
                     document.getElementById('height-scale').value = 1.0;
                     document.getElementById('height-scale-val').innerText = "1.0x";
 
+                    changeBackgroundColor(currentBackgroundColor);
+                    applyLightingPreset(currentLightingPreset);
                     createTerrain(gridResolution, terrainSizeX, terrainSizeZ, data.positions, data.colors);
 
                     historyStack = [];
