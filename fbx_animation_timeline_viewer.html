@@ -45,7 +45,7 @@
             </div>
             <div>
                 <h1 class="font-bold text-base tracking-tight bg-gradient-to-r from-blue-400 via-indigo-300 to-sky-400 bg-clip-text text-transparent">FBX Studio & Timeline</h1>
-                <p class="text-xs text-slate-400">Leitor e Timeline de Animações 3D</p>
+                <p class="text-xs text-slate-400">Leitor e Timeline de Animações 3D com Ajustes em Tempo Real</p>
             </div>
         </div>
 
@@ -81,7 +81,7 @@
                     <i class="fa-solid fa-gear text-blue-400"></i>
                     <span class="text-xs font-bold text-slate-200 tracking-wider uppercase">Painel de Configurações</span>
                 </div>
-                <button id="closeConfigBtn" class="text-slate-500 hover:text-slate-300 text-sm"><i class="fa-solid fa-xmark"></i></button>
+                <button id="closeConfigBtn" class="text-slate-500 hover:text-slate-300 text-sm cursor-pointer"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
             <div class="flex-1 overflow-y-auto p-4 space-y-6 text-xs text-slate-300">
@@ -113,6 +113,11 @@
                     <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800">
                         <span>Rugosidade (Roughness)</span>
                         <input type="range" id="roughnessRange" min="0" max="1" step="0.05" value="0.6" class="w-28">
+                    </div>
+
+                    <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                        <span>Inverter Eixo Y (Textura)</span>
+                        <input type="checkbox" id="toggleTextureFlipY" checked class="rounded border-slate-700 bg-slate-900">
                     </div>
                 </div>
 
@@ -172,7 +177,7 @@
                 <p class="text-xs text-slate-400 max-w-md mb-6 leading-relaxed">Arraste e solte um arquivo .fbx e sua textura correspondente (ex: textura_sonic.png) simultaneamente.</p>
                 <div class="flex items-center space-x-2 text-xs text-blue-400/90 bg-blue-500/10 px-4 py-2.5 rounded-xl border border-blue-500/20 pointer-events-auto">
                     <i class="fa-solid fa-wand-magic-sparkles"></i>
-                    <span>Câmera centralizada automaticamente no personagem e iluminação otimizada.</span>
+                    <span>Câmera centralizada automaticamente no personagem com BoundingBox de precisão.</span>
                 </div>
             </div>
 
@@ -247,6 +252,53 @@
     </footer>
 
     <script>
+        const STORAGE_KEY = 'fbx_viewer_settings_v2';
+        const defaultSettings = {
+            bgColor: '#070b14',
+            gridVisible: true,
+            wireframe: false,
+            metalness: 0.1,
+            roughness: 0.6,
+            textureFlipY: true,
+            ambientIntensity: 1.2,
+            dirIntensity: 2.0,
+            hemiIntensity: 1.0,
+            shadowsEnabled: true,
+            playbackSpeed: 1.0,
+            loopEnabled: true
+        };
+
+        function loadSettings() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                return saved ? { ...defaultSettings, ...JSON.parse(saved) } : defaultSettings;
+            } catch (e) {
+                return defaultSettings;
+            }
+        }
+
+        function saveSettings() {
+            try {
+                const settings = {
+                    bgColor: bgColorPicker.value,
+                    gridVisible: toggleGrid.checked,
+                    wireframe: toggleWireframe.checked,
+                    metalness: parseFloat(metalnessRange.value),
+                    roughness: parseFloat(roughnessRange.value),
+                    textureFlipY: toggleTextureFlipY.checked,
+                    ambientIntensity: parseFloat(ambientIntensityRange.value),
+                    dirIntensity: parseFloat(dirLightIntensityRange.value),
+                    hemiIntensity: parseFloat(hemiIntensityRange.value),
+                    shadowsEnabled: toggleShadows.checked,
+                    playbackSpeed: parseFloat(speedRange.value),
+                    loopEnabled: isLooping
+                };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+            } catch (e) {}
+        }
+
+        let settings = loadSettings();
+
         let scene, camera, renderer, controls, grid;
         let ambientLight, dirLight, hemiLight;
         let floor, floorMaterial;
@@ -256,8 +308,8 @@
         let activeAction = null;
         let clock = new THREE.Clock();
         let isDraggingScrubber = false;
-        let isLooping = true;
-        let playbackSpeed = 1.0;
+        let isLooping = settings.loopEnabled;
+        let playbackSpeed = settings.playbackSpeed;
 
         const globalTextureMap = new Map();
 
@@ -268,6 +320,7 @@
         const toggleGrid = document.getElementById('toggleGrid');
         const toggleWireframe = document.getElementById('toggleWireframe');
         const toggleShadows = document.getElementById('toggleShadows');
+        const toggleTextureFlipY = document.getElementById('toggleTextureFlipY');
         const metalnessRange = document.getElementById('metalnessRange');
         const roughnessRange = document.getElementById('roughnessRange');
         const ambientIntensityRange = document.getElementById('ambientIntensityRange');
@@ -301,7 +354,29 @@
 
         function initScene() {
             scene = new THREE.Scene();
-            updateBackgroundColor(bgColorPicker.value);
+            
+            // Apply loaded settings to UI elements
+            bgColorPicker.value = settings.bgColor;
+            toggleGrid.checked = settings.gridVisible;
+            toggleWireframe.checked = settings.wireframe;
+            toggleTextureFlipY.checked = settings.textureFlipY;
+            metalnessRange.value = settings.metalness;
+            roughnessRange.value = settings.roughness;
+            ambientIntensityRange.value = settings.ambientIntensity;
+            dirLightIntensityRange.value = settings.dirIntensity;
+            hemiIntensityRange.value = settings.hemiIntensity;
+            toggleShadows.checked = settings.shadowsEnabled;
+            speedRange.value = settings.playbackSpeed;
+            playbackSpeed = settings.playbackSpeed;
+            speedValue.textContent = playbackSpeed.toFixed(1) + 'x';
+            
+            isLooping = settings.loopEnabled;
+            if (!isLooping) {
+                loopBtn.classList.remove('bg-blue-600/20', 'text-blue-400', 'border-blue-500/40');
+                loopBtn.classList.add('bg-slate-800', 'text-slate-500', 'border-slate-700');
+            }
+
+            updateBackgroundColor(settings.bgColor);
 
             camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 10000);
             camera.position.set(150, 200, 400);
@@ -321,11 +396,11 @@
             controls.dampingFactor = 0.05;
             controls.target.set(0, 50, 0);
 
-            // Lighting Setup with high visibility defaults
-            ambientLight = new THREE.AmbientLight(0xffffff, parseFloat(ambientIntensityRange.value));
+            // Lighting Setup
+            ambientLight = new THREE.AmbientLight(0xffffff, settings.ambientIntensity);
             scene.add(ambientLight);
 
-            dirLight = new THREE.DirectionalLight(0xffffff, parseFloat(dirLightIntensityRange.value));
+            dirLight = new THREE.DirectionalLight(0xffffff, settings.dirIntensity);
             dirLight.position.set(300, 600, 400);
             dirLight.castShadow = true;
             dirLight.shadow.mapSize.width = 2048;
@@ -340,15 +415,16 @@
             dirLight.shadow.bias = -0.0005;
             scene.add(dirLight);
 
-            hemiLight = new THREE.HemisphereLight(0xffffff, 0x1e293b, parseFloat(hemiIntensityRange.value));
+            hemiLight = new THREE.HemisphereLight(0xffffff, 0x1e293b, settings.hemiIntensity);
             hemiLight.position.set(0, 500, 0);
             scene.add(hemiLight);
 
             grid = new THREE.GridHelper(2000, 50, 0x3b82f6, 0x1e293b);
+            grid.visible = settings.gridVisible;
             scene.add(grid);
 
             const floorGeometry = new THREE.PlaneGeometry(5000, 5000);
-            floorMaterial = new THREE.ShadowMaterial({ opacity: 0.3 });
+            floorMaterial = new THREE.ShadowMaterial({ opacity: settings.shadowsEnabled ? 0.3 : 0 });
             floor = new THREE.Mesh(floorGeometry, floorMaterial);
             floor.rotation.x = -Math.PI / 2;
             floor.receiveShadow = true;
@@ -365,7 +441,10 @@
         }
 
         function setupEventListeners() {
-            bgColorPicker.addEventListener('input', (e) => updateBackgroundColor(e.target.value));
+            bgColorPicker.addEventListener('input', (e) => {
+                updateBackgroundColor(e.target.value);
+                saveSettings();
+            });
 
             toggleConfigBtn.addEventListener('click', () => {
                 configPanel.classList.toggle('-translate-x-full');
@@ -376,20 +455,42 @@
 
             toggleGrid.addEventListener('change', (e) => {
                 grid.visible = e.target.checked;
+                saveSettings();
             });
 
             toggleWireframe.addEventListener('change', (e) => {
                 if (!currentModel) return;
+                const isWire = e.target.checked;
                 currentModel.traverse(child => {
                     if (child.isMesh && child.material) {
                         const mats = Array.isArray(child.material) ? child.material : [child.material];
-                        mats.forEach(m => m.wireframe = e.target.checked);
+                        mats.forEach(m => m.wireframe = isWire);
                     }
                 });
+                saveSettings();
+            });
+
+            toggleTextureFlipY.addEventListener('change', (e) => {
+                const flip = e.target.checked;
+                if (currentModel) {
+                    currentModel.traverse(child => {
+                        if (child.isMesh && child.material) {
+                            const mats = Array.isArray(child.material) ? child.material : [child.material];
+                            mats.forEach(m => {
+                                if (m.map) {
+                                    m.map.flipY = flip;
+                                    m.map.needsUpdate = true;
+                                }
+                            });
+                        }
+                    });
+                }
+                saveSettings();
             });
 
             toggleShadows.addEventListener('change', (e) => {
                 floorMaterial.opacity = e.target.checked ? 0.3 : 0;
+                saveSettings();
             });
 
             metalnessRange.addEventListener('input', (e) => {
@@ -401,6 +502,7 @@
                         mats.forEach(m => { if ('metalness' in m) m.metalness = val; });
                     }
                 });
+                saveSettings();
             });
 
             roughnessRange.addEventListener('input', (e) => {
@@ -412,18 +514,22 @@
                         mats.forEach(m => { if ('roughness' in m) m.roughness = val; });
                     }
                 });
+                saveSettings();
             });
 
             ambientIntensityRange.addEventListener('input', (e) => {
                 ambientLight.intensity = parseFloat(e.target.value);
+                saveSettings();
             });
 
             dirLightIntensityRange.addEventListener('input', (e) => {
                 dirLight.intensity = parseFloat(e.target.value);
+                saveSettings();
             });
 
             hemiIntensityRange.addEventListener('input', (e) => {
                 hemiLight.intensity = parseFloat(e.target.value);
+                saveSettings();
             });
         }
 
@@ -455,7 +561,7 @@
                 const ext = file.name.split('.').pop().toLowerCase();
                 if (ext === 'fbx') {
                     fbxFile = file;
-                } else if (['png', 'jpg', 'jpeg'].includes(ext)) {
+                } else if (['png', 'jpg', 'jpeg', 'tga', 'bmp'].includes(ext)) {
                     textureFiles.push(file);
                 }
             }
@@ -531,6 +637,7 @@
             const baseMetalness = parseFloat(metalnessRange.value);
             const baseRoughness = parseFloat(roughnessRange.value);
             const isWire = toggleWireframe.checked;
+            const flipYSetting = toggleTextureFlipY.checked;
 
             currentModel.traverse((child) => {
                 if (child.isMesh || child.isSkinnedMesh) {
@@ -546,13 +653,27 @@
                             m.depthWrite = true;
                             m.wireframe = isWire;
                             
-                            // Garante visibilidade e brilho realista
-                            if ('metalness' in m) m.metalness = baseMetalness;
-                            if ('roughness' in m) m.roughness = baseRoughness;
+                            // Robustness fallback for materials lacking standard PBR properties
+                            if (!('metalness' in m)) {
+                                const oldColor = m.color ? m.color.clone() : new THREE.Color(0xffffff);
+                                const oldMap = m.map ? m.map : null;
+                                const newMat = new THREE.MeshStandardMaterial({
+                                    color: oldColor,
+                                    map: oldMap,
+                                    metalness: baseMetalness,
+                                    roughness: baseRoughness,
+                                    side: THREE.DoubleSide
+                                });
+                                child.material = newMat;
+                                m = newMat;
+                            } else {
+                                m.metalness = baseMetalness;
+                                m.roughness = baseRoughness;
+                            }
 
                             if (m.map) {
                                 m.map.colorSpace = THREE.SRGBColorSpace;
-                                m.map.flipY = false;
+                                m.map.flipY = flipYSetting;
                                 m.map.needsUpdate = true;
                             }
                             m.needsUpdate = true;
@@ -567,7 +688,7 @@
             scene.add(currentModel);
             currentModel.updateMatrixWorld(true);
 
-            // Perfeita centralização geométrica e posicionamento exato sobre a grid
+            // Precise BoundingBox calculation & automatic floor centering
             const box = new THREE.Box3().setFromObject(currentModel);
             const size = box.getSize(new THREE.Vector3());
             const center = box.getCenter(new THREE.Vector3());
@@ -583,11 +704,11 @@
             box.getCenter(center);
 
             currentModel.position.x -= center.x;
-            currentModel.position.y -= box.min.y; // Encaixa exatamente na base y=0
+            currentModel.position.y -= box.min.y; // Perfect alignment resting on y=0 grid
             currentModel.position.z -= center.z;
             currentModel.updateMatrixWorld(true);
 
-            // Câmera perfeitamente focada no centro exato do personagem
+            // Camera framing focused perfectly on character center with padding
             const finalBox = new THREE.Box3().setFromObject(currentModel);
             const finalSize = finalBox.getSize(new THREE.Vector3());
             const finalCenter = finalBox.getCenter(new THREE.Vector3());
@@ -628,7 +749,7 @@
                 const textureLoader = new THREE.TextureLoader();
                 textureLoader.load(e.target.result, (texture) => {
                     texture.colorSpace = THREE.SRGBColorSpace;
-                    texture.flipY = false;
+                    texture.flipY = toggleTextureFlipY.checked;
 
                     let appliedCount = 0;
                     currentModel.traverse((child) => {
@@ -775,15 +896,20 @@
             loopBtn.classList.toggle('bg-blue-600/20', isLooping);
             loopBtn.classList.toggle('text-blue-400', isLooping);
             loopBtn.classList.toggle('border-blue-500/40', isLooping);
+            loopBtn.classList.toggle('bg-slate-800', !isLooping);
+            loopBtn.classList.toggle('text-slate-500', !isLooping);
+            loopBtn.classList.toggle('border-slate-700', !isLooping);
 
             if (activeAction) {
                 activeAction.setLoop(isLooping ? THREE.LoopRepeat : THREE.LoopOnce, isLooping ? Infinity : 0);
             }
+            saveSettings();
         });
 
         speedRange.addEventListener('input', (e) => {
             playbackSpeed = parseFloat(e.target.value);
             speedValue.textContent = playbackSpeed.toFixed(1) + 'x';
+            saveSettings();
         });
 
         timelineScrubber.addEventListener('mousedown', () => { isDraggingScrubber = true; });
