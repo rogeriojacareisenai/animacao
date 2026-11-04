@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador FBX & Character Controller 3D</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            user-select: none;
+        }
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+
+    <!-- Import Map para Three.js e seus Addons (FBXLoader, OrbitControls, fflate) -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body class="bg-slate-900 text-white">
+
+    <!-- Container da Cena 3D -->
+    <div id="canvas-container"></div>
+
+    <!-- UI Overlay (Painel de Controle) -->
+    <div class="relative z-10 p-4 md:p-6 pointer-events-none h-full flex flex-col justify-between">
+        
+        <!-- Header & Controles de Upload -->
+        <div class="flex flex-col md:flex-row justify-between items-start gap-4">
+            <!-- Painel Principal -->
+            <div class="glass-panel p-5 rounded-2xl w-full md:w-96 pointer-events-auto shadow-2xl transition-all">
+                <h1 class="text-xl font-bold mb-1 bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
+                    3D FBX Controller
+                </h1>
+                <p class="text-xs text-slate-400 mb-4">Carregue arquivos FBX para visualizar e controlar a animação.</p>
+                
+                <!-- Inputs de Arquivo -->
+                <div class="space-y-3">
+                    <!-- Idle Input -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">1. Animação IDLE (Parado / Base)</label>
+                        <div class="relative">
+                            <input type="file" id="idleFile" accept=".fbx" class="hidden">
+                            <label for="idleFile" id="idleLabel" class="flex items-center justify-between w-full px-3 py-2 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg cursor-pointer transition">
+                                <span class="truncate">Selecionar arquivo FBX (Idle)...</span>
+                                <span class="bg-blue-600/30 text-blue-400 px-2 py-0.5 rounded text-[10px] uppercase font-bold">FBX</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Run Input -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">2. Animação RUN (Correndo)</label>
+                        <div class="relative">
+                            <input type="file" id="runFile" accept=".fbx" class="hidden">
+                            <label for="runFile" id="runLabel" class="flex items-center justify-between w-full px-3 py-2 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg cursor-pointer transition">
+                                <span class="truncate">Selecionar arquivo FBX (Run)...</span>
+                                <span class="bg-indigo-600/30 text-indigo-400 px-2 py-0.5 rounded text-[10px] uppercase font-bold">FBX</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Status Indicator -->
+                <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between">
+                    <span class="text-xs text-slate-400">Status:</span>
+                    <span id="statusBadge" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                        Aguardando FBX Idle
+                    </span>
+                </div>
+
+                <!-- Botão Reset -->
+                <button id="resetPosBtn" class="mt-3 w-full py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs text-slate-200 font-medium rounded-lg transition border border-slate-700">
+                    Resetar Posição do Personagem
+                </button>
+            </div>
+
+            <!-- Card de Instruções -->
+            <div class="glass-panel p-4 rounded-xl pointer-events-auto text-xs space-y-2 text-slate-300 max-w-xs shadow-xl hidden sm:block">
+                <div class="font-bold text-white flex items-center gap-2">
+                    <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 25 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Instruções de Controle
+                </div>
+                <div class="grid grid-cols-2 gap-1.5 pt-1">
+                    <div class="bg-slate-800/80 p-1.5 rounded border border-slate-700/50 flex items-center justify-between">
+                        <span>Mover:</span>
+                        <span class="font-mono bg-slate-700 px-1.5 py-0.5 rounded text-white font-bold">W A S D</span>
+                    </div>
+                    <div class="bg-slate-800/80 p-1.5 rounded border border-slate-700/50 flex items-center justify-between">
+                        <span>Setas:</span>
+                        <span class="font-mono bg-slate-700 px-1.5 py-0.5 rounded text-white font-bold">↑ ← ↓ →</span>
+                    </div>
+                </div>
+                <p class="text-[11px] text-slate-400 pt-1">
+                    • Clique e arraste para orbitar a câmera.<br>
+                    • Role a roda do mouse para dar zoom.
+                </p>
+            </div>
+        </div>
+
+        <!-- Touch Controls (Visível em dispositivos móveis/telas pequenas) -->
+        <div class="pointer-events-auto sm:hidden self-center mb-4 bg-slate-900/80 backdrop-filter blur-md p-3 rounded-full border border-slate-800 flex gap-2">
+            <div class="grid grid-cols-3 gap-1 w-32 h-32">
+                <div></div>
+                <button id="btnUp" class="bg-slate-800 active:bg-blue-600 rounded-lg flex items-center justify-center text-lg font-bold">↑</button>
+                <div></div>
+                <button id="btnLeft" class="bg-slate-800 active:bg-blue-600 rounded-lg flex items-center justify-center text-lg font-bold">←</button>
+                <button id="btnDown" class="bg-slate-800 active:bg-blue-600 rounded-lg flex items-center justify-center text-lg font-bold">↓</button>
+                <button id="btnRight" class="bg-slate-800 active:bg-blue-600 rounded-lg flex items-center justify-center text-lg font-bold">→</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Principal com ES Modules -->
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+
+        // --- VARIÁVEIS GLOBAIS ---
+        let scene, camera, renderer, controls;
+        let characterGroup, characterModel;
+        let mixer;
+        let actions = { idle: null, run: null };
+        let activeAction = null;
+
+        // Estado do teclado
+        const keysPressed = { w: false, a: false, s: false, d: false, ArrowUp: false, ArrowLeft: false, ArrowDown: false, ArrowRight: false };
+
+        // Parâmetros de Movimento e Câmera
+        const moveSpeed = 6.0;
+        const rotateSpeed = 10.0;
+        const clock = new THREE.Clock();
+        const fbxLoader = new FBXLoader();
+
+        // Elementos da UI
+        const idleFileInput = document.getElementById('idleFile');
+        const runFileInput = document.getElementById('runFile');
+        const idleLabel = document.getElementById('idleLabel');
+        const runLabel = document.getElementById('runLabel');
+        const statusBadge = document.getElementById('statusBadge');
+        const resetPosBtn = document.getElementById('resetPosBtn');
+
+        // --- INICIALIZAÇÃO DA CENA ---
+        function init() {
+            const container = document.getElementById('canvas-container');
+
+            // 1. Cena
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0f172a);
+            scene.fog = new THREE.FogExp2(0x0f172a, 0.015);
+
+            // 2. Câmera
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 5, 10);
+
+            // 3. Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // 4. Controles de Órbita
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2 - 0.01; // Não atravessar o chão
+            controls.minDistance = 3;
+            controls.maxDistance = 25;
+            controls.target.set(0, 1.5, 0);
+
+            // 5. Iluminação
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+            dirLight.position.set(10, 20, 15);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            dirLight.shadow.camera.near = 0.5;
+            dirLight.shadow.camera.far = 50;
+            const d = 15;
+            dirLight.shadow.camera.left = -d;
+            dirLight.shadow.camera.right = d;
+            dirLight.shadow.camera.top = d;
+            dirLight.shadow.camera.bottom = -d;
+            scene.add(dirLight);
+
+            // Luz de destaque suave (Rim Light)
+            const fillLight = new THREE.DirectionalLight(0x3b82f6, 0.8);
+            fillLight.position.set(-10, 10, -10);
+            scene.add(fillLight);
+
+            // 6. Cenário (Malha Quadrada em Perspectiva)
+            createEnvironment();
+
+            // 7. Grupo do Personagem (para mover o container)
+            characterGroup = new THREE.Group();
+            scene.add(characterGroup);
+
+            // 8. Event Listeners
+            window.addEventListener('resize', onWindowResize);
+            setupKeyListeners();
+            setupFileLoaders();
+            setupTouchControls();
+
+            resetPosBtn.addEventListener('click', resetCharacterPosition);
+
+            // Loop de Animação
+            animate();
+        }
+
+        // --- CENÁRIO E PISO ---
+        function createEnvironment() {
+            // Chão Principal (Recebe Sombras)
+            const planeGeometry = new THREE.PlaneGeometry(100, 100);
+            const planeMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x1e293b, 
+                roughness: 0.8,
+                metalness: 0.2
+            });
+            const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+            plane.rotation.x = -Math.PI / 2;
+            plane.receiveShadow = true;
+            scene.add(plane);
+
+            // Grade Principal de Alto Contraste (Perspectiva Límpida)
+            const gridHelper = new THREE.GridHelper(100, 50, 0x38bdf8, 0x334155);
+            gridHelper.position.y = 0.01; // Evitar Z-fighting
+            scene.add(gridHelper);
+
+            // Sub-grade central destacada para referência de origem
+            const centerGrid = new THREE.GridHelper(20, 20, 0x818cf8, 0x475569);
+            centerGrid.position.y = 0.02;
+            scene.add(centerGrid);
+        }
+
+        // --- CARREGAMENTO DE ARQUIVOS FBX ---
+        function setupFileLoaders() {
+            idleFileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) loadFBXFile(file, 'idle');
+            });
+
+            runFileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) loadFBXFile(file, 'run');
+            });
+        }
+
+        function loadFBXFile(file, type) {
+            const url = URL.createObjectURL(file);
+            
+            // Atualizar rótulo da interface
+            if (type === 'idle') {
+                idleLabel.querySelector('span').innerText = file.name;
+                updateStatus('Carregando modelo e Idle...', 'amber');
+            } else {
+                runLabel.querySelector('span').innerText = file.name;
+                updateStatus('Carregando animação Run...', 'amber');
+            }
+
+            fbxLoader.load(url, (fbx) => {
+                URL.revokeObjectURL(url);
+
+                if (type === 'idle') {
+                    // Remover modelo anterior se existir
+                    if (characterModel) {
+                        characterGroup.remove(characterModel);
+                    }
+
+                    characterModel = fbx;
+
+                    // Ajustar sombras e materiais do modelo
+                    characterModel.traverse((child) => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                        }
+                    });
+
+                    // Normalizar escala do modelo se for muito grande ou pequeno
+                    const box = new THREE.Box3().setFromObject(characterModel);
+                    const size = box.getSize(new THREE.Vector3());
+                    if (size.y > 0) {
+                        const targetHeight = 2.0; // Altura aproximada desejada em unidades 3D
+                        const scaleFactor = targetHeight / size.y;
+                        characterModel.scale.setScalar(scaleFactor);
+                    }
+
+                    characterGroup.add(characterModel);
+
+                    // Inicializar AnimationMixer no modelo carregado
+                    mixer = new THREE.AnimationMixer(characterModel);
+
+                    // Configurar Animação Idle
+                    if (fbx.animations && fbx.animations.length > 0) {
+                        actions.idle = mixer.clipAction(fbx.animations[0]);
+                        actions.idle.play();
+                        activeAction = actions.idle;
+                    }
+
+                    updateStatus(actions.run ? 'Pronto para jogar!' : 'Idle Carregado. Insira o FBX Run.', actions.run ? 'emerald' : 'blue');
+
+                } else if (type === 'run') {
+                    // Tratar arquivo RUN
+                    if (fbx.animations && fbx.animations.length > 0) {
+                        const runClip = fbx.animations[0];
+                        
+                        // Se o mixer já existir, criar a ação com o clipe
+                        if (mixer) {
+                            actions.run = mixer.clipAction(runClip);
+                            updateStatus('Idle e Run prontos!', 'emerald');
+                        } else {
+                            // Se o usuário carregou o Run antes do Idle
+                            updateStatus('Run carregado! Carregue o FBX Idle.', 'blue');
+                            // Salvar temporariamente o clipe até o idle ser instanciado
+                            window.tempRunClip = runClip;
+                        }
+                    }
+                }
+
+                // Se o Idle acabou de carregar e havia um Run temporário
+                if (type === 'idle' && window.tempRunClip && mixer) {
+                    actions.run = mixer.clipAction(window.tempRunClip);
+                    window.tempRunClip = null;
+                    updateStatus('Pronto para jogar!', 'emerald');
+                }
+
+            }, undefined, (error) => {
+                console.error('Erro ao carregar FBX:', error);
+                updateStatus(`Erro ao ler arquivo ${type.toUpperCase()}`, 'rose');
+            });
+        }
+
+        function updateStatus(message, color) {
+            const colorClasses = {
+                amber: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                blue: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+                emerald: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+                rose: 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+            };
+            const dotClasses = {
+                amber: 'bg-amber-400',
+                blue: 'bg-blue-400',
+                emerald: 'bg-emerald-400',
+                rose: 'bg-rose-400'
+            };
+
+            statusBadge.className = `inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${colorClasses[color] || colorClasses.amber}`;
+            statusBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full ${dotClasses[color] || dotClasses.amber} animate-pulse"></span>${message}`;
+        }
+
+        // --- SISTEMA DE CONTROLES E INPUTS ---
+        function setupKeyListeners() {
+            window.addEventListener('keydown', (e) => {
+                if (e.key in keysPressed) {
+                    keysPressed[e.key] = true;
+                } else if (e.key.toLowerCase() in keysPressed) {
+                    keysPressed[e.key.toLowerCase()] = true;
+                }
+            });
+
+            window.addEventListener('keyup', (e) => {
+                if (e.key in keysPressed) {
+                    keysPressed[e.key] = false;
+                } else if (e.key.toLowerCase() in keysPressed) {
+                    keysPressed[e.key.toLowerCase()] = false;
+                }
+            });
+        }
+
+        function setupTouchControls() {
+            const btnMap = {
+                'btnUp': 'w',
+                'btnDown': 's',
+                'btnLeft': 'a',
+                'btnRight': 'd'
+            };
+
+            Object.entries(btnMap).forEach(([id, key]) => {
+                const btn = document.getElementById(id);
+                if (!btn) return;
+                
+                const startMove = (e) => { e.preventDefault(); keysPressed[key] = true; };
+                const endMove = (e) => { e.preventDefault(); keysPressed[key] = false; };
+
+                btn.addEventListener('touchstart', startMove);
+                btn.addEventListener('touchend', endMove);
+                btn.addEventListener('mousedown', startMove);
+                btn.addEventListener('mouseup', endMove);
+            });
+        }
+
+        function isMoving() {
+            return keysPressed.w || keysPressed.a || keysPressed.s || keysPressed.d ||
+                   keysPressed.ArrowUp || keysPressed.ArrowLeft || keysPressed.ArrowDown || keysPressed.ArrowRight;
+        }
+
+        function resetCharacterPosition() {
+            if (characterGroup) {
+                characterGroup.position.set(0, 0, 0);
+                characterGroup.rotation.set(0, 0, 0);
+                controls.target.set(0, 1.5, 0);
+                camera.position.set(0, 5, 10);
+            }
+        }
+
+        // --- FADE / TRANSIÇÃO ENTRE ANIMAÇÕES ---
+        function setAnimation(toAction) {
+            if (!toAction || activeAction === toAction) return;
+
+            if (activeAction) {
+                activeAction.fadeOut(0.25);
+            }
+            
+            toAction.reset().fadeIn(0.25).play();
+            activeAction = toAction;
+        }
+
+        // --- LOOP PRINCIPAL DE ATUALIZAÇÃO ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const delta = clock.getDelta();
+
+            // Atualizar animação FBX via Mixer
+            if (mixer) {
+                mixer.update(delta);
+            }
+
+            // Atualizar movimentação se houver personagem carregado
+            if (characterGroup && characterModel) {
+                const moving = isMoving();
+
+                // Lógica de Troca de Animação (Idle <-> Run)
+                if (moving && actions.run) {
+                    setAnimation(actions.run);
+                } else if (!moving && actions.idle) {
+                    setAnimation(actions.idle);
+                }
+
+                // Cálculo da direção de movimento relativo à Câmera
+                if (moving) {
+                    // Obter a direção para a qual a câmera está olhando no plano XZ
+                    const camDirection = new THREE.Vector3();
+                    camera.getWorldDirection(camDirection);
+                    camDirection.y = 0;
+                    camDirection.normalize();
+
+                    const camRight = new THREE.Vector3();
+                    camRight.crossVectors(camDirection, new THREE.Vector3(0, 1, 0)).negate();
+
+                    // Vetor de input acumulado
+                    const inputDir = new THREE.Vector3(0, 0, 0);
+
+                    if (keysPressed.w || keysPressed.ArrowUp) inputDir.add(camDirection);
+                    if (keysPressed.s || keysPressed.ArrowDown) inputDir.sub(camDirection);
+                    if (keysPressed.d || keysPressed.ArrowRight) inputDir.add(camRight);
+                    if (keysPressed.a || keysPressed.ArrowLeft) inputDir.sub(camRight);
+
+                    if (inputDir.lengthSq() > 0) {
+                        inputDir.normalize();
+
+                        // Deslocar o grupo do personagem
+                        characterGroup.position.addScaledVector(inputDir, moveSpeed * delta);
+
+                        // Rotacionar suavemente o modelo em direção ao movimento
+                        const targetAngle = Math.atan2(inputDir.x, inputDir.z);
+                        const currentAngle = characterGroup.rotation.y;
+                        
+                        // Interpolação angular suave (Lerp/Slerp aproximado)
+                        let diff = targetAngle - currentAngle;
+                        while (diff < -Math.PI) diff += Math.PI * 2;
+                        while (diff > Math.PI) diff -= Math.PI * 2;
+
+                        characterGroup.rotation.y += diff * rotateSpeed * delta;
+
+                        // Câmera Acompanha o Personagem (Chase Cam Suave)
+                        const camOffset = new THREE.Vector3().subVectors(camera.position, controls.target);
+                        controls.target.copy(characterGroup.position).add(new THREE.Vector3(0, 1.5, 0));
+                        camera.position.copy(controls.target).add(camOffset);
+                    }
+                }
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // --- RESPONSIVIDADE ---
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Iniciar aplicação
+        init();
+    </script>
+</body>
+</html>

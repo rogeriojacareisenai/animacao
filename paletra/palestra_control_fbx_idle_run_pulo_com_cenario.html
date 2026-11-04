@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador 3D - Personagem e Cenário</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            user-select: none;
+            background-color: #f8fafc;
+        }
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        /* Custom Scrollbar for Terminal */
+        #consoleLog::-webkit-scrollbar {
+            width: 6px;
+        }
+        #consoleLog::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+        #consoleLog::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.5);
+            border-radius: 3px;
+        }
+    </style>
+
+    <!-- Standalone Script Includes for Maximum Compatibility -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+</head>
+<body class="text-slate-800">
+
+    <!-- 3D Viewport -->
+    <div id="canvas-container"></div>
+
+    <!-- UI Overlay Layer -->
+    <div class="relative z-10 p-4 h-full flex flex-col justify-between pointer-events-none">
+        
+        <!-- Top Header & Upload Control Panel -->
+        <div class="flex flex-col lg:flex-row justify-between items-start gap-4">
+            
+            <!-- Left Side Upload Panel -->
+            <div class="glass-card p-5 rounded-2xl w-full max-w-sm pointer-events-auto shadow-xl space-y-4 max-h-[85vh] overflow-y-auto">
+                <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+                    <div>
+                        <h1 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                            Estúdio 3D Interativo
+                        </h1>
+                        <p class="text-xs text-slate-500 mt-0.5">Carregue modelos 3D ou use os controles.</p>
+                    </div>
+                </div>
+
+                <!-- File Inputs Grid -->
+                <div class="space-y-3">
+                    <!-- Scenario (GLB / GLTF) -->
+                    <div class="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200/80">
+                        <label class="block text-[11px] font-bold text-emerald-800 mb-1 flex items-center justify-between">
+                            <span>CENÁRIO (.GLB / .GLTF)</span>
+                            <span class="text-[9px] bg-emerald-200 text-emerald-800 px-1.5 py-0.5 rounded font-mono">MAPA</span>
+                        </label>
+                        <input type="file" id="envInput" accept=".glb,.gltf" class="hidden">
+                        <label for="envInput" class="flex items-center justify-between px-3 py-2 text-xs bg-white hover:bg-emerald-100/50 text-slate-700 border border-emerald-300 rounded-lg cursor-pointer transition shadow-sm">
+                            <span class="truncate pr-2 font-medium" id="envName">Carregar Terreno/Cenário...</span>
+                            <span class="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded font-bold">SELECIONAR</span>
+                        </label>
+                    </div>
+
+                    <!-- Idle Character -->
+                    <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
+                            <span>1. PERSONAGEM / IDLE (.FBX, .GLB)</span>
+                            <span class="text-[9px] bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-mono">BASE</span>
+                        </label>
+                        <input type="file" id="idleInput" accept=".fbx,.glb,.gltf" class="hidden">
+                        <label for="idleInput" class="flex items-center justify-between px-3 py-2 text-xs bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg cursor-pointer transition shadow-sm">
+                            <span class="truncate pr-2 font-medium" id="idleName">Carregar Malha / Idle...</span>
+                            <span class="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded font-bold">SELECIONAR</span>
+                        </label>
+                    </div>
+
+                    <!-- Run Animation -->
+                    <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
+                            <span>2. ANIMAÇÃO RUN (.FBX, .GLB)</span>
+                            <span class="text-[9px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-mono">CORRER</span>
+                        </label>
+                        <input type="file" id="runInput" accept=".fbx,.glb,.gltf" class="hidden">
+                        <label for="runInput" class="flex items-center justify-between px-3 py-2 text-xs bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg cursor-pointer transition shadow-sm">
+                            <span class="truncate pr-2 font-medium" id="runName">Carregar Correr...</span>
+                            <span class="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded font-bold">SELECIONAR</span>
+                        </label>
+                    </div>
+
+                    <!-- Jump Animation -->
+                    <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
+                            <span>3. ANIMAÇÃO JUMP (.FBX, .GLB)</span>
+                            <span class="text-[9px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-mono">PULO</span>
+                        </label>
+                        <input type="file" id="jumpInput" accept=".fbx,.glb,.gltf" class="hidden">
+                        <label for="jumpInput" class="flex items-center justify-between px-3 py-2 text-xs bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg cursor-pointer transition shadow-sm">
+                            <span class="truncate pr-2 font-medium" id="jumpName">Carregar Pulo...</span>
+                            <span class="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded font-bold">SELECIONAR</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="pt-2 flex gap-2 border-t border-slate-200">
+                    <button id="resetCamBtn" class="flex-1 py-2 px-3 bg-slate-800 hover:bg-slate-900 active:scale-95 text-xs text-white font-medium rounded-lg transition shadow">
+                        Resetar Câmera / Posição
+                    </button>
+                    <button id="clearConsoleBtn" class="py-2 px-3 bg-slate-200 hover:bg-slate-300 active:scale-95 text-xs text-slate-700 font-medium rounded-lg transition">
+                        Limpar Log
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Info Panel (Desktop) -->
+            <div class="glass-card p-4 rounded-2xl pointer-events-auto text-xs text-slate-600 max-w-xs shadow-xl hidden md:block space-y-2">
+                <div class="font-bold text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-2">
+                    <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                    Instruções de Navegação
+                </div>
+                <div class="space-y-1.5 pt-1">
+                    <div class="flex justify-between items-center">
+                        <span>Movimentação:</span>
+                        <span class="font-mono bg-slate-100 px-2 py-0.5 rounded border border-slate-300 text-slate-800 font-bold">WASD / Setas</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span>Pular:</span>
+                        <span class="font-mono bg-slate-100 px-2 py-0.5 rounded border border-slate-300 text-slate-800 font-bold">ESPAÇO</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span>Orbitar Câmera:</span>
+                        <span class="text-slate-800 font-medium">Clique + Arrastar</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span>Zoom:</span>
+                        <span class="text-slate-800 font-medium">Scroll Mouse</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Touch Controls (Mobile) -->
+        <div class="pointer-events-auto sm:hidden self-center my-2 glass-card p-3 rounded-2xl flex items-center gap-4 shadow-xl">
+            <div class="grid grid-cols-3 gap-1 w-32 h-32">
+                <div></div>
+                <button id="btnUp" class="bg-slate-200 active:bg-indigo-500 active:text-white rounded-lg flex items-center justify-center text-lg font-bold">↑</button>
+                <div></div>
+                <button id="btnLeft" class="bg-slate-200 active:bg-indigo-500 active:text-white rounded-lg flex items-center justify-center text-lg font-bold">←</button>
+                <button id="btnDown" class="bg-slate-200 active:bg-indigo-500 active:text-white rounded-lg flex items-center justify-center text-lg font-bold">↓</button>
+                <button id="btnRight" class="bg-slate-200 active:bg-indigo-500 active:text-white rounded-lg flex items-center justify-center text-lg font-bold">→</button>
+            </div>
+            <button id="btnJump" class="w-16 h-16 bg-indigo-600 active:bg-indigo-700 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-lg">
+                PULO
+            </button>
+        </div>
+
+        <!-- Dynamic On-Screen Console / Terminal -->
+        <div class="glass-card p-3 rounded-xl pointer-events-auto w-full max-w-3xl self-center max-h-36 flex flex-col shadow-xl">
+            <div class="flex items-center justify-between pb-1.5 border-b border-slate-200 text-[11px] font-mono text-slate-500">
+                <span class="flex items-center gap-1.5 font-bold text-slate-700">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Terminal de Status & Debug
+                </span>
+                <span id="currentStatusBadge" class="text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">Personagem: Manequim Padrão</span>
+            </div>
+            <div id="consoleLog" class="flex-1 overflow-y-auto text-[11px] font-mono space-y-1 mt-1.5 pr-1 text-slate-700">
+                <!-- Log messages -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Application Logic -->
+    <script>
+        // Global Three.js Scene Variables
+        let scene, camera, renderer, controls;
+        let characterGroup, currentModel = null;
+        let environmentMesh = null;
+        let defaultGridHelper = null, defaultFloorMesh = null;
+
+        // Animation Mixer & Actions
+        let mixer = null;
+        const actions = { idle: null, run: null, jump: null };
+        let currentActionState = 'idle';
+
+        // Physics, Raycasting & Ground
+        const raycaster = new THREE.Raycaster();
+        let velocityY = 0;
+        const gravity = -26.0;
+        const jumpVelocity = 10.0;
+        let isGrounded = true;
+        let groundY = 0;
+
+        // Movement & Input Controls
+        const moveSpeed = 6.0;
+        const rotationSpeed = 10.0;
+        const keys = { w: false, a: false, s: false, d: false, ArrowUp: false, ArrowLeft: false, ArrowDown: false, ArrowRight: false, ' ': false };
+
+        const clock = new THREE.Clock();
+        const fbxLoader = new THREE.FBXLoader();
+        const gltfLoader = new THREE.GLTFLoader();
+
+        // Terminal Log Function
+        function log(msg, type = 'info') {
+            const consoleLog = document.getElementById('consoleLog');
+            const time = new Date().toLocaleTimeString();
+            const el = document.createElement('div');
+            
+            let badgeColor = 'text-slate-600';
+            if (type === 'error') badgeColor = 'text-rose-600 font-semibold';
+            if (type === 'success') badgeColor = 'text-emerald-600 font-semibold';
+            if (type === 'warn') badgeColor = 'text-amber-600 font-semibold';
+
+            el.className = `${badgeColor} flex items-start gap-2`;
+            el.innerHTML = `<span class="text-slate-400 select-none">[${time}]</span> <span>${msg}</span>`;
+            
+            consoleLog.appendChild(el);
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+        }
+
+        // Initialize 3D Engine
+        function init() {
+            log('Iniciando engine Three.js r128...', 'info');
+
+            const container = document.getElementById('canvas-container');
+
+            // 1. Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf1f5f9);
+            scene.fog = new THREE.FogExp2(0xf1f5f9, 0.015);
+
+            // 2. Camera
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 4, 8);
+
+            // 3. Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            container.appendChild(renderer.domElement);
+
+            // 4. Orbit Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2 - 0.01;
+            controls.minDistance = 2.0;
+            controls.maxDistance = 50;
+            controls.target.set(0, 1.2, 0);
+
+            // 5. Lighting Setup
+            const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambient);
+
+            const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+            sun.position.set(15, 25, 15);
+            sun.castShadow = true;
+            sun.shadow.mapSize.width = 2048;
+            sun.shadow.mapSize.height = 2048;
+            sun.shadow.camera.near = 0.5;
+            sun.shadow.camera.far = 80;
+            const d = 20;
+            sun.shadow.camera.left = -d;
+            sun.shadow.camera.right = d;
+            sun.shadow.camera.top = d;
+            sun.shadow.camera.bottom = -d;
+            scene.add(sun);
+
+            const hemiLight = new THREE.HemisphereLight(0xffffff, 0x94a3b8, 0.4);
+            scene.add(hemiLight);
+
+            // 6. Default Grid Floor
+            createDefaultGrid();
+
+            // 7. Character Root Group
+            characterGroup = new THREE.Group();
+            scene.add(characterGroup);
+
+            // 8. Create Procedural Fallback Character (Dummy)
+            createDummyCharacter();
+
+            // Setup Listeners
+            window.addEventListener('resize', onResize);
+            setupInputControls();
+            setupFileUploads();
+
+            document.getElementById('resetCamBtn').addEventListener('click', resetCharacterAndCamera);
+            document.getElementById('clearConsoleBtn').addEventListener('click', () => {
+                document.getElementById('consoleLog').innerHTML = '';
+            });
+
+            log('Engine pronta. Manequim inicial carregado.', 'success');
+
+            // Render loop
+            animate();
+        }
+
+        <!-- Grid Floor Construction -->
+        function createDefaultGrid() {
+            const floorGeo = new THREE.PlaneGeometry(100, 100);
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.9, metalness: 0.1 });
+            defaultFloorMesh = new THREE.Mesh(floorGeo, floorMat);
+            defaultFloorMesh.rotation.x = -Math.PI / 2;
+            defaultFloorMesh.receiveShadow = true;
+            scene.add(defaultFloorMesh);
+
+            defaultGridHelper = new THREE.GridHelper(100, 50, 0x6366f1, 0xcbd5e1);
+            defaultGridHelper.position.y = 0.005;
+            scene.add(defaultGridHelper);
+        }
+
+        // Create Procedural Manequin / Dummy
+        function createDummyCharacter() {
+            if (currentModel) characterGroup.remove(currentModel);
+
+            currentModel = new THREE.Group();
+
+            // Body
+            const bodyGeo = new THREE.CylinderGeometry(0.35, 0.25, 1.3, 16);
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x4f46e5, roughness: 0.4 });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 0.85;
+            body.castShadow = true;
+            currentModel.add(body);
+
+            // Head
+            const headGeo = new THREE.SphereGeometry(0.28, 16, 16);
+            const headMat = new THREE.MeshStandardMaterial({ color: 0x818cf8, roughness: 0.3 });
+            const head = new THREE.Mesh(headGeo, headMat);
+            head.position.y = 1.7;
+            head.castShadow = true;
+            currentModel.add(head);
+
+            // Eyes visor
+            const visorGeo = new THREE.BoxGeometry(0.2, 0.08, 0.15);
+            const visorMat = new THREE.MeshBasicMaterial({ color: 0x06b6d4 });
+            const visor = new THREE.Mesh(visorGeo, visorMat);
+            visor.position.set(0, 1.72, 0.2);
+            currentModel.add(visor);
+
+            characterGroup.add(currentModel);
+            mixer = null; // Procedural dummy uses manual state
+            updateBadge('Manequim Padrão (Sem Mixer)');
+        }
+
+        // Setup File Selection Triggers
+        function setupFileUploads() {
+            document.getElementById('envInput').addEventListener('change', (e) => {
+                if (e.target.files[0]) loadEnvironmentGLB(e.target.files[0]);
+            });
+            document.getElementById('idleInput').addEventListener('change', (e) => {
+                if (e.target.files[0]) loadCharacterOrAnimation(e.target.files[0], 'idle');
+            });
+            document.getElementById('runInput').addEventListener('change', (e) => {
+                if (e.target.files[0]) loadCharacterOrAnimation(e.target.files[0], 'run');
+            });
+            document.getElementById('jumpInput').addEventListener('change', (e) => {
+                if (e.target.files[0]) loadCharacterOrAnimation(e.target.files[0], 'jump');
+            });
+        }
+
+        // Load Scenario (GLB / GLTF)
+        function loadEnvironmentGLB(file) {
+            log(`Carregando cenário: ${file.name}...`, 'info');
+            document.getElementById('envName').innerText = file.name;
+
+            const url = URL.createObjectURL(file);
+            gltfLoader.load(url, (gltf) => {
+                if (environmentMesh) scene.remove(environmentMesh);
+                if (defaultFloorMesh) scene.remove(defaultFloorMesh);
+                if (defaultGridHelper) scene.remove(defaultGridHelper);
+
+                environmentMesh = gltf.scene;
+                environmentMesh.traverse((child) => {
+                    if (child.isMesh) {
+                        child.receiveShadow = true;
+                        child.castShadow = true;
+                    }
+                });
+
+                scene.add(environmentMesh);
+                log('Cenário GLB carregado com sucesso! Raycasting ativado.', 'success');
+                resetCharacterAndCamera();
+                URL.revokeObjectURL(url);
+            }, undefined, (err) => {
+                log(`Erro ao carregar cenário: ${err.message || err}`, 'error');
+                URL.revokeObjectURL(url);
+            });
+        }
+
+        // Unified Character & Animation Loader
+        function loadCharacterOrAnimation(file, type) {
+            const fileName = file.name;
+            const ext = fileName.split('.').pop().toLowerCase();
+            log(`Carregando [${type.toUpperCase()}]: ${fileName}...`, 'info');
+
+            if (type === 'idle') document.getElementById('idleName').innerText = fileName;
+            if (type === 'run') document.getElementById('runName').innerText = fileName;
+            if (type === 'jump') document.getElementById('jumpName').innerText = fileName;
+
+            const url = URL.createObjectURL(file);
+
+            const handleSuccess = (object3d, animations) => {
+                processLoadedAsset(object3d, animations, type, fileName);
+                URL.revokeObjectURL(url);
+            };
+
+            const handleError = (err) => {
+                log(`Erro ao ler ${fileName}: ${err.message || err}`, 'error');
+                URL.revokeObjectURL(url);
+            };
+
+            if (ext === 'fbx') {
+                fbxLoader.load(url, (fbx) => handleSuccess(fbx, fbx.animations), undefined, handleError);
+            } else if (ext === 'glb' || ext === 'gltf') {
+                gltfLoader.load(url, (gltf) => handleSuccess(gltf.scene, gltf.animations), undefined, handleError);
+            }
+        }
+
+        // Process Content & Dynamic Mixamo Animation Track Rebinding
+        function processLoadedAsset(object3d, animations, type, fileName) {
+            if (type === 'idle') {
+                // 1. Replace Character Mesh Base
+                if (currentModel) characterGroup.remove(currentModel);
+                currentModel = object3d;
+
+                // Configure Shadows and Normalizations
+                currentModel.traverse((c) => {
+                    if (c.isMesh) {
+                        c.castShadow = true;
+                        c.receiveShadow = true;
+                    }
+                });
+
+                // Auto-Scale character height to ~2.0 units
+                const bbox = new THREE.Box3().setFromObject(currentModel);
+                const size = bbox.getSize(new THREE.Vector3());
+                if (size.y > 0) {
+                    const scale = 2.0 / size.y;
+                    currentModel.scale.setScalar(scale);
+                }
+
+                characterGroup.add(currentModel);
+                mixer = new THREE.AnimationMixer(currentModel);
+                
+                // Clear old actions
+                actions.idle = null;
+                actions.run = null;
+                actions.jump = null;
+
+                if (animations && animations.length > 0) {
+                    const clip = animations[0];
+                    actions.idle = mixer.clipAction(clip);
+                    actions.idle.play();
+                    currentActionState = 'idle';
+                    log(`Modelo base/Idle carregado (${clip.tracks.length} tracks).`, 'success');
+                } else {
+                    log('Modelo base sem clipe de animação interno.', 'warn');
+                }
+
+                updateBadge(`Personagem: ${fileName}`);
+
+            } else if (type === 'run' || type === 'jump') {
+                if (!currentModel || !mixer) {
+                    log('Carregue o arquivo [1. PERSONAGEM / IDLE] primeiro!', 'warn');
+                    return;
+                }
+
+                if (animations && animations.length > 0) {
+                    let clip = animations[0].clone();
+
+                    // Rebind animation tracks to current character's bone hierarchy
+                    clip = rebindClipToModel(clip, currentModel);
+
+                    actions[type] = mixer.clipAction(clip);
+
+                    if (type === 'jump') {
+                        actions.jump.setLoop(THREE.LoopOnce, 1);
+                        actions.jump.clampWhenFinished = true;
+                    }
+
+                    log(`Animação [${type.toUpperCase()}] vinculada com sucesso! (${clip.tracks.length} tracks remapped)`, 'success');
+                } else {
+                    log(`Nenhuma animação encontrada no arquivo ${fileName}`, 'error');
+                }
+            }
+        }
+
+        // Match Track Names for Mixamo Skeleton Compatibility
+        function rebindClipToModel(clip, targetModel) {
+            const validBoneNames = new Set();
+            targetModel.traverse((node) => {
+                if (node.name) validBoneNames.add(node.name);
+            });
+
+            clip.tracks = clip.tracks.filter((track) => {
+                const trackBoneName = track.name.split('.')[0];
+                return validBoneNames.has(trackBoneName) || trackBoneName.includes('mixamorig');
+            });
+
+            return clip;
+        }
+
+        // Smooth Animation CrossFading Transition
+        function fadeToState(newState) {
+            if (currentActionState === newState) return;
+
+            const prevAction = actions[currentActionState];
+            const nextAction = actions[newState];
+
+            currentActionState = newState;
+
+            if (prevAction && nextAction) {
+                nextAction.reset().fadeIn(0.25).play();
+                prevAction.crossFadeTo(nextAction, 0.25, true);
+            } else if (nextAction) {
+                nextAction.reset().play();
+            }
+        }
+
+        // Input Keyboard Tracking
+        function setupInputControls() {
+            window.addEventListener('keydown', (e) => {
+                if (e.key === ' ' || e.code === 'Space') keys[' '] = true;
+                if (keys.hasOwnProperty(e.key)) keys[e.key] = true;
+                if (keys.hasOwnProperty(e.code)) keys[e.code] = true;
+            });
+
+            window.addEventListener('keyup', (e) => {
+                if (e.key === ' ' || e.code === 'Space') keys[' '] = false;
+                if (keys.hasOwnProperty(e.key)) keys[e.key] = false;
+                if (keys.hasOwnProperty(e.code)) keys[e.code] = false;
+            });
+
+            // Mobile Touch Buttons
+            const bindTouch = (id, keyName) => {
+                const btn = document.getElementById(id);
+                if (!btn) return;
+                btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[keyName] = true; });
+                btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[keyName] = false; });
+            };
+
+            bindTouch('btnUp', 'w');
+            bindTouch('btnDown', 's');
+            bindTouch('btnLeft', 'a');
+            bindTouch('btnRight', 'd');
+            bindTouch('btnJump', ' ');
+        }
+
+        // Check if movement keys are currently held down
+        function isMoving() {
+            return keys.w || keys.a || keys.s || keys.d || keys.ArrowUp || keys.ArrowLeft || keys.ArrowDown || keys.ArrowRight;
+        }
+
+        // Raycasting terrain height detection
+        function updateGroundHeight() {
+            if (!environmentMesh) {
+                groundY = 0; // Flat floor default
+                return;
+            }
+
+            const origin = characterGroup.position.clone();
+            origin.y += 10.0;
+            raycaster.set(origin, new THREE.Vector3(0, -1, 0));
+
+            const hits = raycaster.intersectObject(environmentMesh, true);
+            if (hits.length > 0) {
+                groundY = hits[0].point.y;
+            } else {
+                groundY = 0;
+            }
+        }
+
+        // Reset Character Position & Camera Focus
+        function resetCharacterAndCamera() {
+            characterGroup.position.set(0, groundY, 0);
+            velocityY = 0;
+            isGrounded = true;
+            controls.target.set(0, 1.2, 0);
+            camera.position.set(0, 4, 8);
+            controls.update();
+            log('Posição e Câmera resetadas.', 'info');
+        }
+
+        function updateBadge(txt) {
+            document.getElementById('currentStatusBadge').innerText = txt;
+        }
+
+        // Main Physics & Frame Render Loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const delta = clock.getDelta();
+
+            if (mixer) mixer.update(delta);
+
+            if (characterGroup) {
+                const moving = isMoving();
+
+                // 1. Terrain Raycast
+                updateGroundHeight();
+
+                // 2. Jump Trigger
+                if (keys[' '] && isGrounded) {
+                    velocityY = jumpVelocity;
+                    isGrounded = false;
+                    fadeToState('jump');
+                }
+
+                // 3. Gravity Physics Simulation
+                if (!isGrounded) {
+                    velocityY += gravity * delta;
+                    characterGroup.position.y += velocityY * delta;
+
+                    if (characterGroup.position.y <= groundY) {
+                        characterGroup.position.y = groundY;
+                        velocityY = 0;
+                        isGrounded = true;
+                        fadeToState(moving ? 'run' : 'idle');
+                    }
+                } else {
+                    characterGroup.position.y = groundY;
+                    fadeToState(moving ? 'run' : 'idle');
+                }
+
+                // 4. Camera Relative WASD Movement
+                if (moving) {
+                    const camDir = new THREE.Vector3();
+                    camera.getWorldDirection(camDir);
+                    camDir.y = 0;
+                    camDir.normalize();
+
+                    const camRight = new THREE.Vector3().crossVectors(camDir, new THREE.Vector3(0, 1, 0)).negate();
+                    const moveVector = new THREE.Vector3(0, 0, 0);
+
+                    if (keys.w || keys.ArrowUp) moveVector.add(camDir);
+                    if (keys.s || keys.ArrowDown) moveVector.sub(camDir);
+                    if (keys.d || keys.ArrowRight) moveVector.add(camRight);
+                    if (keys.a || keys.ArrowLeft) moveVector.sub(camRight);
+
+                    if (moveVector.lengthSq() > 0) {
+                        moveVector.normalize();
+                        characterGroup.position.addScaledVector(moveVector, moveSpeed * delta);
+
+                        // Smooth character rotation towards move vector
+                        const targetAngle = Math.atan2(moveVector.x, moveVector.z);
+                        let angleDiff = targetAngle - characterGroup.rotation.y;
+
+                        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+
+                        characterGroup.rotation.y += angleDiff * rotationSpeed * delta;
+                    }
+                }
+
+                // 5. Chase Camera Focus Target
+                const camOffset = new THREE.Vector3().subVectors(camera.position, controls.target);
+                controls.target.copy(characterGroup.position).add(new THREE.Vector3(0, 1.2, 0));
+                camera.position.copy(controls.target).add(camOffset);
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Handle Responsive Window Resizing
+        function onResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Boot application on window load
+        window.onload = init;
+    </script>
+</body>
+</html>
