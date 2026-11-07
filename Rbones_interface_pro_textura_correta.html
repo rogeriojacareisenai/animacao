@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rbones Pro - Animação e Leitura de OBJ / FBX / glTF / GLB</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --panel-bg: rgba(25, 25, 25, 0.92);
+            --text-color: #ffffff;
+            --border-color: #444;
+            --timeline-bg: #2b2b2b;
+            --timeline-controls-bg: #333;
+            --timeline-ruler-bg: #2a2a2a;
+            --timeline-track-bg: #222;
+            --frame-cell-bg: #2c2c2c;
+            --keyframe-bg: #c0c0c0;
+            --keyframe-dot: #000000;
+            --input-bg: #222;
+            --tween-line-color: #800020;
+            --accent: #42d392;
+            --accent-strong: #1eaa72;
+        }
+
+        body.light-theme {
+            --bg-color: #e0e0e0;
+            --panel-bg: rgba(240, 240, 240, 0.92);
+            --text-color: #111111;
+            --border-color: #ccc;
+            --timeline-bg: #f0f0f0;
+            --timeline-controls-bg: #e0e0e0;
+            --timeline-ruler-bg: #e5e5e5;
+            --timeline-track-bg: #ffffff;
+            --frame-cell-bg: #f5f5f5;
+            --keyframe-bg: #a0a0a0;
+            --keyframe-dot: #111111;
+            --input-bg: #ffffff;
+            --tween-line-color: #800020;
+            --accent: #16845b;
+            --accent-strong: #0f704c;
+        }
+
+        body { margin: 0; overflow: hidden; font-family: Inter, sans-serif; font-size: 13px; background-color: var(--bg-color); color: var(--text-color); user-select: none; transition: background-color 0.3s; }
+        
+        button, input, select { cursor: pointer; padding: 6px; font: inherit; }
+        .active { background: var(--accent-strong) !important; color: white !important; border: none; }
+        .btn-group { display: flex; gap: 4px; }
+        .btn-group button { flex: 1; font-size: 11px; min-height: 30px; }
+        .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+        .section-title { font-size: 11px; font-weight: bold; color: var(--accent); text-transform: uppercase; }
+        .slider-row { display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
+
+        .floating-panel {
+            position: absolute;
+            background: var(--panel-bg);
+            color: var(--text-color);
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            z-index: 100;
+            width: 270px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px 10px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: move;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-header button.minimize-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-color);
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+            padding: 0 4px;
+        }
+        .panel-header button.minimize-btn:hover { color: var(--accent); }
+
+        .panel-body {
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+
+        .control-block { display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
+        .status-text { font-size: 11px; color: #888; overflow-wrap: anywhere; }
+
+        select, input[type="file"], input[type="number"], input[type="text"] {
+            font-size: 12px;
+            background: var(--input-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 4px 6px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .dropdown-section {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.15);
+            padding: 6px;
+        }
+        .dropdown-section summary {
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            color: var(--accent);
+            user-select: none;
+        }
+        .dropdown-content {
+            margin-top: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding-top: 6px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        #bone-panel {
+            background: rgba(125, 125, 125, 0.1);
+            border: 1px solid var(--border-color);
+            padding: 8px;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .coord-group { display: flex; justify-content: space-between; align-items: center; gap: 4px; }
+        .coord-field { display: flex; flex-direction: column; align-items: center; flex: 1; }
+        .coord-field label { font-size: 10px; font-weight: bold; opacity: 0.8; }
+        .coord-field input { text-align: center; font-size: 11px; }
+
+        #flash-timeline-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100vw;
+            height: 130px;
+            background: var(--timeline-bg);
+            border-top: 2px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.3);
+        }
+        
+        .timeline-controls {
+            height: 36px;
+            background: var(--timeline-controls-bg);
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .timeline-controls button {
+            background: #444;
+            color: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 11px;
+            padding: 4px 8px;
+        }
+        .timeline-controls button:hover { filter: brightness(1.2); }
+
+        .timeline-field {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            border-left: 1px solid var(--border-color);
+            padding-left: 8px;
+            margin-left: 2px;
+        }
+        .timeline-field input { width: 42px; text-align: center; }
+
+        .timeline-scroll-area {
+            flex: 1;
+            overflow-x: auto;
+            overflow-y: hidden;
+            position: relative;
+            background: var(--timeline-track-bg);
+            cursor: pointer;
+        }
+
+        .timeline-ruler {
+            height: 20px;
+            background: var(--timeline-ruler-bg);
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            position: relative;
+        }
+
+        .ruler-mark {
+            width: 20px;
+            min-width: 20px;
+            height: 100%;
+            border-right: 1px solid var(--border-color);
+            font-size: 9px;
+            opacity: 0.7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            pointer-events: none;
+        }
+
+        .timeline-track {
+            height: 35px;
+            display: flex;
+            background: var(--timeline-track-bg);
+            position: relative;
+        }
+
+        .frame-cell {
+            width: 20px;
+            min-width: 20px;
+            height: 100%;
+            border-right: 1px solid var(--border-color);
+            box-sizing: border-box;
+            position: relative;
+            background: var(--frame-cell-bg);
+            pointer-events: auto;
+        }
+
+        .frame-cell.has-keyframe { background: var(--keyframe-bg); }
+        .frame-cell.has-keyframe::after {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: var(--keyframe-dot);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+        }
+
+        .frame-cell.is-interpolated::before {
+            content: '';
+            position: absolute;
+            top: calc(50% - 1px);
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--tween-line-color);
+            z-index: 1;
+        }
+
+        .frame-cell.active-frame {
+            border-left: 2px solid #ff3333;
+            border-right: 2px solid #ff3333;
+        }
+
+        #context-menu {
+            display: none;
+            position: absolute;
+            background: var(--timeline-controls-bg);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+            z-index: 1000;
+            border-radius: 6px;
+            padding: 4px 0;
+            width: 170px;
+        }
+        .context-menu-item {
+            padding: 8px 12px;
+            font-size: 11px;
+            cursor: pointer;
+            color: var(--text-color);
+        }
+        .context-menu-item:hover { background: var(--accent-strong); color: #fff; }
+
+        #workspace-toolbar {
+            position: fixed; right: 12px; bottom: 140px; z-index: 500;
+            display: flex; gap: 7px; align-items: center; padding: 6px 10px;
+            border: 1px solid var(--border-color); border-radius: 10px;
+            background: var(--panel-bg); box-shadow: 0 8px 24px rgba(0,0,0,.25);
+        }
+        body.panels-hidden .floating-panel { display: none !important; }
+    </style>
+
+    <!-- Three.js r128 e Addons Compatíveis Estáveis -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+</head>
+<body>
+
+<div id="workspace-toolbar">
+    <button id="btn-toggle-panels" type="button">▣ Painéis</button>
+    <button id="btn-reset-layout" type="button">↺ Layout</button>
+    <span id="workspace-status" style="font-size: 11px; opacity: 0.8;">Pronto</span>
+</div>
+
+<!-- Painel 1: Arquivo e Projeto -->
+<div class="floating-panel" id="panel-file" style="top: 10px; left: 10px;">
+    <div class="panel-header">
+        <span>📁 Arquivo e Projeto</span>
+        <button class="minimize-btn" onclick="toggleMinimize('panel-file')">_</button>
+    </div>
+    <div class="panel-body">
+        <div class="control-block">
+            <label>Carregar Modelo (.OBJ, .FBX, .GLB, .GLTF):</label>
+            <input type="file" id="file-input" accept=".obj, .fbx, .gltf, .glb">
+            <span id="model-status" class="status-text">Nenhum modelo carregado.</span>
+        </div>
+
+        <div id="embedded-anim-container" class="control-block" style="display: none;">
+            <label>Animações Incorporadas / Mixamo:</label>
+            <select id="embedded-anim-select"></select>
+            <button id="btn-bake-anim" style="background: #e65100; color: #fff; margin-top: 4px;">📌 Converter em Keyframes</button>
+        </div>
+
+        <details class="dropdown-section">
+            <summary>🎨 Texturas e Materiais</summary>
+            <div class="dropdown-content">
+                <div class="control-block">
+                    <label>Textura Base (Albedo):</label>
+                    <input type="file" id="map-albedo" accept="image/*">
+                </div>
+                <div class="control-block">
+                    <label>Normal Map:</label>
+                    <input type="file" id="map-normal" accept="image/*">
+                </div>
+                <span id="texture-status" class="status-text">Texturas originais preservadas.</span>
+            </div>
+        </details>
+
+        <details class="dropdown-section">
+            <summary>📦 Exportar / Importar JSON</summary>
+            <div class="dropdown-content">
+                <div class="btn-group">
+                    <button id="btn-save-anim" style="background: #0277bd; color: #fff;">💾 Exportar</button>
+                    <button id="btn-load-anim" style="background: #ef6c00; color: #fff;">📂 Importar</button>
+                </div>
+                <input type="file" id="anim-file-input" accept=".json" style="display: none;">
+            </div>
+        </details>
+    </div>
+</div>
+
+<!-- Painel 2: Ambiente e Iluminação -->
+<div class="floating-panel" id="panel-light" style="top: 10px; left: 290px;">
+    <div class="panel-header">
+        <span>💡 Ambiente e Iluminação</span>
+        <button class="minimize-btn" onclick="toggleMinimize('panel-light')">_</button>
+    </div>
+    <div class="panel-body">
+        <button id="btn-theme-toggle">🌓 Tema Light / Dark</button>
+        <div class="control-block">
+            <label>Preset de Iluminação:</label>
+            <select id="ambient-light-select">
+                <option value="neutral">Neutra / Padrão</option>
+                <option value="daylight">Luz Diurna / Sol</option>
+                <option value="sunset">Pôr do Sol</option>
+                <option value="studio">Estúdio Softbox</option>
+                <option value="cyberpunk">Cyberpunk Neon</option>
+            </select>
+        </div>
+        <div class="slider-row">
+            <label>Intensidade da Luz:</label>
+            <input type="range" id="light-intensity-slider" min="0.0" max="4.0" step="0.1" value="1.5">
+        </div>
+    </div>
+</div>
+
+<!-- Painel 3: Visualização e Renderização -->
+<div class="floating-panel" id="panel-render" style="top: 10px; left: 570px;">
+    <div class="panel-header">
+        <span>👁️ Renderização</span>
+        <button class="minimize-btn" onclick="toggleMinimize('panel-render')">_</button>
+    </div>
+    <div class="panel-body">
+        <div class="control-block">
+            <label>Estilo Visual / Material:</label>
+            <select id="render-mode-select">
+                <option value="normal">Padrão (Texturado)</option>
+                <option value="metallic">Metálico Refletivo</option>
+                <option value="wireframe">Wireframe</option>
+                <option value="clay">Argila / Terracota</option>
+                <option value="gold">Ouro Polido</option>
+                <option value="unlit">Unlit (Sem Sombra)</option>
+            </select>
+        </div>
+        <div class="checkbox-row">
+            <input type="checkbox" id="chk-ground" checked>
+            <label for="chk-ground">Exibir Chão e Grade</label>
+        </div>
+        <div class="checkbox-row">
+            <input type="checkbox" id="chk-skeleton" checked>
+            <label for="chk-skeleton">Exibir Esqueleto</label>
+        </div>
+        <div class="checkbox-row">
+            <input type="checkbox" id="chk-pickers" checked>
+            <label for="chk-pickers">Juntas Interativas</label>
+        </div>
+        <div class="slider-row">
+            <label>Opacidade da Malha:</label>
+            <input type="range" id="opacity-slider" min="0.0" max="1.0" step="0.05" value="1.0">
+        </div>
+    </div>
+</div>
+
+<!-- Painel 4: Ferramentas de Gizmo -->
+<div class="floating-panel" id="panel-gizmo" style="top: 290px; left: 10px;">
+    <div class="panel-header">
+        <span>🛠️ Ferramentas de Gizmo</span>
+        <button class="minimize-btn" onclick="toggleMinimize('panel-gizmo')">_</button>
+    </div>
+    <div class="panel-body">
+        <label>Modo de Transformação:</label>
+        <div class="btn-group">
+            <button id="btn-mode-translate" class="active">Mover</button>
+            <button id="btn-mode-rotate">Rotacionar</button>
+            <button id="btn-mode-scale">Escalar</button>
+        </div>
+        <button id="btn-select-root" style="background: #1976d2; color: #fff; margin-top: 4px;">🦴 Selecionar Raiz</button>
+    </div>
+</div>
+
+<!-- Painel 5: Osso / Objeto Selecionado -->
+<div class="floating-panel" id="bone-details" style="top: 290px; left: 290px; display: none;">
+    <div class="panel-header">
+        <span>🦴 Propriedades do Osso</span>
+        <button class="minimize-btn" onclick="toggleMinimize('bone-details')">_</button>
+    </div>
+    <div class="panel-body">
+        <div id="bone-panel">
+            <span class="section-title" id="selected-bone-name">Nenhum</span>
+            <div style="font-size: 10px; font-weight: bold;">Posição:</div>
+            <div class="coord-group">
+                <div class="coord-field"><label>X</label><input type="number" id="pos-x" step="0.1"></div>
+                <div class="coord-field"><label>Y</label><input type="number" id="pos-y" step="0.1"></div>
+                <div class="coord-field"><label>Z</label><input type="number" id="pos-z" step="0.1"></div>
+            </div>
+            <div style="font-size: 10px; font-weight: bold;">Rotação (°):</div>
+            <div class="coord-group">
+                <div class="coord-field"><label>X</label><input type="number" id="rot-x" step="1"></div>
+                <div class="coord-field"><label>Y</label><input type="number" id="rot-y" step="1"></div>
+                <div class="coord-field"><label>Z</label><input type="number" id="rot-z" step="1"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Timeline inferior -->
+<div id="flash-timeline-container">
+    <div class="timeline-controls">
+        <button id="btn-play">► Play</button>
+        <button id="btn-add-keyframe" style="background: #2e7d32;">F6 - Keyframe</button>
+        <button id="btn-clear-keyframe" style="background: #c62828;">F7 - Limpar</button>
+        <button id="btn-insert-space" style="background: #0277bd;">➕ Inserir Frame</button>
+        <button id="btn-undo">↩ Undo</button>
+        <button id="btn-center-scene" style="background: #6a1b9a;">🎯 Centralizar</button>
+        
+        <div class="timeline-field">
+            <label>FPS:</label>
+            <input type="number" id="fps-input" value="30" min="1" max="60">
+        </div>
+        <div class="timeline-field">
+            <label>Fim:</label>
+            <input type="number" id="total-frames-input" value="60" min="2" max="1000">
+        </div>
+        <span style="font-size: 11px; margin-left: auto;">
+            Frame: <strong id="current-frame-text" style="color: var(--accent);">1</strong> / <span id="total-frames-text">60</span>
+        </span>
+    </div>
+
+    <div class="timeline-scroll-area" id="timeline-scroll">
+        <div class="timeline-ruler" id="timeline-ruler"></div>
+        <div class="timeline-track" id="timeline-track"></div>
+    </div>
+</div>
+
+<div id="context-menu">
+    <div class="context-menu-item" id="ctx-copy">📋 Copiar Keyframe</div>
+    <div class="context-menu-item" id="ctx-paste">📋 Colar Keyframe</div>
+    <div class="context-menu-item" id="ctx-remove">🗑️ Remover Frame</div>
+    <div class="context-menu-item" id="ctx-clear">❌ Limpar Keyframe</div>
+</div>
+
+<script>
+    // --- LÓGICA PRINCIPAL THREE.JS r128 ---
+    let scene, camera, renderer, orbit;
+    let groundGroup, gridHelper, groundMesh;
+    let dirLight, ambientLight;
+
+    let characterGroup = null;
+    let skeletonHelper = null;
+    let bonePickers = [];
+    let boneMap = new Map();
+    let allBones = [];
+    let originalMaterials = new Map();
+
+    let mixer = null;
+    let animations = [];
+    let activeAction = null;
+    const clock = new THREE.Clock();
+
+    let loadedFileName = "";
+    let totalFrames = 60;
+    let currentFrame = 0;
+    let keyframesMap = new Map();
+    let isPlaying = false;
+    let playInterval = null;
+    let targetFPS = 30;
+
+    let selectedBones = [];
+    const pivotObject = new THREE.Object3D();
+    const initialStates = new Map();
+    let prevPivotPosition = new THREE.Vector3();
+    let prevPivotQuaternion = new THREE.Quaternion();
+    let prevPivotScale = new THREE.Vector3();
+
+    const undoStack = [];
+    const redoStack = [];
+    const MAX_HISTORY = 30;
+
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    function init() {
+        const container = document.body;
+
+        // Scene
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a1a);
+
+        // Ground & Grid
+        groundGroup = new THREE.Group();
+        gridHelper = new THREE.GridHelper(2000, 200, 0x777777, 0x555555);
+        gridHelper.position.y = -0.01;
+        groundGroup.add(gridHelper);
+
+        const planeGeo = new THREE.PlaneGeometry(10000, 10000);
+        const planeMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8, metalness: 0.2, side: THREE.DoubleSide });
+        groundMesh = new THREE.Mesh(planeGeo, planeMat);
+        groundMesh.rotation.x = -Math.PI / 2;
+        groundMesh.receiveShadow = true;
+        groundGroup.add(groundMesh);
+        scene.add(groundGroup);
+
+        // Camera
+        camera = new THREE.PerspectiveCamera(60, window.innerWidth / (window.innerHeight - 130), 0.1, 5000);
+        camera.position.set(0, 100, 250);
+
+        // Renderer
+        renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight - 130);
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        // OrbitControls
+        orbit = new THREE.OrbitControls(camera, renderer.domElement);
+        orbit.target.set(0, 90, 0);
+        orbit.update();
+
+        // Lighting (Configuração idêntica ao arquivo de sucesso palestra)
+        ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+        scene.add(ambientLight);
+
+        dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        dirLight.position.set(100, 200, 150);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        scene.add(pivotObject);
+
+        // TransformControls
+        window.transformControls = new THREE.TransformControls(camera, renderer.domElement);
+        transformControls.setMode('translate');
+        transformControls.addEventListener('dragging-changed', (event) => {
+            orbit.enabled = !event.value;
+            if (event.value) {
+                pushState();
+                prevPivotPosition.copy(pivotObject.position);
+                prevPivotQuaternion.copy(pivotObject.quaternion);
+                prevPivotScale.copy(pivotObject.scale);
+
+                initialStates.clear();
+                selectedBones.forEach(bone => {
+                    initialStates.set(bone, {
+                        position: bone.position.clone(),
+                        quaternion: bone.quaternion.clone(),
+                        scale: bone.scale.clone(),
+                        worldPosition: bone.getWorldPosition(new THREE.Vector3()),
+                        worldQuaternion: bone.getWorldQuaternion(new THREE.Quaternion()),
+                        worldScale: bone.getWorldScale(new THREE.Vector3())
+                    });
+                });
+            }
+        });
+
+        transformControls.addEventListener('change', () => {
+            if (transformControls.dragging && selectedBones.length > 0) {
+                const mode = transformControls.getMode();
+                if (mode === 'translate') {
+                    const deltaPos = pivotObject.position.clone().sub(prevPivotPosition);
+                    selectedBones.forEach(bone => {
+                        bone.position.add(deltaPos);
+                    });
+                    prevPivotPosition.copy(pivotObject.position);
+                } else if (mode === 'rotate') {
+                    const deltaRot = pivotObject.quaternion.clone().multiply(prevPivotQuaternion.clone().invert());
+                    selectedBones.forEach(bone => {
+                        const init = initialStates.get(bone);
+                        if (init) {
+                            const worldPos = init.worldPosition.clone().sub(pivotObject.position);
+                            worldPos.applyQuaternion(deltaRot);
+                            worldPos.add(pivotObject.position);
+                            if (bone.parent) bone.parent.worldToLocal(worldPos);
+                            bone.position.copy(worldPos);
+
+                            const targetWorldRot = deltaRot.clone().multiply(init.worldQuaternion);
+                            if (bone.parent) {
+                                const parentWorldRot = bone.parent.getWorldQuaternion(new THREE.Quaternion());
+                                bone.quaternion.copy(parentWorldRot.invert().multiply(targetWorldRot));
+                            } else {
+                                bone.quaternion.copy(targetWorldRot);
+                            }
+                        }
+                    });
+                }
+                updateUIInputs();
+                saveKeyframe(currentFrame, false, false);
+            }
+        });
+        scene.add(transformControls);
+
+        setupFileUploads();
+        buildFlashTimelineUI();
+        animate();
+    }
+
+    // --- CARREGAMENTO DE MODELOS (FBX, GLTF, GLB, OBJ com Suporte a Texturas Corretas) ---
+    function setupFileUploads() {
+        document.getElementById('file-input').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            loadedFileName = file.name;
+            const ext = loadedFileName.split('.').pop().toLowerCase();
+            document.getElementById('model-status').innerText = `Carregando: ${loadedFileName}`;
+
+            const url = URL.createObjectURL(file);
+
+            if (ext === 'fbx') {
+                const loader = new THREE.FBXLoader();
+                loader.load(url, (object) => {
+                    processLoadedModel(object, object.animations || []);
+                    URL.revokeObjectURL(url);
+                }, undefined, (err) => alert('Erro ao carregar FBX: ' + err.message));
+            } else if (ext === 'glb' || ext === 'gltf') {
+                const loader = new THREE.GLTFLoader();
+                loader.load(url, (gltf) => {
+                    processLoadedModel(gltf.scene, gltf.animations || []);
+                    URL.revokeObjectURL(url);
+                }, undefined, (err) => alert('Erro ao carregar GLTF/GLB: ' + err.message));
+            } else if (ext === 'obj') {
+                const loader = new THREE.OBJLoader();
+                loader.load(url, (obj) => {
+                    processLoadedModel(obj, []);
+                    URL.revokeObjectURL(url);
+                }, undefined, (err) => alert('Erro ao carregar OBJ: ' + err.message));
+            }
+        });
+
+        // Upload de Texturas Manuais
+        const textureLoader = new THREE.TextureLoader();
+        document.getElementById('map-albedo').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const url = URL.createObjectURL(file);
+            textureLoader.load(url, (texture) => {
+                texture.encoding = THREE.sRGBEncoding;
+                if (characterGroup) {
+                    characterGroup.traverse(child => {
+                        if (child.isMesh) {
+                            child.material.map = texture;
+                            child.material.needsUpdate = true;
+                        }
+                    });
+                }
+                document.getElementById('texture-status').innerText = "Textura base aplicada!";
+            });
+        });
+    }
+
+    function processLoadedModel(model, modelAnimations = []) {
+        if (characterGroup) scene.remove(characterGroup);
+        if (skeletonHelper) scene.remove(skeletonHelper);
+        bonePickers.forEach(p => scene.remove(p));
+        bonePickers = [];
+        boneMap.clear();
+        allBones = [];
+
+        characterGroup = model;
+        scene.add(characterGroup);
+
+        skeletonHelper = new THREE.SkeletonHelper(characterGroup);
+        skeletonHelper.material.linewidth = 2;
+        scene.add(skeletonHelper);
+
+        const radius = 1.8;
+
+        characterGroup.traverse((child) => {
+            if (child.isMesh) {
+                originalMaterials.set(child, child.material);
+                child.material.side = THREE.DoubleSide;
+                if (child.material.map) {
+                    child.material.map.encoding = THREE.sRGBEncoding;
+                    child.material.needsUpdate = true;
+                }
+            }
+
+            if (child.isBone || child.isObject3D) {
+                if (child.isBone) child.matrixAutoUpdate = true;
+                if (child.isBone && !allBones.includes(child)) {
+                    allBones.push(child);
+
+                    const pickerGeo = new THREE.SphereGeometry(radius, 16, 16);
+                    const pickerMat = new THREE.MeshBasicMaterial({ color: 0xffcc00, depthTest: false, transparent: true, opacity: 0.8 });
+                    const picker = new THREE.Mesh(pickerGeo, pickerMat);
+                    scene.add(picker);
+                    bonePickers.push(picker);
+                    boneMap.set(picker, child);
+                }
+            }
+        });
+
+        animations = modelAnimations;
+        const animSelect = document.getElementById('embedded-anim-select');
+        const animContainer = document.getElementById('embedded-anim-container');
+        animSelect.innerHTML = '<option value="">Nenhuma</option>';
+
+        if (animations.length > 0) {
+            mixer = new THREE.AnimationMixer(characterGroup);
+            animations.forEach((clip, index) => {
+                const opt = document.createElement('option');
+                opt.value = index;
+                opt.innerText = clip.name || `Animação ${index + 1}`;
+                animSelect.appendChild(opt);
+            });
+            animContainer.style.display = 'flex';
+        } else {
+            animContainer.style.display = 'none';
+        }
+
+        saveKeyframe(0, true, false);
+        buildFlashTimelineUI();
+        selectFrame(0);
+        selectBone(characterGroup, false);
+        document.getElementById('model-status').innerText = `Carregado: ${loadedFileName}`;
+    }
+
+    // --- TIMELINE & GESTÃO DE ESTADOS ---
+    function buildFlashTimelineUI() {
+        const rulerContainer = document.getElementById('timeline-ruler');
+        const trackContainer = document.getElementById('timeline-track');
+        rulerContainer.innerHTML = '';
+        trackContainer.innerHTML = '';
+
+        for (let i = 0; i < totalFrames; i++) {
+            const mark = document.createElement('div');
+            mark.className = 'ruler-mark';
+            if ((i + 1) % 5 === 0 || i === 0) mark.innerText = i + 1;
+            rulerContainer.appendChild(mark);
+
+            const cell = document.createElement('div');
+            cell.className = 'frame-cell';
+            cell.dataset.frame = i;
+            trackContainer.appendChild(cell);
+        }
+        document.getElementById('total-frames-text').innerText = totalFrames;
+        updateTimelineGrid();
+    }
+
+    function saveKeyframe(frameIdx, updateUI = true, recordHistory = true) {
+        if (allBones.length === 0) return;
+        if (recordHistory) pushState();
+
+        const poseSnapshot = allBones.map(bone => ({
+            position: bone.position.clone(),
+            quaternion: bone.quaternion.clone(),
+            scale: bone.scale.clone()
+        }));
+        keyframesMap.set(frameIdx, poseSnapshot);
+        if (updateUI) updateTimelineGrid();
+    }
+
+    function clearKeyframe(frameIdx) {
+        pushState();
+        keyframesMap.delete(frameIdx);
+        updateTimelineGrid();
+        applyPoseForFrame(currentFrame);
+    }
+
+    function selectFrame(frameIdx) {
+        currentFrame = Math.max(0, Math.min(totalFrames - 1, frameIdx));
+        document.getElementById('current-frame-text').innerText = currentFrame + 1;
+        applyPoseForFrame(currentFrame);
+        updateTimelineGrid();
+    }
+
+    function applyPoseForFrame(frameIdx) {
+        if (allBones.length === 0) return;
+        if (keyframesMap.has(frameIdx)) {
+            const pose = keyframesMap.get(frameIdx);
+            allBones.forEach((bone, idx) => {
+                if (pose[idx]) {
+                    bone.position.copy(pose[idx].position);
+                    bone.quaternion.copy(pose[idx].quaternion);
+                    bone.scale.copy(pose[idx].scale);
+                }
+            });
+            updateUIInputs();
+        }
+    }
+
+    function updateTimelineGrid() {
+        const cells = document.querySelectorAll('.frame-cell');
+        cells.forEach((cell, idx) => {
+            cell.classList.toggle('active-frame', idx === currentFrame);
+            cell.classList.toggle('has-keyframe', keyframesMap.has(idx));
+        });
+    }
+
+    // --- CONTROLES DE INTERFACE E EVENTOS ---
+    function selectBone(bone, multiSelect = false) {
+        selectedBones = [bone];
+        pivotObject.position.copy(bone.getWorldPosition(new THREE.Vector3()));
+        transformControls.attach(pivotObject);
+
+        document.getElementById('bone-details').style.display = 'flex';
+        document.getElementById('selected-bone-name').innerText = bone.name || 'Raiz / Objeto';
+        updateUIInputs();
+    }
+
+    function updateUIInputs() {
+        if (selectedBones.length === 0) return;
+        const target = selectedBones[0];
+        document.getElementById('pos-x').value = target.position.x.toFixed(2);
+        document.getElementById('pos-y').value = target.position.y.toFixed(2);
+        document.getElementById('pos-z').value = target.position.z.toFixed(2);
+    }
+
+    function pushState() {
+        const snapshot = new Map();
+        keyframesMap.forEach((pose, frameIdx) => {
+            snapshot.set(frameIdx, pose.map(p => ({ position: p.position.clone(), quaternion: p.quaternion.clone(), scale: p.scale.clone() })));
+        });
+        undoStack.push({ snapshot, totalFrames });
+        if (undoStack.length > MAX_HISTORY) undoStack.shift();
+    }
+
+    function undo() {
+        if (undoStack.length === 0) return;
+        const prev = undoStack.pop();
+        totalFrames = prev.totalFrames;
+        keyframesMap = prev.snapshot;
+        buildFlashTimelineUI();
+        selectFrame(currentFrame);
+    }
+
+    // UI Minimizar Painéis e Ferramentas
+    window.toggleMinimize = function(panelId) {
+        const panel = document.getElementById(panelId);
+        const body = panel.querySelector('.panel-body');
+        body.style.display = body.style.display === 'none' ? 'flex' : 'none';
+    };
+
+    document.getElementById('btn-theme-toggle').addEventListener('click', () => {
+        document.body.classList.toggle('light-theme');
+        scene.background.setHex(document.body.classList.contains('light-theme') ? 0xe0e0e0 : 0x1a1a1a);
+    });
+
+    document.getElementById('btn-play').addEventListener('click', () => {
+        isPlaying = !isPlaying;
+        document.getElementById('btn-play').innerText = isPlaying ? '❚❚ Pause' : '► Play';
+        if (isPlaying) {
+            playInterval = setInterval(() => {
+                currentFrame = (currentFrame + 1) % totalFrames;
+                selectFrame(currentFrame);
+            }, 1000 / targetFPS);
+        } else {
+            clearInterval(playInterval);
+        }
+    });
+
+    document.getElementById('btn-add-keyframe').addEventListener('click', () => saveKeyframe(currentFrame, true));
+    document.getElementById('btn-clear-keyframe').addEventListener('click', () => clearKeyframe(currentFrame));
+    document.getElementById('btn-undo').addEventListener('click', undo);
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / (window.innerHeight - 130);
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight - 130);
+    });
+
+    function animate() {
+        requestAnimationFrame(animate);
+        bonePickers.forEach(picker => {
+            const bone = boneMap.get(picker);
+            if (bone) bone.getWorldPosition(picker.position);
+        });
+        renderer.render(scene, camera);
+    }
+
+    window.onload = init;
+</script>
+</body>
+</html>
