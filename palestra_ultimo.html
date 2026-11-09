@@ -60,6 +60,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
@@ -68,6 +69,27 @@
 
     <!-- 3D Viewport -->
     <div id="canvas-container"></div>
+
+    <!-- Context Menu for Right Click on Objects or List items -->
+    <div id="objectContextMenu" class="hidden absolute z-30 glass-card p-2 rounded-xl shadow-2xl space-y-1 text-xs w-48 border border-slate-300 dark:border-slate-700">
+        <div class="px-2 py-1 font-bold text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+            <span id="ctxMenuTitle" class="truncate">Objeto</span>
+            <span class="text-[9px] bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 px-1.5 py-0.5 rounded">Gizmo</span>
+        </div>
+        <button onclick="setTransformMode('translate')" class="w-full text-left px-2 py-1.5 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded flex items-center gap-2">
+            <span>↔️</span> Mover (Transladar)
+        </button>
+        <button onclick="setTransformMode('rotate')" class="w-full text-left px-2 py-1.5 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded flex items-center gap-2">
+            <span>🔄</span> Rotacionar
+        </button>
+        <button onclick="setTransformMode('scale')" class="w-full text-left px-2 py-1.5 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded flex items-center gap-2">
+            <span>🔍</span> Alterar Escala (Gizmo)
+        </button>
+        <hr class="border-slate-200 dark:border-slate-700 my-1">
+        <button onclick="deleteSelectedFromContext()" class="w-full text-left px-2 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-rose-600 rounded flex items-center gap-2 font-bold">
+            <span>🗑️</span> Excluir Objeto
+        </button>
+    </div>
 
     <!-- UI Overlay Layer -->
     <div class="relative z-10 p-4 h-full flex flex-col justify-between pointer-events-none">
@@ -163,40 +185,55 @@
                         </label>
                         <input type="file" id="obstacleModelInput" accept=".glb,.gltf,.fbx,.obj" class="hidden">
                         <label for="obstacleModelInput" class="flex items-center justify-between px-3 py-2 text-xs bg-white dark:bg-slate-800 hover:bg-indigo-100/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-indigo-300 dark:border-indigo-700 rounded-lg cursor-pointer transition shadow-sm">
-                            <span class="truncate pr-2 font-medium" id="obstacleModelName">Modelo Padrão: Cubo</span>
+                            <span class="truncate pr-2 font-medium" id="obstacleModelName">Selecionar Arquivo 3D...</span>
                             <span class="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded font-bold">CARREGAR</span>
                         </label>
                     </div>
 
-                    <div class="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 space-y-2">
-                        <div class="text-xs font-bold text-amber-900 dark:text-amber-300 flex items-center justify-between">
-                            <span>CONTROLES DE OBSTÁCULOS</span>
-                            <span id="builderStatus" class="text-[9px] bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 px-1.5 py-0.5 rounded font-mono">ATIVO</span>
-                        </div>
-                        <p class="text-[11px] text-amber-800 dark:text-amber-300">
-                            • <b>Botão Direito no Chão</b>: Adicionar objeto.<br>
-                            • <b>Botão Esquerdo no Objeto</b>: Selecionar.<br>
-                            • <b>CTRL + Mouse</b>: Mover posição (X, Z).<br>
-                            • <b>CTRL + [+] ou [-]</b>: Aumentar/Diminuir Escala.<br>
-                            • <b>ALT + Mouse</b>: Redimensionar livremente.<br>
-                            • Tecla <b>DELETE</b> / <b>BACKSPACE</b>: Remover objeto.
-                        </p>
+                    <!-- Dedicated Action Buttons -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="spawnModelBtn" class="py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-xs text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1.5">
+                            <span>📦</span> Inserir Modelo 3D
+                        </button>
+                        <button id="spawnCubeBtn" class="py-2.5 px-3 bg-amber-600 hover:bg-amber-700 active:scale-95 text-xs text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1.5">
+                            <span>🟩</span> Inserir Cubo
+                        </button>
                     </div>
 
-                    <!-- Dimension Controls (For Procedural Cubes) -->
-                    <div class="grid grid-cols-3 gap-2">
-                        <div>
-                            <label class="block text-[10px] font-bold text-slate-600 dark:text-slate-400">Largura (X)</label>
-                            <input type="number" id="boxWidth" value="2" min="0.5" max="20" step="0.5" class="w-full text-xs p-1.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-lg font-mono text-slate-800 dark:text-slate-100">
+                    <!-- Numerical Scale Controls for Selected Object -->
+                    <div id="scaleControlPanel" class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-2">
+                        <div class="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                            <span>ESCALA NUMÉRICA (OBJETO SELECIONADO)</span>
+                            <span id="selectedScaleName" class="text-[9px] bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-1.5 py-0.5 rounded font-mono">Nenhum</span>
                         </div>
-                        <div>
-                            <label class="block text-[10px] font-bold text-slate-600 dark:text-slate-400">Altura (Y)</label>
-                            <input type="number" id="boxHeight" value="2" min="0.5" max="20" step="0.5" class="w-full text-xs p-1.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-lg font-mono text-slate-800 dark:text-slate-100">
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="block text-[9px] font-bold text-slate-500">Escala X</label>
+                                <input type="number" id="inputScaleX" value="1.0" step="0.1" min="0.01" class="w-full text-xs p-1 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 rounded font-mono text-center">
+                            </div>
+                            <div>
+                                <label class="block text-[9px] font-bold text-slate-500">Escala Y</label>
+                                <input type="number" id="inputScaleY" value="1.0" step="0.1" min="0.01" class="w-full text-xs p-1 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 rounded font-mono text-center">
+                            </div>
+                            <div>
+                                <label class="block text-[9px] font-bold text-slate-500">Escala Z</label>
+                                <input type="number" id="inputScaleZ" value="1.0" step="0.1" min="0.01" class="w-full text-xs p-1 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 rounded font-mono text-center">
+                            </div>
                         </div>
-                        <div>
-                            <label class="block text-[10px] font-bold text-slate-600 dark:text-slate-400">Profund. (Z)</label>
-                            <input type="number" id="boxDepth" value="2" min="0.5" max="20" step="0.5" class="w-full text-xs p-1.5 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-lg font-mono text-slate-800 dark:text-slate-100">
+                        <button id="applyScaleBtn" onclick="applyNumericalScale()" class="w-full py-1.5 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-xs font-semibold rounded-lg transition shadow">
+                            Aplicar Escala Numérica
+                        </button>
+                    </div>
+
+                    <div class="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 space-y-1.5">
+                        <div class="text-xs font-bold text-amber-900 dark:text-amber-300 flex items-center justify-between">
+                            <span>ATALHOS & GIZMO</span>
+                            <span class="text-[9px] bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 px-1.5 py-0.5 rounded font-mono">ATIVO</span>
                         </div>
+                        <p class="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
+                            • <b>Botão Direito</b> no objeto (na tela ou lista) abre o menu de edição (Mover, Rotacionar, Escalar com âncoras).<br>
+                            • Tecla <b>DELETE</b> remove o objeto selecionado.
+                        </p>
                     </div>
 
                     <!-- Obstacles List & Delete -->
@@ -238,20 +275,8 @@
                         <span class="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold">ESPAÇO</span>
                     </div>
                     <div class="flex justify-between items-center">
-                        <span>Criar Objeto:</span>
-                        <span class="text-indigo-600 dark:text-indigo-400 font-bold">Botão Direito no Chão</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span>Mover Objeto:</span>
-                        <span class="text-indigo-600 dark:text-indigo-400 font-bold">CTRL + Mouse</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span>Escala (Aumentar/Diminuir):</span>
-                        <span class="text-indigo-600 dark:text-indigo-400 font-bold">CTRL + [ + ] / [ - ]</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span>Selecionar / Apagar:</span>
-                        <span class="text-indigo-600 dark:text-indigo-400 font-bold">Botão Esquerdo / DEL</span>
+                        <span>Escala Numérica:</span>
+                        <span class="text-indigo-600 dark:text-indigo-400 font-bold">Painel Lateral</span>
                     </div>
                 </div>
             </div>
@@ -272,7 +297,7 @@
                     PULO
                 </button>
                 <button id="btnAddCubeMobile" class="w-16 h-12 bg-amber-600 active:bg-amber-700 rounded-xl flex items-center justify-center text-[10px] font-bold text-white shadow-lg">
-                    + OBJETO
+                    + OBJ
                 </button>
             </div>
         </div>
@@ -294,53 +319,41 @@
 
     <!-- Script Application Logic -->
     <script>
-        // Global Three.js Scene Variables
-        let scene, camera, renderer, controls;
+        let scene, camera, renderer, controls, transformControls;
         let characterGroup, currentModel = null;
         let environmentMesh = null;
         let defaultGridHelper = null, defaultFloorMesh = null;
         let ambientLight, hemiLight;
 
-        // Custom Obstacle Template Model
         let customObstacleTemplate = null;
-        let customObstacleName = "Cubo Padrão";
+        let customObstacleName = "Modelo 3D Importado";
 
-        // Interactive Obstacle Objects & Collisions
         let obstacleCubes = [];
-        let selectedCube = null; // Currently selected obstacle object
-        let selectionBoxHelper = null; // Visual selection box
-        let isDraggingCube = false; // Drag state for moving cube with Control key
-        let isScalingCube = false;  // Scaling state for Alt + Drag
-        let dragStartPointer = { x: 0, y: 0 };
-        let initialScale = { x: 1, y: 1, z: 1 };
+        let selectedCube = null; 
         
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
         let isDarkMode = false;
 
-        // Animation Mixer & Actions
         let mixer = null;
         const actions = { idle: null, run: null, jump: null };
         let currentActionState = 'idle';
 
-        // Physics, Raycasting & Ground
         let velocityY = 0;
         const gravity = -26.0;
         const jumpVelocity = 10.0;
         let isGrounded = true;
         let groundY = 0;
 
-        // Movement & Input Controls
         const moveSpeed = 6.0;
         const rotationSpeed = 10.0;
-        const keys = { w: false, a: false, s: false, d: false, ArrowUp: false, ArrowLeft: false, ArrowDown: false, ArrowRight: false, ' ': false, Control: false, Alt: false };
+        const keys = { w: false, a: false, s: false, d: false, ArrowUp: false, ArrowLeft: false, ArrowDown: false, ArrowRight: false, ' ': false };
 
         const clock = new THREE.Clock();
         const fbxLoader = new THREE.FBXLoader();
         const gltfLoader = new THREE.GLTFLoader();
         const objLoader = new THREE.OBJLoader();
 
-        // Terminal Log Function
         function log(msg, type = 'info') {
             const consoleLog = document.getElementById('consoleLog');
             const time = new Date().toLocaleTimeString();
@@ -358,7 +371,6 @@
             consoleLog.scrollTop = consoleLog.scrollHeight;
         }
 
-        // Tab Switching Helper
         function switchTab(tab) {
             const tabFiles = document.getElementById('tabFiles');
             const tabBuilder = document.getElementById('tabBuilder');
@@ -380,7 +392,6 @@
             }
         }
 
-        // Dark / Light Mode Toggle Functionality
         function setupThemeToggle() {
             const btn = document.getElementById('themeToggleBtn');
             btn.addEventListener('click', () => {
@@ -398,26 +409,22 @@
                     if (ambientLight) ambientLight.intensity = 0.7;
                     if (hemiLight) hemiLight.intensity = 0.4;
                 }
-                log(`Modo ${isDarkMode ? 'Escuro (Dark)' : 'Claro (Light)'} ativado.`, 'info');
+                log(`Modo ${isDarkMode ? 'Escuro' : 'Claro'} ativado.`, 'info');
             });
         }
 
-        // Initialize 3D Engine
         function init() {
-            log('Iniciando engine Three.js com suporte a FBX, GLTF, OBJ e Atalhos de Escala (CTRL +/-)...', 'info');
+            log('Iniciando engine Three.js com escala numérica e gizmo...', 'info');
 
             const container = document.getElementById('canvas-container');
 
-            // 1. Scene
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0xf1f5f9);
             scene.fog = new THREE.FogExp2(0xf1f5f9, 0.015);
 
-            // 2. Camera
             camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
             camera.position.set(0, 4, 8);
 
-            // 3. Renderer
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -426,7 +433,6 @@
             renderer.outputEncoding = THREE.sRGBEncoding;
             container.appendChild(renderer.domElement);
 
-            // 4. Orbit Controls
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
@@ -435,7 +441,33 @@
             controls.maxDistance = 50;
             controls.target.set(0, 1.2, 0);
 
-            // 5. Lighting Setup
+            transformControls = new THREE.TransformControls(camera, renderer.domElement);
+            transformControls.size = 0.75;
+            scene.add(transformControls);
+
+            transformControls.addEventListener('dragging-changed', (event) => {
+                controls.enabled = !event.value;
+            });
+
+            transformControls.addEventListener('change', () => {
+                if (selectedCube) {
+                    selectedCube.x = selectedCube.mesh.position.x;
+                    selectedCube.y = selectedCube.mesh.position.y;
+                    selectedCube.z = selectedCube.mesh.position.z;
+                    
+                    // Sincroniza inputs numéricos em tempo real ao arrastar o gizmo
+                    document.getElementById('inputScaleX').value = selectedCube.mesh.scale.x.toFixed(2);
+                    document.getElementById('inputScaleY').value = selectedCube.mesh.scale.y.toFixed(2);
+                    document.getElementById('inputScaleZ').value = selectedCube.mesh.scale.z.toFixed(2);
+
+                    const box = new THREE.Box3().setFromObject(selectedCube.mesh);
+                    const size = box.getSize(new THREE.Vector3());
+                    selectedCube.width = size.x;
+                    selectedCube.height = size.y;
+                    selectedCube.depth = size.z;
+                }
+            });
+
             ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
             scene.add(ambientLight);
 
@@ -444,49 +476,38 @@
             sun.castShadow = true;
             sun.shadow.mapSize.width = 2048;
             sun.shadow.mapSize.height = 2048;
-            sun.shadow.camera.near = 0.5;
-            sun.shadow.camera.far = 80;
-            const d = 20;
-            sun.shadow.camera.left = -d;
-            sun.shadow.camera.right = d;
-            sun.shadow.camera.top = d;
-            sun.shadow.camera.bottom = -d;
             scene.add(sun);
 
             hemiLight = new THREE.HemisphereLight(0xffffff, 0x94a3b8, 0.4);
             scene.add(hemiLight);
 
-            // 6. Default Grid Floor
             createDefaultGrid();
 
-            // 7. Character Root Group
             characterGroup = new THREE.Group();
             scene.add(characterGroup);
 
-            // 8. Create Procedural Fallback Character (Dummy)
             createDummyCharacter();
 
-            // Setup Listeners
             window.addEventListener('resize', onResize);
             setupThemeToggle();
             setupInputControls();
             setupFileUploads();
-            setupCubeBuilderInteraction();
+            setupBuilderInteraction();
 
             document.getElementById('resetCamBtn').addEventListener('click', resetCharacterAndCamera);
             document.getElementById('clearConsoleBtn').addEventListener('click', () => {
                 document.getElementById('consoleLog').innerHTML = '';
             });
             document.getElementById('clearCubesBtn').addEventListener('click', removeAllCubes);
-            document.getElementById('btnAddCubeMobile').addEventListener('click', spawnCubeAtCenter);
+            
+            document.getElementById('spawnModelBtn').addEventListener('click', () => spawnObject(false));
+            document.getElementById('spawnCubeBtn').addEventListener('click', () => spawnObject(true));
+            document.getElementById('btnAddCubeMobile').addEventListener('click', () => spawnObject(true));
 
-            log('Engine pronta. Manequim e controles inicializados.', 'success');
-
-            // Render loop
+            log('Engine pronta.', 'success');
             animate();
         }
 
-        // Grid Floor Construction
         function createDefaultGrid() {
             const floorGeo = new THREE.PlaneGeometry(100, 100);
             const floorMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.9, metalness: 0.1 });
@@ -500,10 +521,8 @@
             scene.add(defaultGridHelper);
         }
 
-        // Create Procedural Mannequin / Dummy
         function createDummyCharacter() {
             if (currentModel) characterGroup.remove(currentModel);
-
             currentModel = new THREE.Group();
 
             const bodyGeo = new THREE.CylinderGeometry(0.35, 0.25, 1.3, 16);
@@ -520,18 +539,11 @@
             head.castShadow = true;
             currentModel.add(head);
 
-            const visorGeo = new THREE.BoxGeometry(0.2, 0.08, 0.15);
-            const visorMat = new THREE.MeshBasicMaterial({ color: 0x06b6d4 });
-            const visor = new THREE.Mesh(visorGeo, visorMat);
-            visor.position.set(0, 1.72, 0.2);
-            currentModel.add(visor);
-
             characterGroup.add(currentModel);
             mixer = null;
-            updateBadge('Manequim Padrão (Sem Mixer)');
+            updateBadge('Manequim Padrão');
         }
 
-        // Setup File Selection Triggers
         function setupFileUploads() {
             document.getElementById('envInput').addEventListener('change', (e) => {
                 if (e.target.files[0]) loadEnvironmentFile(e.target.files[0]);
@@ -550,12 +562,12 @@
             });
         }
 
-        // Load Custom 3D Model for Obstacles (.glb, .gltf, .fbx, .obj)
         function loadObstacleTemplateFile(file) {
             const fileName = file.name;
             const ext = fileName.split('.').pop().toLowerCase();
-            log(`Carregando modelo de obstáculo [${ext.toUpperCase()}]: ${fileName}...`, 'info');
+            log(`Carregando modelo 3D [${ext.toUpperCase()}]: ${fileName}...`, 'info');
             document.getElementById('obstacleModelName').innerText = fileName;
+            customObstacleName = fileName;
 
             const url = URL.createObjectURL(file);
 
@@ -567,27 +579,31 @@
                     }
                 });
 
+                const bbox = new THREE.Box3().setFromObject(obj);
+                const size = bbox.getSize(new THREE.Vector3());
+                const maxDim = Math.max(size.x, size.y, size.z);
+                
+                if (maxDim > 0) {
+                    const targetSize = 0.5;
+                    const scaleFactor = targetSize / maxDim;
+                    obj.scale.set(scaleFactor, scaleFactor, scaleFactor);
+                }
+
                 customObstacleTemplate = obj;
-                customObstacleName = fileName;
-                log(`Modelo de obstáculo "${fileName}" carregado e pronto para instanciar!`, 'success');
+                log(`Modelo 3D "${fileName}" pronto para ser inserido!`, 'success');
                 URL.revokeObjectURL(url);
             };
 
             const handleError = (err) => {
-                log(`Erro ao carregar modelo 3D de obstáculo: ${err.message || err}`, 'error');
+                log(`Erro ao carregar modelo: ${err.message || err}`, 'error');
                 URL.revokeObjectURL(url);
             };
 
-            if (ext === 'fbx') {
-                fbxLoader.load(url, handleSuccess, undefined, handleError);
-            } else if (ext === 'glb' || ext === 'gltf') {
-                gltfLoader.load(url, (gltf) => handleSuccess(gltf.scene), undefined, handleError);
-            } else if (ext === 'obj') {
-                objLoader.load(url, handleSuccess, undefined, handleError);
-            }
+            if (ext === 'fbx') fbxLoader.load(url, handleSuccess, undefined, handleError);
+            else if (ext === 'glb' || ext === 'gltf') gltfLoader.load(url, (g) => handleSuccess(g.scene), undefined, handleError);
+            else if (ext === 'obj') objLoader.load(url, handleSuccess, undefined, handleError);
         }
 
-        // Load Scenario (GLB / GLTF / FBX)
         function loadEnvironmentFile(file) {
             const fileName = file.name;
             const ext = fileName.split('.').pop().toLowerCase();
@@ -598,25 +614,16 @@
 
             const handleEnvSuccess = (obj) => {
                 if (environmentMesh) scene.remove(environmentMesh);
-                if (defaultFloorMesh) {
-                    scene.remove(defaultFloorMesh);
-                    defaultFloorMesh = null;
-                }
-                if (defaultGridHelper) {
-                    scene.remove(defaultGridHelper);
-                    defaultGridHelper = null;
-                }
+                if (defaultFloorMesh) { scene.remove(defaultFloorMesh); defaultFloorMesh = null; }
+                if (defaultGridHelper) { scene.remove(defaultGridHelper); defaultGridHelper = null; }
 
                 environmentMesh = obj;
                 environmentMesh.traverse((child) => {
-                    if (child.isMesh) {
-                        child.receiveShadow = true;
-                        child.castShadow = true;
-                    }
+                    if (child.isMesh) { child.receiveShadow = true; child.castShadow = true; }
                 });
 
                 scene.add(environmentMesh);
-                log('Cenário carregado com sucesso! Raycasting ativado.', 'success');
+                log('Cenário carregado com sucesso!', 'success');
                 resetCharacterAndCamera();
                 URL.revokeObjectURL(url);
             };
@@ -626,127 +633,71 @@
                 URL.revokeObjectURL(url);
             };
 
-            if (ext === 'fbx') {
-                fbxLoader.load(url, handleEnvSuccess, undefined, handleEnvError);
-            } else if (ext === 'glb' || ext === 'gltf') {
-                gltfLoader.load(url, (gltf) => handleEnvSuccess(gltf.scene), undefined, handleEnvError);
-            }
+            if (ext === 'fbx') fbxLoader.load(url, handleEnvSuccess, undefined, handleEnvError);
+            else if (ext === 'glb' || ext === 'gltf') gltfLoader.load(url, (g) => handleEnvSuccess(g.scene), undefined, handleEnvError);
         }
 
-        // Unified Character & Animation Loader
         function loadCharacterOrAnimation(file, type) {
             const fileName = file.name;
             const ext = fileName.split('.').pop().toLowerCase();
-            log(`Carregando [${type.toUpperCase()}]: ${fileName}...`, 'info');
+            log(`Carregando [${type.toUpperCase()}]...`, 'info');
 
             if (type === 'idle') document.getElementById('idleName').innerText = fileName;
             if (type === 'run') document.getElementById('runName').innerText = fileName;
             if (type === 'jump') document.getElementById('jumpName').innerText = fileName;
 
             const url = URL.createObjectURL(file);
-
-            const handleSuccess = (object3d, animations) => {
-                processLoadedAsset(object3d, animations, type, fileName);
+            const handleSuccess = (obj, anims) => {
+                processLoadedAsset(obj, anims, type, fileName);
                 URL.revokeObjectURL(url);
             };
-
             const handleError = (err) => {
-                log(`Erro ao ler ${fileName}: ${err.message || err}`, 'error');
+                log(`Erro ao ler arquivo: ${err.message || err}`, 'error');
                 URL.revokeObjectURL(url);
             };
 
-            if (ext === 'fbx') {
-                fbxLoader.load(url, (fbx) => handleSuccess(fbx, fbx.animations), undefined, handleError);
-            } else if (ext === 'glb' || ext === 'gltf') {
-                gltfLoader.load(url, (gltf) => handleSuccess(gltf.scene, gltf.animations), undefined, handleError);
-            }
+            if (ext === 'fbx') fbxLoader.load(url, (f) => handleSuccess(f, f.animations), undefined, handleError);
+            else if (ext === 'glb' || ext === 'gltf') gltfLoader.load(url, (g) => handleSuccess(g.scene, g.animations), undefined, handleError);
         }
 
-        // Process Content & Dynamic Mixamo Animation Track Rebinding
         function processLoadedAsset(object3d, animations, type, fileName) {
             if (type === 'idle') {
                 if (currentModel) characterGroup.remove(currentModel);
                 currentModel = object3d;
-
-                currentModel.traverse((c) => {
-                    if (c.isMesh) {
-                        c.castShadow = true;
-                        c.receiveShadow = true;
-                    }
-                });
+                currentModel.traverse((c) => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
 
                 const bbox = new THREE.Box3().setFromObject(currentModel);
                 const size = bbox.getSize(new THREE.Vector3());
-                if (size.y > 0) {
-                    const scale = 2.0 / size.y;
-                    currentModel.scale.setScalar(scale);
-                }
+                if (size.y > 0) currentModel.scale.setScalar(2.0 / size.y);
 
                 characterGroup.add(currentModel);
                 mixer = new THREE.AnimationMixer(currentModel);
-                
-                actions.idle = null;
-                actions.run = null;
-                actions.jump = null;
+                actions.idle = null; actions.run = null; actions.jump = null;
 
                 if (animations && animations.length > 0) {
-                    const clip = animations[0];
-                    actions.idle = mixer.clipAction(clip);
+                    actions.idle = mixer.clipAction(animations[0]);
                     actions.idle.play();
                     currentActionState = 'idle';
-                    log(`Modelo base/Idle carregado (${clip.tracks.length} tracks).`, 'success');
-                } else {
-                    log('Modelo base sem clipe de animação interno.', 'warn');
                 }
-
                 updateBadge(`Personagem: ${fileName}`);
-
             } else if (type === 'run' || type === 'jump') {
-                if (!currentModel || !mixer) {
-                    log('Carregue o arquivo [1. PERSONAGEM / IDLE] primeiro!', 'warn');
-                    return;
-                }
-
+                if (!currentModel || !mixer) return;
                 if (animations && animations.length > 0) {
                     let clip = animations[0].clone();
-                    clip = rebindClipToModel(clip, currentModel);
-
                     actions[type] = mixer.clipAction(clip);
-
                     if (type === 'jump') {
                         actions.jump.setLoop(THREE.LoopOnce, 1);
                         actions.jump.clampWhenFinished = true;
                     }
-
-                    log(`Animação [${type.toUpperCase()}] vinculada com sucesso!`, 'success');
-                } else {
-                    log(`Nenhuma animação encontrada no arquivo ${fileName}`, 'error');
                 }
             }
         }
 
-        function rebindClipToModel(clip, targetModel) {
-            const validBoneNames = new Set();
-            targetModel.traverse((node) => {
-                if (node.name) validBoneNames.add(node.name);
-            });
-
-            clip.tracks = clip.tracks.filter((track) => {
-                const trackBoneName = track.name.split('.')[0];
-                return validBoneNames.has(trackBoneName) || trackBoneName.includes('mixamorig');
-            });
-
-            return clip;
-        }
-
         function fadeToState(newState) {
             if (currentActionState === newState) return;
-
             const prevAction = actions[currentActionState];
             const nextAction = actions[newState];
-
             currentActionState = newState;
-
             if (prevAction && nextAction) {
                 nextAction.reset().fadeIn(0.25).play();
                 prevAction.crossFadeTo(nextAction, 0.25, true);
@@ -755,209 +706,70 @@
             }
         }
 
-        // Interactive Cube & 3D Object Builder Setup
-        function setupCubeBuilderInteraction() {
+        function setupBuilderInteraction() {
             const container = document.getElementById('canvas-container');
+            const ctxMenu = document.getElementById('objectContextMenu');
 
-            container.addEventListener('contextmenu', (e) => e.preventDefault());
+            container.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                const rect = renderer.domElement.getBoundingClientRect();
+                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 
-            let pointerDownPos = { x: 0, y: 0 };
-
-            container.addEventListener('pointerdown', (e) => {
-                pointerDownPos = { x: e.clientX, y: e.clientY };
-
-                if (e.button === 2) { // Right Click: Spawn Obstacle Object
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    const rect = renderer.domElement.getBoundingClientRect();
-                    mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-                    mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-
-                    raycaster.setFromCamera(mouse, camera);
-                    
-                    const targets = [];
-                    if (defaultFloorMesh) targets.push(defaultFloorMesh);
-                    if (environmentMesh) {
-                        environmentMesh.traverse((child) => {
-                            if (child.isMesh) targets.push(child);
-                        });
-                    }
-                    obstacleCubes.forEach(c => {
-                        c.mesh.traverse(child => { if (child.isMesh) targets.push(child); });
-                    });
-
-                    const hits = raycaster.intersectObjects(targets, true);
-
-                    if (hits.length > 0) {
-                        const pt = hits[0].point;
-                        spawnCubeAt(pt.x, pt.y, pt.z);
-                    } else {
-                        const fallbackPos = characterGroup.position.clone().add(new THREE.Vector3(0, 0, 2));
-                        spawnCubeAt(fallbackPos.x, groundY, fallbackPos.z);
-                    }
-                } else if (e.button === 0 && selectedCube) {
-                    if (e.altKey || keys.Alt) {
-                        // Alt + Click: Start Scaling Object
-                        isScalingCube = true;
-                        dragStartPointer = { x: e.clientX, y: e.clientY };
-                        initialScale = { 
-                            x: selectedCube.mesh.scale.x, 
-                            y: selectedCube.mesh.scale.y, 
-                            z: selectedCube.mesh.scale.z 
-                        };
-                        controls.enabled = false;
-                    } else if (e.ctrlKey || keys.Control) {
-                        // Ctrl + Click: Start Dragging Object Position
-                        isDraggingCube = true;
-                        controls.enabled = false;
-                    }
-                }
-            }, true);
-
-            // Drag / Resize Selected Object with Mouse Move
-            container.addEventListener('pointermove', (e) => {
-                if (isScalingCube && selectedCube && (e.altKey || keys.Alt)) {
-                    const deltaX = (e.clientX - dragStartPointer.x) * 0.02;
-                    const deltaY = (dragStartPointer.y - e.clientY) * 0.02;
-
-                    const newScaleY = Math.max(0.1, initialScale.y + deltaY);
-                    const newScaleXZ = Math.max(0.1, initialScale.x + deltaX);
-
-                    selectedCube.mesh.scale.set(newScaleXZ, newScaleY, newScaleXZ);
-
-                    selectedCube.width = selectedCube.baseWidth * newScaleXZ;
-                    selectedCube.height = selectedCube.baseHeight * newScaleY;
-                    selectedCube.depth = selectedCube.baseDepth * newScaleXZ;
-
-                    if (selectionBoxHelper) selectionBoxHelper.update();
-
-                } else if (isDraggingCube && selectedCube && (e.ctrlKey || keys.Control)) {
-                    const rect = renderer.domElement.getBoundingClientRect();
-                    mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-                    mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-
-                    raycaster.setFromCamera(mouse, camera);
-
-                    const targets = [];
-                    if (defaultFloorMesh) targets.push(defaultFloorMesh);
-                    if (environmentMesh) {
-                        environmentMesh.traverse((child) => {
-                            if (child.isMesh) targets.push(child);
-                        });
-                    }
-
-                    const hits = raycaster.intersectObjects(targets, true);
-                    if (hits.length > 0) {
-                        const pt = hits[0].point;
-                        const newY = pt.y + selectedCube.height / 2;
-                        selectedCube.mesh.position.set(pt.x, newY, pt.z);
-                        selectedCube.x = pt.x;
-                        selectedCube.y = newY;
-                        selectedCube.z = pt.z;
-
-                        if (selectionBoxHelper) selectionBoxHelper.update();
-                    }
-                }
-            });
-
-            // Pointer Up: Release Drag / Selection
-            container.addEventListener('pointerup', (e) => {
-                if (isScalingCube || isDraggingCube) {
-                    isScalingCube = false;
-                    isDraggingCube = false;
-                    controls.enabled = true;
-                    if (selectedCube) {
-                        log(`Objeto ajustado. Posição (${selectedCube.x.toFixed(1)}, ${selectedCube.y.toFixed(1)}, ${selectedCube.z.toFixed(1)}) | Escala: ${selectedCube.mesh.scale.x.toFixed(2)}`, 'info');
-                    }
-                    return;
-                }
-
-                if (e.button === 0) {
-                    const dist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
-                    if (dist > 5) return;
-
-                    const rect = renderer.domElement.getBoundingClientRect();
-                    mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-                    mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-
-                    raycaster.setFromCamera(mouse, camera);
-                    
-                    const selectableTargets = [];
-                    obstacleCubes.forEach(c => {
-                        c.mesh.traverse(child => {
-                            if (child.isMesh) {
-                                child.userData.parentObstacle = c;
-                                selectableTargets.push(child);
-                            }
-                        });
-                    });
-
-                    const hits = raycaster.intersectObjects(selectableTargets, false);
-
-                    if (hits.length > 0) {
-                        const hitObstacle = hits[0].object.userData.parentObstacle;
-                        if (hitObstacle) selectCube(hitObstacle);
-                    } else {
-                        deselectCube();
-                    }
-                }
-            });
-        }
-
-        function selectCube(cubeObj) {
-            selectedCube = cubeObj;
-            if (selectionBoxHelper) scene.remove(selectionBoxHelper);
-
-            selectionBoxHelper = new THREE.BoxHelper(cubeObj.mesh, 0xf59e0b);
-            scene.add(selectionBoxHelper);
-
-            updateCubesListUI();
-            log(`Objeto selecionado: ${cubeObj.name}. Use CTRL + [ + ] ou [ - ] para alterar a escala.`, 'info');
-        }
-
-        function deselectCube() {
-            selectedCube = null;
-            if (selectionBoxHelper) {
-                scene.remove(selectionBoxHelper);
-                selectionBoxHelper = null;
-            }
-            updateCubesListUI();
-        }
-
-        function spawnCubeAtCenter() {
-            const pos = characterGroup.position.clone().add(new THREE.Vector3(0, 0, 2));
-            spawnCubeAt(pos.x, groundY, pos.z);
-        }
-
-        function spawnCubeAt(x, y, z) {
-            let mesh;
-            let w, h, d;
-
-            if (customObstacleTemplate) {
-                mesh = customObstacleTemplate.clone(true);
-                
-                const bbox = new THREE.Box3().setFromObject(mesh);
-                const size = bbox.getSize(new THREE.Vector3());
-                w = size.x || 2;
-                h = size.y || 2;
-                d = size.z || 2;
-
-                mesh.position.set(x, y + h / 2, z);
-            } else {
-                w = parseFloat(document.getElementById('boxWidth').value) || 2;
-                h = parseFloat(document.getElementById('boxHeight').value) || 2;
-                d = parseFloat(document.getElementById('boxDepth').value) || 2;
-
-                const geometry = new THREE.BoxGeometry(w, h, d);
-                const material = new THREE.MeshStandardMaterial({
-                    color: new THREE.Color(Math.random() * 0xffffff),
-                    roughness: 0.3,
-                    metalness: 0.1
+                raycaster.setFromCamera(mouse, camera);
+                const targets = [];
+                obstacleCubes.forEach(c => {
+                    c.mesh.traverse(child => { if (child.isMesh) { child.userData.parentObstacle = c; targets.push(child); } });
                 });
 
+                const hits = raycaster.intersectObjects(targets, false);
+                if (hits.length > 0) {
+                    const hitObj = hits[0].object.userData.parentObstacle;
+                    selectCube(hitObj);
+                    document.getElementById('ctxMenuTitle').innerText = hitObj.name;
+                    ctxMenu.style.left = `${e.clientX}px`;
+                    ctxMenu.style.top = `${e.clientY}px`;
+                    ctxMenu.classList.remove('hidden');
+                } else {
+                    ctxMenu.classList.add('hidden');
+                    deselectCube();
+                }
+            });
+
+            container.addEventListener('pointerdown', (e) => {
+                if (e.button === 0) ctxMenu.classList.add('hidden');
+            });
+        }
+
+        function setTransformMode(mode) {
+            transformControls.setMode(mode);
+            document.getElementById('objectContextMenu').classList.add('hidden');
+            log(`Modo de Gizmo alterado para: ${mode.toUpperCase()}`, 'info');
+        }
+
+        function deleteSelectedFromContext() {
+            document.getElementById('objectContextMenu').classList.add('hidden');
+            if (selectedCube) removeCube(selectedCube.id);
+        }
+
+        function spawnObject(isCube = false) {
+            let mesh;
+            let w = 1.5, h = 1.5, d = 1.5;
+            let name = isCube ? 'Cubo Padrão' : customObstacleName;
+
+            const spawnPos = characterGroup.position.clone().add(new THREE.Vector3(0, 0, 2.5));
+
+            if (!isCube && customObstacleTemplate) {
+                mesh = customObstacleTemplate.clone(true);
+                const bbox = new THREE.Box3().setFromObject(mesh);
+                const size = bbox.getSize(new THREE.Vector3());
+                w = size.x || 1; h = size.y || 1; d = size.z || 1;
+                mesh.position.set(spawnPos.x, spawnPos.y, spawnPos.z);
+            } else {
+                const geometry = new THREE.BoxGeometry(w, h, d);
+                const material = new THREE.MeshStandardMaterial({ color: 0x4f46e5, roughness: 0.3 });
                 mesh = new THREE.Mesh(geometry, material);
-                mesh.position.set(x, y + h / 2, z);
+                mesh.position.set(spawnPos.x, spawnPos.y + h/2, spawnPos.z);
                 mesh.castShadow = true;
                 mesh.receiveShadow = true;
             }
@@ -965,39 +777,68 @@
             scene.add(mesh);
 
             const cubeData = {
-                id: 'obj_' + Date.now() + Math.floor(Math.random() * 1000),
-                name: customObstacleTemplate ? customObstacleName : 'Cubo',
+                id: 'obj_' + Date.now(),
+                name: name,
                 mesh: mesh,
-                baseWidth: w,
-                baseHeight: h,
-                baseDepth: d,
-                width: w,
-                height: h,
-                depth: d,
-                x: x,
-                y: y + h / 2,
-                z: z
+                width: w, height: h, depth: d,
+                x: mesh.position.x, y: mesh.position.y, z: mesh.position.z
             };
 
             obstacleCubes.push(cubeData);
             selectCube(cubeData);
-            log(`Objeto 3D (${cubeData.name}) adicionado em (${x.toFixed(1)}, ${(y + h/2).toFixed(1)}, ${z.toFixed(1)})`, 'success');
+            updateCubesListUI();
+            log(`Objeto "${name}" adicionado ao cenário.`, 'success');
+        }
+
+        function selectCube(cubeObj) {
+            selectedCube = cubeObj;
+            transformControls.attach(cubeObj.mesh);
+            
+            // Atualiza inputs numéricos com a escala atual
+            document.getElementById('inputScaleX').value = cubeObj.mesh.scale.x.toFixed(2);
+            document.getElementById('inputScaleY').value = cubeObj.mesh.scale.y.toFixed(2);
+            document.getElementById('inputScaleZ').value = cubeObj.mesh.scale.z.toFixed(2);
+            document.getElementById('selectedScaleName').innerText = cubeObj.name;
+
+            updateCubesListUI();
+            log(`Objeto selecionado: ${cubeObj.name}.`, 'info');
+        }
+
+        function deselectCube() {
+            selectedCube = null;
+            transformControls.detach();
+            document.getElementById('inputScaleX').value = "1.0";
+            document.getElementById('inputScaleY').value = "1.0";
+            document.getElementById('inputScaleZ').value = "1.0";
+            document.getElementById('selectedScaleName').innerText = "Nenhum";
+            updateCubesListUI();
+        }
+
+        window.applyNumericalScale = function() {
+            if (!selectedCube) {
+                log('Nenhum objeto selecionado para alterar a escala.', 'warn');
+                return;
+            }
+            const sx = parseFloat(document.getElementById('inputScaleX').value) || 1.0;
+            const sy = parseFloat(document.getElementById('inputScaleY').value) || 1.0;
+            const sz = parseFloat(document.getElementById('inputScaleZ').value) || 1.0;
+
+            selectedCube.mesh.scale.set(sx, sy, sz);
+
+            const box = new THREE.Box3().setFromObject(selectedCube.mesh);
+            const size = box.getSize(new THREE.Vector3());
+            selectedCube.width = size.x;
+            selectedCube.height = size.y;
+            selectedCube.depth = size.z;
+
+            log(`Escala numérica aplicada em "${selectedCube.name}" -> X:${sx} Y:${sy} Z:${sz}`, 'success');
         }
 
         window.removeCube = function(id) {
             const index = obstacleCubes.findIndex(c => c.id === id);
             if (index !== -1) {
-                if (selectedCube && selectedCube.id === id) {
-                    deselectCube();
-                }
+                if (selectedCube && selectedCube.id === id) deselectCube();
                 scene.remove(obstacleCubes[index].mesh);
-                obstacleCubes[index].mesh.traverse(c => {
-                    if (c.geometry) c.geometry.dispose();
-                    if (c.material) {
-                        if (Array.isArray(c.material)) c.material.forEach(m => m.dispose());
-                        else c.material.dispose();
-                    }
-                });
                 obstacleCubes.splice(index, 1);
                 updateCubesListUI();
                 log('Objeto removido.', 'info');
@@ -1006,19 +847,10 @@
 
         function removeAllCubes() {
             deselectCube();
-            obstacleCubes.forEach(c => {
-                scene.remove(c.mesh);
-                c.mesh.traverse(child => {
-                    if (child.geometry) child.geometry.dispose();
-                    if (child.material) {
-                        if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
-                        else child.material.dispose();
-                    }
-                });
-            });
+            obstacleCubes.forEach(c => scene.remove(c.mesh));
             obstacleCubes = [];
             updateCubesListUI();
-            log('Todos os obstáculos foram removidos.', 'info');
+            log('Todos os obstáculos removidos.', 'info');
         }
 
         function updateCubesListUI() {
@@ -1034,124 +866,61 @@
                 const isSelected = selectedCube && selectedCube.id === c.id;
                 const row = document.createElement('div');
                 row.className = `flex items-center justify-between p-1.5 rounded border transition cursor-pointer ${
-                    isSelected 
-                        ? 'bg-amber-100 dark:bg-amber-950/60 border-amber-400 dark:border-amber-600 font-bold' 
-                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-750'
+                    isSelected ? 'bg-amber-100 dark:bg-amber-950/60 border-amber-400 font-bold' : 'bg-white dark:bg-slate-800 border-slate-200'
                 }`;
+                
                 row.onclick = () => selectCube(c);
+
+                row.oncontextmenu = (e) => {
+                    e.preventDefault();
+                    selectCube(c);
+                    const ctxMenu = document.getElementById('objectContextMenu');
+                    document.getElementById('ctxMenuTitle').innerText = c.name;
+                    ctxMenu.style.left = `${e.clientX}px`;
+                    ctxMenu.style.top = `${e.clientY}px`;
+                    ctxMenu.classList.remove('hidden');
+                };
+
                 row.innerHTML = `
-                    <span class="font-mono text-[10px] truncate max-w-[170px]">#${idx+1} ${c.name} (${c.width.toFixed(1)}x${c.height.toFixed(1)})</span>
-                    <button onclick="event.stopPropagation(); removeCube('${c.id}')" class="text-[10px] bg-rose-100 hover:bg-rose-200 dark:bg-rose-950 dark:hover:bg-rose-900 text-rose-700 dark:text-rose-300 px-2 py-0.5 rounded font-bold transition">Excluir</button>
+                    <span class="font-mono text-[10px] truncate max-w-[170px]">#${idx+1} ${c.name}</span>
+                    <button onclick="event.stopPropagation(); removeCube('${c.id}')" class="text-[10px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded font-bold">Excluir</button>
                 `;
                 container.appendChild(row);
             });
         }
 
-        // Collision Detection with Obstacles
         function checkCollisions(nextPos) {
             const charRadius = 0.35;
             for (let c of obstacleCubes) {
-                const halfW = c.width / 2;
-                const halfD = c.depth / 2;
+                const halfW = (c.width * c.mesh.scale.x) / 2;
+                const halfD = (c.depth * c.mesh.scale.z) / 2;
                 const minX = c.x - halfW - charRadius;
                 const maxX = c.x + halfW + charRadius;
                 const minZ = c.z - halfD - charRadius;
                 const maxZ = c.z + halfD + charRadius;
 
                 if (nextPos.x >= minX && nextPos.x <= maxX && nextPos.z >= minZ && nextPos.z <= maxZ) {
-                    const cubeTop = c.y + c.height / 2;
-                    if (characterGroup.position.y >= cubeTop - 0.2) {
-                        return cubeTop;
-                    } else {
-                        return false; // Solid horizontal wall collision
-                    }
+                    const cubeTop = c.y + (c.height * c.mesh.scale.y);
+                    if (characterGroup.position.y >= cubeTop - 0.2) return cubeTop;
+                    else return false;
                 }
             }
-            return null; // No collision
+            return null;
         }
 
-        // Input Keyboard Tracking & Scale Shortcuts (CTRL + / CTRL -)
         function setupInputControls() {
             window.addEventListener('keydown', (e) => {
-                const activeElem = document.activeElement;
-                const isInputElem = activeElem && (activeElem.tagName === 'INPUT' || activeElem.tagName === 'TEXTAREA');
-
                 if (e.key === ' ' || e.code === 'Space') keys[' '] = true;
-                if (e.key === 'Control' || e.code === 'ControlLeft' || e.code === 'ControlRight') keys.Control = true;
-                if (e.key === 'Alt' || e.code === 'AltLeft' || e.code === 'AltRight') keys.Alt = true;
-
                 if (keys.hasOwnProperty(e.key)) keys[e.key] = true;
                 if (keys.hasOwnProperty(e.code)) keys[e.code] = true;
-
-                // Scale with CTRL + / CTRL - (or CTRL + ArrowUp / ArrowDown)
-                if ((e.ctrlKey || keys.Control) && selectedCube && !isInputElem) {
-                    let scaleStep = 0.1;
-                    let currentScaleX = selectedCube.mesh.scale.x;
-                    let currentScaleY = selectedCube.mesh.scale.y;
-                    let currentScaleZ = selectedCube.mesh.scale.z;
-
-                    if (e.key === '+' || e.key === '=' || e.code === 'NumpadAdd' || e.key === 'ArrowUp') {
-                        e.preventDefault();
-                        currentScaleX += scaleStep;
-                        currentScaleY += scaleStep;
-                        currentScaleZ += scaleStep;
-                    } else if (e.key === '-' || e.code === 'NumpadSubtract' || e.key === 'ArrowDown') {
-                        e.preventDefault();
-                        currentScaleX = Math.max(0.1, currentScaleX - scaleStep);
-                        currentScaleY = Math.max(0.1, currentScaleY - scaleStep);
-                        currentScaleZ = Math.max(0.1, currentScaleZ - scaleStep);
-                    }
-
-                    if (e.key === '+' || e.key === '-' || e.key === '=' || e.code === 'NumpadAdd' || e.code === 'NumpadSubtract' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-                        selectedCube.mesh.scale.set(currentScaleX, currentScaleY, currentScaleZ);
-                        selectedCube.width = selectedCube.baseWidth * currentScaleX;
-                        selectedCube.height = selectedCube.baseHeight * currentScaleY;
-                        selectedCube.depth = selectedCube.baseDepth * currentScaleZ;
-
-                        if (selectionBoxHelper) selectionBoxHelper.update();
-                        updateCubesListUI();
-                        log(`Escala ajustada para: ${currentScaleX.toFixed(2)}x`, 'info');
-                    }
-                }
-
-                // Keyboard Delete Support for Selected Objects
-                if ((e.key === 'Delete' || e.key === 'Backspace') && selectedCube && !isInputElem) {
-                    removeCube(selectedCube.id);
-                }
+                if ((e.key === 'Delete' || e.key === 'Backspace') && selectedCube) removeCube(selectedCube.id);
             });
 
             window.addEventListener('keyup', (e) => {
                 if (e.key === ' ' || e.code === 'Space') keys[' '] = false;
-                if (e.key === 'Control' || e.code === 'ControlLeft' || e.code === 'ControlRight') {
-                    keys.Control = false;
-                    if (isDraggingCube) {
-                        isDraggingCube = false;
-                        controls.enabled = true;
-                    }
-                }
-                if (e.key === 'Alt' || e.code === 'AltLeft' || e.code === 'AltRight') {
-                    keys.Alt = false;
-                    if (isScalingCube) {
-                        isScalingCube = false;
-                        controls.enabled = true;
-                    }
-                }
                 if (keys.hasOwnProperty(e.key)) keys[e.key] = false;
                 if (keys.hasOwnProperty(e.code)) keys[e.code] = false;
             });
-
-            const bindTouch = (id, keyName) => {
-                const btn = document.getElementById(id);
-                if (!btn) return;
-                btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[keyName] = true; });
-                btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[keyName] = false; });
-            };
-
-            bindTouch('btnUp', 'w');
-            bindTouch('btnDown', 's');
-            bindTouch('btnLeft', 'a');
-            bindTouch('btnRight', 'd');
-            bindTouch('btnJump', ' ');
         }
 
         function isMoving() {
@@ -1163,15 +932,10 @@
                 const origin = characterGroup.position.clone();
                 origin.y += 10.0;
                 raycaster.set(origin, new THREE.Vector3(0, -1, 0));
-
                 const envMeshes = [];
                 environmentMesh.traverse(child => { if (child.isMesh) envMeshes.push(child); });
-
                 const hits = raycaster.intersectObjects(envMeshes, true);
-                if (hits.length > 0) {
-                    groundY = hits[0].point.y;
-                    return;
-                }
+                if (hits.length > 0) { groundY = hits[0].point.y; return; }
             }
             groundY = 0;
         }
@@ -1183,42 +947,31 @@
             controls.target.set(0, 1.2, 0);
             camera.position.set(0, 4, 8);
             controls.update();
-            log('Posição e Câmera resetadas.', 'info');
+            log('Câmera resetada.', 'info');
         }
 
         function updateBadge(txt) {
             document.getElementById('currentStatusBadge').innerText = txt;
         }
 
-        // Main Physics & Frame Render Loop
         function animate() {
             requestAnimationFrame(animate);
-
             const delta = clock.getDelta();
-
             if (mixer) mixer.update(delta);
-
-            if (selectionBoxHelper && selectedCube) {
-                selectionBoxHelper.update();
-            }
 
             if (characterGroup) {
                 const moving = isMoving();
-
                 updateGroundHeight();
 
-                // Jump Trigger
                 if (keys[' '] && isGrounded) {
                     velocityY = jumpVelocity;
                     isGrounded = false;
                     fadeToState('jump');
                 }
 
-                // Gravity & Vertical Physics
                 if (!isGrounded) {
                     velocityY += gravity * delta;
                     characterGroup.position.y += velocityY * delta;
-
                     const topCollision = checkCollisions(characterGroup.position);
                     const effectiveFloor = topCollision !== null && topCollision > groundY ? topCollision : groundY;
 
@@ -1235,7 +988,6 @@
                     fadeToState(moving ? 'run' : 'idle');
                 }
 
-                // Camera Relative WASD Movement & Collision Sliding
                 if (moving) {
                     const camDir = new THREE.Vector3();
                     camera.getWorldDirection(camDir);
@@ -1252,28 +1004,19 @@
 
                     if (moveVector.lengthSq() > 0) {
                         moveVector.normalize();
-                        
                         const nextPos = characterGroup.position.clone().addScaledVector(moveVector, moveSpeed * delta);
                         const collisionResult = checkCollisions(nextPos);
 
-                        if (collisionResult === false) {
-                            // Blocked by solid obstacle wall
-                        } else {
-                            characterGroup.position.copy(nextPos);
-                        }
+                        if (collisionResult !== false) characterGroup.position.copy(nextPos);
 
-                        // Smooth character rotation towards move vector
                         const targetAngle = Math.atan2(moveVector.x, moveVector.z);
                         let angleDiff = targetAngle - characterGroup.rotation.y;
-
                         while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
                         while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-
                         characterGroup.rotation.y += angleDiff * rotationSpeed * delta;
                     }
                 }
 
-                // Chase Camera Follow
                 const camOffset = new THREE.Vector3().subVectors(camera.position, controls.target);
                 controls.target.copy(characterGroup.position).add(new THREE.Vector3(0, 1.2, 0));
                 camera.position.copy(controls.target).add(camOffset);
