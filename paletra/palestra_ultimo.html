@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador 3D - Personagem e Cenário</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            user-select: none;
+        }
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        .dark .glass-card {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(51, 65, 85, 0.8);
+        }
+        #consoleLog::-webkit-scrollbar {
+            width: 6px;
+        }
+        #consoleLog::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+        #consoleLog::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.5);
+            border-radius: 3px;
+        }
+        .tab-btn.active {
+            background-color: #4f46e5;
+            color: white;
+        }
+    </style>
+
+    <!-- Standalone Script Includes -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+</head>
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-300">
+
+    <!-- 3D Viewport -->
+    <div id="canvas-container"></div>
+
+    <!-- Context Menu for Right Click on Objects or List items -->
+    <div id="objectContextMenu" class="hidden absolute z-30 glass-card p-2 rounded-xl shadow-2xl space-y-1 text-xs w-48 border border-slate-300 dark:border-slate-700">
+        <div class="px-2 py-1 font-bold text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+            <span id="ctxMenuTitle" class="truncate">Objeto</span>
+            <span class="text-[9px] bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 px-1.5 py-0.5 rounded">Gizmo</span>
+        </div>
+        <button onclick="setTransformMode('translate')" class="w-full text-left px-2 py-1.5 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded flex items-center gap-2">
+            <span>↔️</span> Mover (Transladar)
+        </button>
+        <button onclick="setTransformMode('rotate')" class="w-full text-left px-2 py-1.5 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded flex items-center gap-2">
+            <span>🔄</span> Rotacionar
+        </button>
+        <button onclick="setTransformMode('scale')" class="w-full text-left px-2 py-1.5 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded flex items-center gap-2">
+            <span>🔍</span> Alterar Escala
+        </button>
+        <hr class="border-slate-200 dark:border-slate-700 my-1">
+        <button onclick="deleteSelectedFromContext()" class="w-full text-left px-2 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-rose-600 rounded flex items-center gap-2 font-bold">
+            <span>🗑️</span> Excluir Objeto
+        </button>
+    </div>
+
+    <!-- UI Overlay Layer -->
+    <div class="relative z-10 p-4 h-full flex flex-col justify-between pointer-events-none">
+        
+        <!-- Top Header & Upload Control Panel -->
+        <div class="flex flex-col lg:flex-row justify-between items-start gap-4">
+            
+            <!-- Left Side Upload & Builder Panel -->
+            <div class="glass-card p-5 rounded-2xl w-full max-w-sm pointer-events-auto shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
+                <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+                    <div>
+                        <h1 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                            Estúdio 3D Interativo
+                        </h1>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Cenário, Personagem e Editor de Obstáculos.</p>
+                    </div>
+                    <!-- Theme Toggle Button -->
+                    <button id="themeToggleBtn" title="Alternar Modo Dark/Light" class="p-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-700 transition">
+                        <svg id="sunIcon" class="w-4 h-4 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                        <svg id="moonIcon" class="w-4 h-4 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                    </button>
+                </div>
+
+                <!-- Tabs selector for Panel -->
+                <div class="flex bg-slate-200/80 dark:bg-slate-800 p-1 rounded-xl text-xs font-semibold">
+                    <button id="tabFiles" onclick="switchTab('files')" class="flex-1 py-1.5 rounded-lg transition tab-btn active">Arquivos</button>
+                    <button id="tabBuilder" onclick="switchTab('builder')" class="flex-1 py-1.5 rounded-lg transition tab-btn text-slate-700 dark:text-slate-300">Obstáculos</button>
+                </div>
+
+                <!-- Files Tab Content -->
+                <div id="sectionFiles" class="space-y-3">
+                    <!-- Scenario (GLB / GLTF / FBX) -->
+                    <div class="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/50">
+                        <label class="block text-[11px] font-bold text-emerald-800 dark:text-emerald-300 mb-1 flex items-center justify-between">
+                            <span>CENÁRIO (.GLB, .GLTF, .FBX)</span>
+                            <span class="text-[9px] bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100 px-1.5 py-0.5 rounded font-mono">MAPA</span>
+                        </label>
+                        <input type="file" id="envInput" accept=".glb,.gltf,.fbx" class="hidden">
+                        <label for="envInput" class="flex items-center justify-between px-3 py-2 text-xs bg-white dark:bg-slate-800 hover:bg-emerald-100/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-emerald-300 dark:border-emerald-700 rounded-lg cursor-pointer transition shadow-sm">
+                            <span class="truncate pr-2 font-medium" id="envName">Carregar Cenário...</span>
+                            <span class="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded font-bold">SELECIONAR</span>
+                        </label>
+                    </div>
+
+                    <!-- Idle Character -->
+                    <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                        <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                            <span>1. PERSONAGEM / IDLE (.FBX, .GLB)</span>
+                            <span class="text-[9px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded font-mono">BASE</span>
+                        </label>
+                        <input type="file" id="idleInput" accept=".fbx,.glb,.gltf" class="hidden">
+                        <label for="idleInput" class="flex items-center justify-between px-3 py-2 text-xs bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer transition shadow-sm">
+                            <span class="truncate pr-2 font-medium" id="idleName">Carregar Malha / Idle...</span>
+                            <span class="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded font-bold">SELECIONAR</span>
+                        </label>
+                    </div>
+
+                    <!-- Run Animation -->
+                    <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                        <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                            <span>2. ANIMAÇÃO RUN (.FBX, .GLB)</span>
+                            <span class="text-[9px] bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded font-mono">CORRER</span>
+                        </label>
+                        <input type="file" id="runInput" accept=".fbx,.glb,.gltf" class="hidden">
+                        <label for="runInput" class="flex items-center justify-between px-3 py-2 text-xs bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer transition shadow-sm">
+                            <span class="truncate pr-2 font-medium" id="runName">Carregar Correr...</span>
+                            <span class="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded font-bold">SELECIONAR</span>
+                        </label>
+                    </div>
+
+                    <!-- Jump Animation -->
+                    <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                        <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                            <span>3. ANIMAÇÃO JUMP (.FBX, .GLB)</span>
+                            <span class="text-[9px] bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded font-mono">PULO</span>
+                        </label>
+                        <input type="file" id="jumpInput" accept=".fbx,.glb,.gltf" class="hidden">
+                        <label for="jumpInput" class="flex items-center justify-between px-3 py-2 text-xs bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer transition shadow-sm">
+                            <span class="truncate pr-2 font-medium" id="jumpName">Carregar Pulo...</span>
+                            <span class="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded font-bold">SELECIONAR</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Builder Tab Content -->
+                <div id="sectionBuilder" class="space-y-3 hidden">
+                    <!-- Custom 3D Object Asset Loader for Obstacles -->
+                    <div class="p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/50">
+                        <label class="block text-[11px] font-bold text-indigo-800 dark:text-indigo-300 mb-1 flex items-center justify-between">
+                            <span>MODELO DO OBSTÁCULO (.FBX, .GLB, .OBJ)</span>
+                            <span class="text-[9px] bg-indigo-200 dark:bg-indigo-800 text-indigo-900 dark:text-indigo-100 px-1.5 py-0.5 rounded font-mono">3D ASSET</span>
+                        </label>
+                        <input type="file" id="obstacleModelInput" accept=".glb,.gltf,.fbx,.obj" class="hidden">
+                        <label for="obstacleModelInput" class="flex items-center justify-between px-3 py-2 text-xs bg-white dark:bg-slate-800 hover:bg-indigo-100/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-indigo-300 dark:border-indigo-700 rounded-lg cursor-pointer transition shadow-sm">
+                            <span class="truncate pr-2 font-medium" id="obstacleModelName">Selecionar Arquivo 3D...</span>
+                            <span class="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded font-bold">CARREGAR</span>
+                        </label>
+                    </div>
+
+                    <!-- Dedicated Action Buttons -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="spawnModelBtn" class="py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-xs text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1.5">
+                            <span>📦</span> Inserir Modelo 3D
+                        </button>
+                        <button id="spawnCubeBtn" class="py-2.5 px-3 bg-amber-600 hover:bg-amber-700 active:scale-95 text-xs text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1.5">
+                            <span>🟩</span> Inserir Cubo
+                        </button>
+                    </div>
+
+                    <div class="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 space-y-1.5">
+                        <div class="text-xs font-bold text-amber-900 dark:text-amber-300 flex items-center justify-between">
+                            <span>CONTROLES DE GIZMO (ÂNCORAS)</span>
+                            <span class="text-[9px] bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 px-1.5 py-0.5 rounded font-mono">ATIVO</span>
+                        </div>
+                        <p class="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
+                            • <b>Botão Direito</b> no objeto (na tela ou na lista) abre o menu de edição.<br>
+                            • Permite Transladar, Rotacionar, Escalar ou Excluir.<br>
+                            • Tecla <b>DELETE</b> remove o objeto selecionado.
+                        </p>
+                    </div>
+
+                    <!-- Obstacles List & Delete -->
+                    <div class="space-y-1">
+                        <div class="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                            <span>Objetos Criados (<span id="cubeCount">0</span>)</span>
+                            <button id="clearCubesBtn" class="text-[10px] text-rose-600 dark:text-rose-400 hover:underline">Deletar Todos</button>
+                        </div>
+                        <div id="cubesListContainer" class="max-h-32 overflow-y-auto space-y-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-[11px]">
+                            <span class="text-slate-400 italic">Nenhum obstáculo adicionado ainda.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="pt-2 flex gap-2 border-t border-slate-200 dark:border-slate-700">
+                    <button id="resetCamBtn" class="flex-1 py-2 px-3 bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 dark:hover:bg-slate-600 active:scale-95 text-xs text-white font-medium rounded-lg transition shadow">
+                        Resetar Posição
+                    </button>
+                    <button id="clearConsoleBtn" class="py-2 px-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 active:scale-95 text-xs text-slate-700 dark:text-slate-300 font-medium rounded-lg transition">
+                        Limpar Log
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Info Panel (Desktop) -->
+            <div class="glass-card p-4 rounded-2xl pointer-events-auto text-xs text-slate-600 dark:text-slate-300 max-w-xs shadow-xl hidden md:block space-y-2">
+                <div class="font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
+                    <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                    Instruções & Controles
+                </div>
+                <div class="space-y-1.5 pt-1">
+                    <div class="flex justify-between items-center">
+                        <span>Movimentação:</span>
+                        <span class="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold">WASD / Setas</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span>Pular:</span>
+                        <span class="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold">ESPAÇO</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span>Menu de Edição:</span>
+                        <span class="text-indigo-600 dark:text-indigo-400 font-bold">Botão Direito (Tela ou Lista)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Touch Controls (Mobile) -->
+        <div class="pointer-events-auto sm:hidden self-center my-2 glass-card p-3 rounded-2xl flex items-center gap-4 shadow-xl">
+            <div class="grid grid-cols-3 gap-1 w-32 h-32">
+                <div></div>
+                <button id="btnUp" class="bg-slate-200 dark:bg-slate-800 active:bg-indigo-500 active:text-white rounded-lg flex items-center justify-center text-lg font-bold">↑</button>
+                <div></div>
+                <button id="btnLeft" class="bg-slate-200 dark:bg-slate-800 active:bg-indigo-500 active:text-white rounded-lg flex items-center justify-center text-lg font-bold">←</button>
+                <button id="btnDown" class="bg-slate-200 dark:bg-slate-800 active:bg-indigo-500 active:text-white rounded-lg flex items-center justify-center text-lg font-bold">↓</button>
+                <button id="btnRight" class="bg-slate-200 dark:bg-slate-800 active:bg-indigo-500 active:text-white rounded-lg flex items-center justify-center text-lg font-bold">→</button>
+            </div>
+            <div class="flex flex-col gap-2">
+                <button id="btnJump" class="w-16 h-14 bg-indigo-600 active:bg-indigo-700 rounded-xl flex items-center justify-center text-xs font-bold text-white shadow-lg">
+                    PULO
+                </button>
+                <button id="btnAddCubeMobile" class="w-16 h-12 bg-amber-600 active:bg-amber-700 rounded-xl flex items-center justify-center text-[10px] font-bold text-white shadow-lg">
+                    + OBJ
+                </button>
+            </div>
+        </div>
+
+        <!-- Dynamic On-Screen Console / Terminal -->
+        <div class="glass-card p-3 rounded-xl pointer-events-auto w-full max-w-3xl self-center max-h-36 flex flex-col shadow-xl">
+            <div class="flex items-center justify-between pb-1.5 border-b border-slate-200 dark:border-slate-700 text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                <span class="flex items-center gap-1.5 font-bold text-slate-700 dark:text-slate-300">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Terminal de Status & Debug
+                </span>
+                <span id="currentStatusBadge" class="text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">Personagem: Manequim Padrão</span>
+            </div>
+            <div id="consoleLog" class="flex-1 overflow-y-auto text-[11px] font-mono space-y-1 mt-1.5 pr-1 text-slate-700 dark:text-slate-300">
+                <!-- Log messages -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Application Logic -->
+    <script>
+        let scene, camera, renderer, controls, transformControls;
+        let characterGroup, currentModel = null;
+        let environmentMesh = null;
+        let defaultGridHelper = null, defaultFloorMesh = null;
+        let ambientLight, hemiLight;
+
+        let customObstacleTemplate = null;
+        let customObstacleName = "Modelo 3D Importado";
+
+        let obstacleCubes = [];
+        let selectedCube = null; 
+        
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let isDarkMode = false;
+
+        let mixer = null;
+        const actions = { idle: null, run: null, jump: null };
+        let currentActionState = 'idle';
+
+        let velocityY = 0;
+        const gravity = -26.0;
+        const jumpVelocity = 10.0;
+        let isGrounded = true;
+        let groundY = 0;
+
+        const moveSpeed = 6.0;
+        const rotationSpeed = 10.0;
+        const keys = { w: false, a: false, s: false, d: false, ArrowUp: false, ArrowLeft: false, ArrowDown: false, ArrowRight: false, ' ': false };
+
+        const clock = new THREE.Clock();
+        const fbxLoader = new THREE.FBXLoader();
+        const gltfLoader = new THREE.GLTFLoader();
+        const objLoader = new THREE.OBJLoader();
+
+        function log(msg, type = 'info') {
+            const consoleLog = document.getElementById('consoleLog');
+            const time = new Date().toLocaleTimeString();
+            const el = document.createElement('div');
+            
+            let badgeColor = 'text-slate-600 dark:text-slate-400';
+            if (type === 'error') badgeColor = 'text-rose-600 dark:text-rose-400 font-semibold';
+            if (type === 'success') badgeColor = 'text-emerald-600 dark:text-emerald-400 font-semibold';
+            if (type === 'warn') badgeColor = 'text-amber-600 dark:text-amber-400 font-semibold';
+
+            el.className = `${badgeColor} flex items-start gap-2`;
+            el.innerHTML = `<span class="text-slate-400 dark:text-slate-500 select-none">[${time}]</span> <span>${msg}</span>`;
+            
+            consoleLog.appendChild(el);
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+        }
+
+        function switchTab(tab) {
+            const tabFiles = document.getElementById('tabFiles');
+            const tabBuilder = document.getElementById('tabBuilder');
+            const secFiles = document.getElementById('sectionFiles');
+            const secBuilder = document.getElementById('sectionBuilder');
+
+            if (tab === 'files') {
+                tabFiles.classList.add('active');
+                tabBuilder.classList.remove('active');
+                tabBuilder.classList.add('text-slate-700', 'dark:text-slate-300');
+                secFiles.classList.remove('hidden');
+                secBuilder.classList.add('hidden');
+            } else {
+                tabBuilder.classList.add('active');
+                tabFiles.classList.remove('active');
+                tabFiles.classList.add('text-slate-700', 'dark:text-slate-300');
+                secBuilder.classList.remove('hidden');
+                secFiles.classList.add('hidden');
+            }
+        }
+
+        function setupThemeToggle() {
+            const btn = document.getElementById('themeToggleBtn');
+            btn.addEventListener('click', () => {
+                isDarkMode = !isDarkMode;
+                if (isDarkMode) {
+                    document.documentElement.classList.add('dark');
+                    scene.background.set(0x0f172a);
+                    scene.fog.color.set(0x0f172a);
+                    if (ambientLight) ambientLight.intensity = 0.4;
+                    if (hemiLight) hemiLight.intensity = 0.2;
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    scene.background.set(0xf1f5f9);
+                    scene.fog.color.set(0xf1f5f9);
+                    if (ambientLight) ambientLight.intensity = 0.7;
+                    if (hemiLight) hemiLight.intensity = 0.4;
+                }
+                log(`Modo ${isDarkMode ? 'Escuro' : 'Claro'} ativado.`, 'info');
+            });
+        }
+
+        function init() {
+            log('Iniciando engine Three.js com TransformControls e suporte a menu na lista...', 'info');
+
+            const container = document.getElementById('canvas-container');
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf1f5f9);
+            scene.fog = new THREE.FogExp2(0xf1f5f9, 0.015);
+
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 4, 8);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            container.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2 - 0.01;
+            controls.minDistance = 2.0;
+            controls.maxDistance = 50;
+            controls.target.set(0, 1.2, 0);
+
+            transformControls = new THREE.TransformControls(camera, renderer.domElement);
+            transformControls.size = 0.75;
+            scene.add(transformControls);
+
+            transformControls.addEventListener('dragging-changed', (event) => {
+                controls.enabled = !event.value;
+            });
+
+            transformControls.addEventListener('change', () => {
+                if (selectedCube) {
+                    selectedCube.x = selectedCube.mesh.position.x;
+                    selectedCube.y = selectedCube.mesh.position.y;
+                    selectedCube.z = selectedCube.mesh.position.z;
+                    
+                    const box = new THREE.Box3().setFromObject(selectedCube.mesh);
+                    const size = box.getSize(new THREE.Vector3());
+                    selectedCube.width = size.x;
+                    selectedCube.height = size.y;
+                    selectedCube.depth = size.z;
+                }
+            });
+
+            ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+
+            const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+            sun.position.set(15, 25, 15);
+            sun.castShadow = true;
+            sun.shadow.mapSize.width = 2048;
+            sun.shadow.mapSize.height = 2048;
+            scene.add(sun);
+
+            hemiLight = new THREE.HemisphereLight(0xffffff, 0x94a3b8, 0.4);
+            scene.add(hemiLight);
+
+            createDefaultGrid();
+
+            characterGroup = new THREE.Group();
+            scene.add(characterGroup);
+
+            createDummyCharacter();
+
+            window.addEventListener('resize', onResize);
+            setupThemeToggle();
+            setupInputControls();
+            setupFileUploads();
+            setupBuilderInteraction();
+
+            document.getElementById('resetCamBtn').addEventListener('click', resetCharacterAndCamera);
+            document.getElementById('clearConsoleBtn').addEventListener('click', () => {
+                document.getElementById('consoleLog').innerHTML = '';
+            });
+            document.getElementById('clearCubesBtn').addEventListener('click', removeAllCubes);
+            
+            document.getElementById('spawnModelBtn').addEventListener('click', () => spawnObject(false));
+            document.getElementById('spawnCubeBtn').addEventListener('click', () => spawnObject(true));
+            document.getElementById('btnAddCubeMobile').addEventListener('click', () => spawnObject(true));
+
+            log('Engine pronta.', 'success');
+            animate();
+        }
+
+        function createDefaultGrid() {
+            const floorGeo = new THREE.PlaneGeometry(100, 100);
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.9, metalness: 0.1 });
+            defaultFloorMesh = new THREE.Mesh(floorGeo, floorMat);
+            defaultFloorMesh.rotation.x = -Math.PI / 2;
+            defaultFloorMesh.receiveShadow = true;
+            scene.add(defaultFloorMesh);
+
+            defaultGridHelper = new THREE.GridHelper(100, 50, 0x6366f1, 0xcbd5e1);
+            defaultGridHelper.position.y = 0.005;
+            scene.add(defaultGridHelper);
+        }
+
+        function createDummyCharacter() {
+            if (currentModel) characterGroup.remove(currentModel);
+            currentModel = new THREE.Group();
+
+            const bodyGeo = new THREE.CylinderGeometry(0.35, 0.25, 1.3, 16);
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x4f46e5, roughness: 0.4 });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 0.85;
+            body.castShadow = true;
+            currentModel.add(body);
+
+            const headGeo = new THREE.SphereGeometry(0.28, 16, 16);
+            const headMat = new THREE.MeshStandardMaterial({ color: 0x818cf8, roughness: 0.3 });
+            const head = new THREE.Mesh(headGeo, headMat);
+            head.position.y = 1.7;
+            head.castShadow = true;
+            currentModel.add(head);
+
+            characterGroup.add(currentModel);
+            mixer = null;
+            updateBadge('Manequim Padrão');
+        }
+
+        function setupFileUploads() {
+            document.getElementById('envInput').addEventListener('change', (e) => {
+                if (e.target.files[0]) loadEnvironmentFile(e.target.files[0]);
+            });
+            document.getElementById('idleInput').addEventListener('change', (e) => {
+                if (e.target.files[0]) loadCharacterOrAnimation(e.target.files[0], 'idle');
+            });
+            document.getElementById('runInput').addEventListener('change', (e) => {
+                if (e.target.files[0]) loadCharacterOrAnimation(e.target.files[0], 'run');
+            });
+            document.getElementById('jumpInput').addEventListener('change', (e) => {
+                if (e.target.files[0]) loadCharacterOrAnimation(e.target.files[0], 'jump');
+            });
+            document.getElementById('obstacleModelInput').addEventListener('change', (e) => {
+                if (e.target.files[0]) loadObstacleTemplateFile(e.target.files[0]);
+            });
+        }
+
+        function loadObstacleTemplateFile(file) {
+            const fileName = file.name;
+            const ext = fileName.split('.').pop().toLowerCase();
+            log(`Carregando modelo 3D [${ext.toUpperCase()}]: ${fileName}...`, 'info');
+            document.getElementById('obstacleModelName').innerText = fileName;
+            customObstacleName = fileName;
+
+            const url = URL.createObjectURL(file);
+
+            const handleSuccess = (obj) => {
+                obj.traverse((child) => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+
+                const bbox = new THREE.Box3().setFromObject(obj);
+                const size = bbox.getSize(new THREE.Vector3());
+                const maxDim = Math.max(size.x, size.y, size.z);
+                
+                if (maxDim > 0) {
+                    const targetSize = 0.5;
+                    const scaleFactor = targetSize / maxDim;
+                    obj.scale.set(scaleFactor, scaleFactor, scaleFactor);
+                }
+
+                customObstacleTemplate = obj;
+                log(`Modelo 3D "${fileName}" pronto para ser inserido!`, 'success');
+                URL.revokeObjectURL(url);
+            };
+
+            const handleError = (err) => {
+                log(`Erro ao carregar modelo: ${err.message || err}`, 'error');
+                URL.revokeObjectURL(url);
+            };
+
+            if (ext === 'fbx') fbxLoader.load(url, handleSuccess, undefined, handleError);
+            else if (ext === 'glb' || ext === 'gltf') gltfLoader.load(url, (g) => handleSuccess(g.scene), undefined, handleError);
+            else if (ext === 'obj') objLoader.load(url, handleSuccess, undefined, handleError);
+        }
+
+        function loadEnvironmentFile(file) {
+            const fileName = file.name;
+            const ext = fileName.split('.').pop().toLowerCase();
+            log(`Carregando cenário [${ext.toUpperCase()}]: ${fileName}...`, 'info');
+            document.getElementById('envName').innerText = fileName;
+
+            const url = URL.createObjectURL(file);
+
+            const handleEnvSuccess = (obj) => {
+                if (environmentMesh) scene.remove(environmentMesh);
+                if (defaultFloorMesh) { scene.remove(defaultFloorMesh); defaultFloorMesh = null; }
+                if (defaultGridHelper) { scene.remove(defaultGridHelper); defaultGridHelper = null; }
+
+                environmentMesh = obj;
+                environmentMesh.traverse((child) => {
+                    if (child.isMesh) { child.receiveShadow = true; child.castShadow = true; }
+                });
+
+                scene.add(environmentMesh);
+                log('Cenário carregado com sucesso!', 'success');
+                resetCharacterAndCamera();
+                URL.revokeObjectURL(url);
+            };
+
+            const handleEnvError = (err) => {
+                log(`Erro ao carregar cenário: ${err.message || err}`, 'error');
+                URL.revokeObjectURL(url);
+            };
+
+            if (ext === 'fbx') fbxLoader.load(url, handleEnvSuccess, undefined, handleEnvError);
+            else if (ext === 'glb' || ext === 'gltf') gltfLoader.load(url, (g) => handleEnvSuccess(g.scene), undefined, handleEnvError);
+        }
+
+        function loadCharacterOrAnimation(file, type) {
+            const fileName = file.name;
+            const ext = fileName.split('.').pop().toLowerCase();
+            log(`Carregando [${type.toUpperCase()}]...`, 'info');
+
+            if (type === 'idle') document.getElementById('idleName').innerText = fileName;
+            if (type === 'run') document.getElementById('runName').innerText = fileName;
+            if (type === 'jump') document.getElementById('jumpName').innerText = fileName;
+
+            const url = URL.createObjectURL(file);
+            const handleSuccess = (obj, anims) => {
+                processLoadedAsset(obj, anims, type, fileName);
+                URL.revokeObjectURL(url);
+            };
+            const handleError = (err) => {
+                log(`Erro ao ler arquivo: ${err.message || err}`, 'error');
+                URL.revokeObjectURL(url);
+            };
+
+            if (ext === 'fbx') fbxLoader.load(url, (f) => handleSuccess(f, f.animations), undefined, handleError);
+            else if (ext === 'glb' || ext === 'gltf') gltfLoader.load(url, (g) => handleSuccess(g.scene, g.animations), undefined, handleError);
+        }
+
+        function processLoadedAsset(object3d, animations, type, fileName) {
+            if (type === 'idle') {
+                if (currentModel) characterGroup.remove(currentModel);
+                currentModel = object3d;
+                currentModel.traverse((c) => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+
+                const bbox = new THREE.Box3().setFromObject(currentModel);
+                const size = bbox.getSize(new THREE.Vector3());
+                if (size.y > 0) currentModel.scale.setScalar(2.0 / size.y);
+
+                characterGroup.add(currentModel);
+                mixer = new THREE.AnimationMixer(currentModel);
+                actions.idle = null; actions.run = null; actions.jump = null;
+
+                if (animations && animations.length > 0) {
+                    actions.idle = mixer.clipAction(animations[0]);
+                    actions.idle.play();
+                    currentActionState = 'idle';
+                }
+                updateBadge(`Personagem: ${fileName}`);
+            } else if (type === 'run' || type === 'jump') {
+                if (!currentModel || !mixer) return;
+                if (animations && animations.length > 0) {
+                    let clip = animations[0].clone();
+                    actions[type] = mixer.clipAction(clip);
+                    if (type === 'jump') {
+                        actions.jump.setLoop(THREE.LoopOnce, 1);
+                        actions.jump.clampWhenFinished = true;
+                    }
+                }
+            }
+        }
+
+        function fadeToState(newState) {
+            if (currentActionState === newState) return;
+            const prevAction = actions[currentActionState];
+            const nextAction = actions[newState];
+            currentActionState = newState;
+            if (prevAction && nextAction) {
+                nextAction.reset().fadeIn(0.25).play();
+                prevAction.crossFadeTo(nextAction, 0.25, true);
+            } else if (nextAction) {
+                nextAction.reset().play();
+            }
+        }
+
+        function setupBuilderInteraction() {
+            const container = document.getElementById('canvas-container');
+            const ctxMenu = document.getElementById('objectContextMenu');
+
+            container.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                const rect = renderer.domElement.getBoundingClientRect();
+                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+                const targets = [];
+                obstacleCubes.forEach(c => {
+                    c.mesh.traverse(child => { if (child.isMesh) { child.userData.parentObstacle = c; targets.push(child); } });
+                });
+
+                const hits = raycaster.intersectObjects(targets, false);
+                if (hits.length > 0) {
+                    const hitObj = hits[0].object.userData.parentObstacle;
+                    selectCube(hitObj);
+                    document.getElementById('ctxMenuTitle').innerText = hitObj.name;
+                    ctxMenu.style.left = `${e.clientX}px`;
+                    ctxMenu.style.top = `${e.clientY}px`;
+                    ctxMenu.classList.remove('hidden');
+                } else {
+                    ctxMenu.classList.add('hidden');
+                    deselectCube();
+                }
+            });
+
+            container.addEventListener('pointerdown', (e) => {
+                if (e.button === 0) ctxMenu.classList.add('hidden');
+            });
+        }
+
+        function setTransformMode(mode) {
+            transformControls.setMode(mode);
+            document.getElementById('objectContextMenu').classList.add('hidden');
+            log(`Modo de Gizmo alterado para: ${mode.toUpperCase()}`, 'info');
+        }
+
+        function deleteSelectedFromContext() {
+            document.getElementById('objectContextMenu').classList.add('hidden');
+            if (selectedCube) removeCube(selectedCube.id);
+        }
+
+        function spawnObject(isCube = false) {
+            let mesh;
+            let w = 1.5, h = 1.5, d = 1.5;
+            let name = isCube ? 'Cubo Padrão' : customObstacleName;
+
+            const spawnPos = characterGroup.position.clone().add(new THREE.Vector3(0, 0, 2.5));
+
+            if (!isCube && customObstacleTemplate) {
+                mesh = customObstacleTemplate.clone(true);
+                const bbox = new THREE.Box3().setFromObject(mesh);
+                const size = bbox.getSize(new THREE.Vector3());
+                w = size.x || 1; h = size.y || 1; d = size.z || 1;
+                mesh.position.set(spawnPos.x, spawnPos.y, spawnPos.z);
+            } else {
+                const geometry = new THREE.BoxGeometry(w, h, d);
+                const material = new THREE.MeshStandardMaterial({ color: 0x4f46e5, roughness: 0.3 });
+                mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(spawnPos.x, spawnPos.y + h/2, spawnPos.z);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+            }
+
+            scene.add(mesh);
+
+            const cubeData = {
+                id: 'obj_' + Date.now(),
+                name: name,
+                mesh: mesh,
+                width: w, height: h, depth: d,
+                x: mesh.position.x, y: mesh.position.y, z: mesh.position.z
+            };
+
+            obstacleCubes.push(cubeData);
+            selectCube(cubeData);
+            updateCubesListUI();
+            log(`Objeto "${name}" adicionado ao cenário.`, 'success');
+        }
+
+        function selectCube(cubeObj) {
+            selectedCube = cubeObj;
+            transformControls.attach(cubeObj.mesh);
+            updateCubesListUI();
+            log(`Objeto selecionado: ${cubeObj.name}.`, 'info');
+        }
+
+        function deselectCube() {
+            selectedCube = null;
+            transformControls.detach();
+            updateCubesListUI();
+        }
+
+        window.removeCube = function(id) {
+            const index = obstacleCubes.findIndex(c => c.id === id);
+            if (index !== -1) {
+                if (selectedCube && selectedCube.id === id) deselectCube();
+                scene.remove(obstacleCubes[index].mesh);
+                obstacleCubes.splice(index, 1);
+                updateCubesListUI();
+                log('Objeto removido.', 'info');
+            }
+        };
+
+        function removeAllCubes() {
+            deselectCube();
+            obstacleCubes.forEach(c => scene.remove(c.mesh));
+            obstacleCubes = [];
+            updateCubesListUI();
+            log('Todos os obstáculos removidos.', 'info');
+        }
+
+        function updateCubesListUI() {
+            document.getElementById('cubeCount').innerText = obstacleCubes.length;
+            const container = document.getElementById('cubesListContainer');
+            if (obstacleCubes.length === 0) {
+                container.innerHTML = `<span class="text-slate-400 italic">Nenhum obstáculo adicionado ainda.</span>`;
+                return;
+            }
+
+            container.innerHTML = '';
+            obstacleCubes.forEach((c, idx) => {
+                const isSelected = selectedCube && selectedCube.id === c.id;
+                const row = document.createElement('div');
+                row.className = `flex items-center justify-between p-1.5 rounded border transition cursor-pointer ${
+                    isSelected ? 'bg-amber-100 dark:bg-amber-950/60 border-amber-400 font-bold' : 'bg-white dark:bg-slate-800 border-slate-200'
+                }`;
+                
+                // Clique esquerdo seleciona o objeto normalmente
+                row.onclick = () => selectCube(c);
+
+                // Clique direito na lista abre o menu de contexto do objeto correspondente
+                row.oncontextmenu = (e) => {
+                    e.preventDefault();
+                    selectCube(c);
+                    const ctxMenu = document.getElementById('objectContextMenu');
+                    document.getElementById('ctxMenuTitle').innerText = c.name;
+                    ctxMenu.style.left = `${e.clientX}px`;
+                    ctxMenu.style.top = `${e.clientY}px`;
+                    ctxMenu.classList.remove('hidden');
+                };
+
+                row.innerHTML = `
+                    <span class="font-mono text-[10px] truncate max-w-[170px]">#${idx+1} ${c.name}</span>
+                    <button onclick="event.stopPropagation(); removeCube('${c.id}')" class="text-[10px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded font-bold">Excluir</button>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function checkCollisions(nextPos) {
+            const charRadius = 0.35;
+            for (let c of obstacleCubes) {
+                const halfW = (c.width * c.mesh.scale.x) / 2;
+                const halfD = (c.depth * c.mesh.scale.z) / 2;
+                const minX = c.x - halfW - charRadius;
+                const maxX = c.x + halfW + charRadius;
+                const minZ = c.z - halfD - charRadius;
+                const maxZ = c.z + halfD + charRadius;
+
+                if (nextPos.x >= minX && nextPos.x <= maxX && nextPos.z >= minZ && nextPos.z <= maxZ) {
+                    const cubeTop = c.y + (c.height * c.mesh.scale.y);
+                    if (characterGroup.position.y >= cubeTop - 0.2) return cubeTop;
+                    else return false;
+                }
+            }
+            return null;
+        }
+
+        function setupInputControls() {
+            window.addEventListener('keydown', (e) => {
+                if (e.key === ' ' || e.code === 'Space') keys[' '] = true;
+                if (keys.hasOwnProperty(e.key)) keys[e.key] = true;
+                if (keys.hasOwnProperty(e.code)) keys[e.code] = true;
+                if ((e.key === 'Delete' || e.key === 'Backspace') && selectedCube) removeCube(selectedCube.id);
+            });
+
+            window.addEventListener('keyup', (e) => {
+                if (e.key === ' ' || e.code === 'Space') keys[' '] = false;
+                if (keys.hasOwnProperty(e.key)) keys[e.key] = false;
+                if (keys.hasOwnProperty(e.code)) keys[e.code] = false;
+            });
+        }
+
+        function isMoving() {
+            return keys.w || keys.a || keys.s || keys.d || keys.ArrowUp || keys.ArrowLeft || keys.ArrowDown || keys.ArrowRight;
+        }
+
+        function updateGroundHeight() {
+            if (environmentMesh) {
+                const origin = characterGroup.position.clone();
+                origin.y += 10.0;
+                raycaster.set(origin, new THREE.Vector3(0, -1, 0));
+                const envMeshes = [];
+                environmentMesh.traverse(child => { if (child.isMesh) envMeshes.push(child); });
+                const hits = raycaster.intersectObjects(envMeshes, true);
+                if (hits.length > 0) { groundY = hits[0].point.y; return; }
+            }
+            groundY = 0;
+        }
+
+        function resetCharacterAndCamera() {
+            characterGroup.position.set(0, groundY, 0);
+            velocityY = 0;
+            isGrounded = true;
+            controls.target.set(0, 1.2, 0);
+            camera.position.set(0, 4, 8);
+            controls.update();
+            log('Câmera resetada.', 'info');
+        }
+
+        function updateBadge(txt) {
+            document.getElementById('currentStatusBadge').innerText = txt;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            if (mixer) mixer.update(delta);
+
+            if (characterGroup) {
+                const moving = isMoving();
+                updateGroundHeight();
+
+                if (keys[' '] && isGrounded) {
+                    velocityY = jumpVelocity;
+                    isGrounded = false;
+                    fadeToState('jump');
+                }
+
+                if (!isGrounded) {
+                    velocityY += gravity * delta;
+                    characterGroup.position.y += velocityY * delta;
+                    const topCollision = checkCollisions(characterGroup.position);
+                    const effectiveFloor = topCollision !== null && topCollision > groundY ? topCollision : groundY;
+
+                    if (characterGroup.position.y <= effectiveFloor) {
+                        characterGroup.position.y = effectiveFloor;
+                        velocityY = 0;
+                        isGrounded = true;
+                        fadeToState(moving ? 'run' : 'idle');
+                    }
+                } else {
+                    const topCollision = checkCollisions(characterGroup.position);
+                    const effectiveFloor = topCollision !== null && topCollision > groundY ? topCollision : groundY;
+                    characterGroup.position.y = effectiveFloor;
+                    fadeToState(moving ? 'run' : 'idle');
+                }
+
+                if (moving) {
+                    const camDir = new THREE.Vector3();
+                    camera.getWorldDirection(camDir);
+                    camDir.y = 0;
+                    camDir.normalize();
+
+                    const camRight = new THREE.Vector3().crossVectors(camDir, new THREE.Vector3(0, 1, 0)).normalize();
+                    const moveVector = new THREE.Vector3(0, 0, 0);
+
+                    if (keys.w || keys.ArrowUp) moveVector.add(camDir);
+                    if (keys.s || keys.ArrowDown) moveVector.sub(camDir);
+                    if (keys.d || keys.ArrowRight) moveVector.add(camRight);
+                    if (keys.a || keys.ArrowLeft) moveVector.sub(camRight);
+
+                    if (moveVector.lengthSq() > 0) {
+                        moveVector.normalize();
+                        const nextPos = characterGroup.position.clone().addScaledVector(moveVector, moveSpeed * delta);
+                        const collisionResult = checkCollisions(nextPos);
+
+                        if (collisionResult !== false) characterGroup.position.copy(nextPos);
+
+                        const targetAngle = Math.atan2(moveVector.x, moveVector.z);
+                        let angleDiff = targetAngle - characterGroup.rotation.y;
+                        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                        characterGroup.rotation.y += angleDiff * rotationSpeed * delta;
+                    }
+                }
+
+                const camOffset = new THREE.Vector3().subVectors(camera.position, controls.target);
+                controls.target.copy(characterGroup.position).add(new THREE.Vector3(0, 1.2, 0));
+                camera.position.copy(controls.target).add(camOffset);
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function onResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
