@@ -214,6 +214,10 @@
                         <button id="spawnCubeBtn" class="py-2.5 px-3 bg-amber-600 hover:bg-amber-700 active:scale-95 text-xs text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1.5">
                             <span>🟩</span> Inserir Cubo Padrão
                         </button>
+                        <button id="applyFloorTextureBtn" type="button" onclick="triggerApplyFloorTexture()" class="py-2.5 px-3 bg-teal-600 hover:bg-teal-700 active:scale-95 text-xs text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1.5">
+                            <span>🧱</span> Aplicar Textura no Chão
+                        </button>
+                        <p class="text-[10px] text-slate-500 dark:text-slate-400">A textura será aplicada ao piso padrão ou, quando possível, à malha horizontal inferior do cenário importado.</p>
                     </div>
 
                     <div class="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 space-y-1.5">
@@ -321,6 +325,7 @@
 
         let obstacleCubes = [];
         let selectedCube = null;
+        let pendingTextureTarget = 'obstacle'; // 'obstacle' ou 'floor'
 
         // Histórico de edição (Ctrl+Z / Ctrl+Y)
         let obstacleHistory = [];
@@ -580,8 +585,12 @@
             });
             document.getElementById('textureFileInput').addEventListener('change', (e) => {
                 const file = e.target.files && e.target.files[0];
-                if (file) applyTextureToSelected(file);
+                if (file) {
+                    if (pendingTextureTarget === 'floor') applyTextureToFloor(file);
+                    else applyTextureToSelected(file);
+                }
                 e.target.value = '';
+                pendingTextureTarget = 'obstacle';
             });
         }
 
@@ -873,8 +882,89 @@
                 log('Selecione um obstáculo para aplicar textura.', 'warn');
                 return;
             }
+            pendingTextureTarget = 'obstacle';
             document.getElementById('objectContextMenu').classList.add('hidden');
             document.getElementById('textureFileInput').click();
+        }
+
+        function triggerApplyFloorTexture() {
+            pendingTextureTarget = 'floor';
+            document.getElementById('objectContextMenu').classList.add('hidden');
+            document.getElementById('textureFileInput').click();
+        }
+
+        function findEnvironmentFloorMeshes() {
+            if (!environmentMesh) return [];
+            const allMeshes = [];
+            const envBox = new THREE.Box3().setFromObject(environmentMesh);
+            const envMinY = envBox.min.y;
+
+            environmentMesh.updateMatrixWorld(true);
+            environmentMesh.traverse((child) => {
+                if (!child.isMesh || !child.geometry) return;
+                const box = new THREE.Box3().setFromObject(child);
+                const size = box.getSize(new THREE.Vector3());
+                const horizontalArea = size.x * size.z;
+                const nearBottom = box.min.y <= envMinY + Math.max(0.35, (envBox.max.y - envMinY) * 0.04);
+                const relativelyFlat = size.y <= Math.max(1.5, Math.max(size.x, size.z) * 0.12);
+                if (nearBottom && relativelyFlat && horizontalArea > 1) {
+                    allMeshes.push({ mesh: child, area: horizontalArea });
+                }
+            });
+
+            if (!allMeshes.length) return [];
+            allMeshes.sort((a, b) => b.area - a.area);
+            const largestArea = allMeshes[0].area;
+            return allMeshes.filter(item => item.area >= largestArea * 0.35).map(item => item.mesh);
+        }
+
+        function applyTextureToFloor(file) {
+            let targets = [];
+            if (defaultFloorMesh) targets = [defaultFloorMesh];
+            else targets = findEnvironmentFloorMeshes();
+
+            if (!targets.length) {
+                log('Não foi possível localizar o chão. Carregue um cenário com uma malha de piso ou utilize o piso padrão.', 'warn');
+                return;
+            }
+
+            const url = URL.createObjectURL(file);
+            log(`Carregando textura para o chão: ${file.name}...`, 'info');
+
+            textureLoader.load(url, (texture) => {
+                texture.encoding = THREE.sRGBEncoding;
+                texture.wrapS = THREE.RepeatWrapping;
+                texture.wrapT = THREE.RepeatWrapping;
+                texture.anisotropy = renderer && renderer.capabilities ? renderer.capabilities.getMaxAnisotropy() : 1;
+
+                targets.forEach((mesh) => {
+                    const size = new THREE.Box3().setFromObject(mesh).getSize(new THREE.Vector3());
+                    const repeatX = Math.max(1, Math.round(size.x / 5));
+                    const repeatZ = Math.max(1, Math.round(size.z / 5));
+                    const floorTexture = texture.clone();
+                    floorTexture.needsUpdate = true;
+                    floorTexture.repeat.set(repeatX, repeatZ);
+                    floorTexture.wrapS = THREE.RepeatWrapping;
+                    floorTexture.wrapT = THREE.RepeatWrapping;
+
+                    const applyToMaterial = (material) => {
+                        if (!material) return;
+                        material.map = floorTexture;
+                        if (material.color) material.color.setHex(0xffffff);
+                        material.needsUpdate = true;
+                    };
+                    if (Array.isArray(mesh.material)) mesh.material.forEach(applyToMaterial);
+                    else applyToMaterial(mesh.material);
+                    mesh.receiveShadow = true;
+                });
+
+                texture.dispose();
+                URL.revokeObjectURL(url);
+                log(`Textura "${file.name}" aplicada ao chão (${targets.length} malha(s)).`, 'success');
+            }, undefined, (err) => {
+                log(`Erro ao carregar textura do chão: ${err?.message || err}`, 'error');
+                URL.revokeObjectURL(url);
+            });
         }
 
         function applyTextureToSelected(file) {
