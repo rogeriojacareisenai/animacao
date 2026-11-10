@@ -86,6 +86,9 @@
         <button onclick="setTransformMode('scale')" class="w-full text-left px-2 py-1.5 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded flex items-center gap-2">
             <span>🔍</span> Alterar Escala (Gizmo)
         </button>
+        <button onclick="triggerApplyTexture()" class="w-full text-left px-2 py-1.5 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded flex items-center gap-2 font-semibold text-indigo-600 dark:text-indigo-400">
+            <span>🎨</span> Aplicar Textura
+        </button>
         <div class="px-2 py-1.5 bg-slate-100 dark:bg-slate-900 rounded space-y-1">
             <label class="text-[10px] font-bold text-slate-600 dark:text-slate-400 block">Escala Manual Direta:</label>
             <div class="flex items-center gap-1">
@@ -98,6 +101,9 @@
             <span>🗑️</span> Excluir Objeto
         </button>
     </div>
+
+    <!-- Input Oculto para Carregamento de Texturas -->
+    <input type="file" id="textureFileInput" accept="image/*" class="hidden">
 
     <!-- UI Overlay Layer -->
     <div class="relative z-10 p-4 h-full flex flex-col justify-between pointer-events-none">
@@ -188,30 +194,22 @@
                     <!-- Custom 3D Object Asset Loader for Obstacles -->
                     <div class="p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/50">
                         <label class="block text-[11px] font-bold text-indigo-800 dark:text-indigo-300 mb-1 flex items-center justify-between">
-                            <span>MODELO DO OBSTÁCULO (.FBX, .GLB, .OBJ)</span>
+                            <span>IMPORTAR MODELO 3D (.FBX, .GLB, .OBJ)</span>
                             <span class="text-[9px] bg-indigo-200 dark:bg-indigo-800 text-indigo-900 dark:text-indigo-100 px-1.5 py-0.5 rounded font-mono">3D ASSET</span>
                         </label>
-                        <input type="file" id="obstacleModelInput" accept=".glb,.gltf,.fbx,.obj" class="hidden">
                         <div class="mt-2">
-                            <input type="file" id="sceneFbxInput" accept=".fbx" class="hidden">
-                            <button id="importFbxSceneBtn" type="button" class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-xs text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-2">
-                                <span>📥</span> Importar FBX e posicionar na cena
+                            <input type="file" id="sceneModelInput" accept=".fbx,.glb,.gltf,.obj" class="hidden">
+                            <button id="importModelSceneBtn" type="button" class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-xs text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-2">
+                                <span>📥</span> Importar Modelo 3D e Posicionar
                             </button>
-                            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Após escolher o FBX, clique no chão da cena para definir onde inserir o modelo.</p>
+                            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Escolha um arquivo (.FBX, .GLB, .OBJ) e clique no chão da cena para posicionar o obstáculo.</p>
                         </div>
-                        <label for="obstacleModelInput" class="flex items-center justify-between px-3 py-2 text-xs bg-white dark:bg-slate-800 hover:bg-indigo-100/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-indigo-300 dark:border-indigo-700 rounded-lg cursor-pointer transition shadow-sm">
-                            <span class="truncate pr-2 font-medium" id="obstacleModelName">Selecionar Arquivo 3D...</span>
-                            <span class="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded font-bold">CARREGAR</span>
-                        </label>
                     </div>
 
                     <!-- Dedicated Action Buttons -->
-                    <div class="grid grid-cols-2 gap-2">
-                        <button id="spawnModelBtn" class="py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-xs text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1.5">
-                            <span>📦</span> Inserir Modelo 3D
-                        </button>
+                    <div class="grid grid-cols-1 gap-2">
                         <button id="spawnCubeBtn" class="py-2.5 px-3 bg-amber-600 hover:bg-amber-700 active:scale-95 text-xs text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1.5">
-                            <span>🟩</span> Inserir Cubo
+                            <span>🟩</span> Inserir Cubo Padrão
                         </button>
                     </div>
 
@@ -222,7 +220,7 @@
                         </div>
                         <p class="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
                             • Selecione qualquer obstáculo com o botão esquerdo ou pela lista.<br>
-                            • Use o gizmo para transladar, rotacionar e alterar a escala.<br>
+                            • Use o botão direito em um obstáculo para alterar Gizmo, aplicar textura ou excluir.<br>
                             • Cubos e modelos 3D importados possuem edição independente.
                         </p>
                     </div>
@@ -267,7 +265,7 @@
                     </div>
                     <div class="flex justify-between items-center">
                         <span>Obstáculos:</span>
-                        <span class="text-indigo-600 dark:text-indigo-400 font-bold">Fixos / sem seleção</span>
+                        <span class="text-indigo-600 dark:text-indigo-400 font-bold">Editáveis via Gizmo</span>
                     </div>
                 </div>
             </div>
@@ -316,9 +314,7 @@
         let defaultGridHelper = null, defaultFloorMesh = null;
         let ambientLight, hemiLight;
 
-        let customObstacleTemplate = null;
-        let customObstacleName = "Modelo 3D Importado";
-        let pendingFbxPlacement = null;
+        let pendingModelPlacement = null;
 
         let obstacleCubes = [];
         let selectedCube = null; 
@@ -345,6 +341,7 @@
         const fbxLoader = new THREE.FBXLoader();
         const gltfLoader = new THREE.GLTFLoader();
         const objLoader = new THREE.OBJLoader();
+        const textureLoader = new THREE.TextureLoader();
 
         function log(msg, type = 'info') {
             const consoleLog = document.getElementById('consoleLog');
@@ -406,7 +403,7 @@
         }
 
         function init() {
-            log('Iniciando engine Three.js com obstáculos editáveis e importação 3D unificada.', 'info');
+            log('Iniciando engine Three.js com suporte a textura em modelos 3D.', 'info');
 
             const container = document.getElementById('canvas-container');
 
@@ -441,13 +438,9 @@
                 controls.enabled = !event.value;
             });
 
-            // Atualização contínua e em tempo real das propriedades e colisão ao mexer no Gizmo (Escala/Rotação/Translação)
             transformControls.addEventListener('change', () => {
                 if (!selectedCube || !selectedCube.group) return;
 
-                // O gizmo transforma exclusivamente a raiz editável.
-                // Atualizar toda a hierarquia garante que modelos importados
-                // com vários Groups/Meshes acompanhem o movimento em tempo real.
                 selectedCube.group.updateMatrix();
                 selectedCube.group.updateMatrixWorld(true);
 
@@ -458,8 +451,6 @@
                 updateSelectedObstacleState();
             });
 
-            // Ao terminar uma operação, garante que a transformação fique
-            // persistida no objeto e não apenas no estado visual do gizmo.
             transformControls.addEventListener('mouseUp', () => {
                 if (selectedCube && selectedCube.group) {
                     selectedCube.group.updateMatrix();
@@ -491,10 +482,10 @@
 
             window.addEventListener('resize', onResize);
             window.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && pendingFbxPlacement) {
-                    pendingFbxPlacement = null;
+                if (e.key === 'Escape' && pendingModelPlacement) {
+                    pendingModelPlacement = null;
                     document.getElementById('canvas-container').style.cursor = '';
-                    log('Posicionamento do FBX cancelado.', 'info');
+                    log('Posicionamento do modelo cancelado.', 'info');
                 }
             });
             setupThemeToggle();
@@ -508,9 +499,8 @@
             });
             document.getElementById('clearCubesBtn').addEventListener('click', removeAllCubes);
             
-            document.getElementById('spawnModelBtn').addEventListener('click', () => spawnObject(false));
-            document.getElementById('spawnCubeBtn').addEventListener('click', () => spawnObject(true));
-            document.getElementById('btnAddCubeMobile').addEventListener('click', () => spawnObject(true));
+            document.getElementById('spawnCubeBtn').addEventListener('click', spawnCube);
+            document.getElementById('btnAddCubeMobile').addEventListener('click', spawnCube);
 
             log('Engine pronta.', 'success');
             animate();
@@ -565,22 +555,22 @@
             document.getElementById('jumpInput').addEventListener('change', (e) => {
                 if (e.target.files[0]) loadCharacterOrAnimation(e.target.files[0], 'jump');
             });
-            document.getElementById('obstacleModelInput').addEventListener('change', (e) => {
-                if (e.target.files[0]) loadObstacleTemplateFile(e.target.files[0]);
+            document.getElementById('importModelSceneBtn').addEventListener('click', () => {
+                document.getElementById('sceneModelInput').click();
             });
-            document.getElementById('importFbxSceneBtn').addEventListener('click', () => {
-                document.getElementById('sceneFbxInput').click();
-            });
-            document.getElementById('sceneFbxInput').addEventListener('change', (e) => {
+            document.getElementById('sceneModelInput').addEventListener('change', (e) => {
                 const file = e.target.files && e.target.files[0];
                 if (!file) return;
-                loadFbxForScenePlacement(file);
+                loadModelForScenePlacement(file);
+                e.target.value = '';
+            });
+            document.getElementById('textureFileInput').addEventListener('change', (e) => {
+                const file = e.target.files && e.target.files[0];
+                if (file) applyTextureToSelected(file);
                 e.target.value = '';
             });
         }
 
-        // Carregador 3D único: usado tanto para personagem quanto para objetos/obstáculos.
-        // Isso garante que FBX/GLB/GLTF/OBJ passem pelo mesmo fluxo de importação.
         function load3DAssetFile(file, onLoaded, onError) {
             const fileName = file.name;
             const ext = fileName.split('.').pop().toLowerCase();
@@ -616,8 +606,6 @@
                 if (child.isMesh || child.isSkinnedMesh) {
                     child.castShadow = true;
                     child.receiveShadow = true;
-                    // Evita que modelos com bounding boxes inconsistentes desapareçam
-                    // durante a inserção/transformação. O frustum será recalculado.
                     child.frustumCulled = false;
                     if (child.material) {
                         const materials = Array.isArray(child.material) ? child.material : [child.material];
@@ -637,49 +625,20 @@
         }
 
         function cloneImportedObject(source) {
-            // THREE.Object3D.clone(true) não reconstrói corretamente o Skeleton
-            // de alguns FBX com SkinnedMesh. SkeletonUtils resolve essa hierarquia.
             if (THREE.SkeletonUtils && typeof THREE.SkeletonUtils.clone === 'function') {
                 return THREE.SkeletonUtils.clone(source);
             }
             return source.clone(true);
         }
 
-        function loadObstacleTemplateFile(file) {
+        function loadModelForScenePlacement(file) {
             const fileName = file.name;
-            log(`Carregando modelo 3D [${fileName.split('.').pop().toUpperCase()}]: ${fileName}...`, 'info');
-            document.getElementById('obstacleModelName').innerText = fileName;
-            customObstacleName = fileName;
-
-            load3DAssetFile(file, (obj) => {
-                prepareImported3DObject(obj);
-
-                // Mantém o arquivo importado intacto como template.
-                // A cópia usada no cenário será criada somente no spawnObject().
-                const bbox = new THREE.Box3().setFromObject(obj);
-                const size = bbox.getSize(new THREE.Vector3());
-                const maxDim = Math.max(size.x, size.y, size.z);
-                if (maxDim > 0) {
-                    const targetSize = 1.5;
-                    const scaleFactor = targetSize / maxDim;
-                    obj.scale.setScalar(scaleFactor);
-                    obj.updateMatrixWorld(true);
-                }
-
-                customObstacleTemplate = obj;
-                log(`Modelo 3D "${fileName}" carregado e pronto para inserção na cena.`, 'success');
-            }, (err) => {
-                log(`Erro ao carregar modelo 3D: ${err?.message || err}`, 'error');
-            });
-        }
-
-        function loadFbxForScenePlacement(file) {
-            const fileName = file.name;
-            if (!fileName.toLowerCase().endsWith('.fbx')) {
-                log('Selecione um arquivo FBX válido.', 'warn');
+            const ext = fileName.split('.').pop().toLowerCase();
+            if (!['fbx', 'glb', 'gltf', 'obj'].includes(ext)) {
+                log('Selecione um arquivo 3D válido (.FBX, .GLB ou .OBJ).', 'warn');
                 return;
             }
-            log(`Importando FBX para posicionamento: ${fileName}...`, 'info');
+            log(`Importando modelo 3D [${ext.toUpperCase()}]: ${fileName}...`, 'info');
             load3DAssetFile(file, (obj) => {
                 prepareImported3DObject(obj);
                 obj.updateMatrixWorld(true);
@@ -688,22 +647,20 @@
                 const maxDim = Math.max(size.x, size.y, size.z);
                 if (maxDim > 0) obj.scale.multiplyScalar(1.5 / maxDim);
                 obj.updateMatrixWorld(true);
-                pendingFbxPlacement = { object: obj, name: fileName };
+                pendingModelPlacement = { object: obj, name: fileName };
                 document.getElementById('canvas-container').style.cursor = 'crosshair';
-                log(`FBX "${fileName}" carregado. Clique no chão da cena para escolher o local de inserção. Pressione ESC para cancelar.`, 'success');
+                log(`Modelo "${fileName}" carregado. Clique no chão da cena para definir o local do obstáculo. Pressione ESC para cancelar.`, 'success');
             }, (err) => {
-                pendingFbxPlacement = null;
+                pendingModelPlacement = null;
                 document.getElementById('canvas-container').style.cursor = '';
-                log(`Falha ao importar FBX "${fileName}": ${err?.message || err}`, 'error');
+                log(`Falha ao importar modelo "${fileName}": ${err?.message || err}`, 'error');
             });
         }
 
-        function placePendingFbxAt(point) {
-            if (!pendingFbxPlacement || !point) return false;
-            const pending = pendingFbxPlacement;
+        function placePendingModelAt(point) {
+            if (!pendingModelPlacement || !point) return false;
+            const pending = pendingModelPlacement;
 
-            // O ponto do clique é a âncora no piso. Centralizamos a base do
-            // modelo exatamente sobre X/Z do clique e apoiamos sua base em Y=0.
             const root = createEditableObstacleRoot(
                 pending.object,
                 pending.name,
@@ -713,7 +670,7 @@
             root.updateMatrixWorld(true);
             const bounds = new THREE.Box3().setFromObject(model);
             if (bounds.isEmpty()) {
-                log(`O FBX "${pending.name}" não contém malhas renderizáveis.`, 'error');
+                log(`O modelo "${pending.name}" não possui malhas visíveis.`, 'error');
                 return false;
             }
             const center = bounds.getCenter(new THREE.Vector3());
@@ -749,13 +706,57 @@
             });
             obstacleCubes.push(obstacle);
 
-            pendingFbxPlacement = null;
+            pendingModelPlacement = null;
             document.getElementById('canvas-container').style.cursor = '';
             selectCube(obstacle);
             syncObstacleTransform(obstacle);
             updateCubesListUI();
-            log(`FBX "${pending.name}" inserido exatamente no ponto selecionado do piso (X: ${point.x.toFixed(2)}, Z: ${point.z.toFixed(2)}). Use o botão direito para editar.`, 'success');
+            log(`Modelo "${pending.name}" inserido com sucesso em (X: ${point.x.toFixed(2)}, Z: ${point.z.toFixed(2)}).`, 'success');
             return true;
+        }
+
+        function triggerApplyTexture() {
+            if (!selectedCube) {
+                log('Selecione um obstáculo para aplicar textura.', 'warn');
+                return;
+            }
+            document.getElementById('objectContextMenu').classList.add('hidden');
+            document.getElementById('textureFileInput').click();
+        }
+
+        function applyTextureToSelected(file) {
+            if (!selectedCube || !selectedCube.group) return;
+
+            const url = URL.createObjectURL(file);
+            log(`Carregando textura: ${file.name}...`, 'info');
+
+            textureLoader.load(url, (texture) => {
+                texture.encoding = THREE.sRGBEncoding;
+                texture.wrapS = THREE.RepeatWrapping;
+                texture.wrapT = THREE.RepeatWrapping;
+
+                selectedCube.group.traverse((child) => {
+                    if (child.isMesh) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(mat => {
+                                mat.map = texture;
+                                mat.color.setHex(0xffffff); // reseta cor base para exibir a textura original
+                                mat.needsUpdate = true;
+                            });
+                        } else if (child.material) {
+                            child.material.map = texture;
+                            child.material.color.setHex(0xffffff);
+                            child.material.needsUpdate = true;
+                        }
+                    }
+                });
+
+                URL.revokeObjectURL(url);
+                log(`Textura "${file.name}" aplicada ao objeto "${selectedCube.name}".`, 'success');
+            }, undefined, (err) => {
+                log(`Erro ao carregar textura: ${err?.message || err}`, 'error');
+                URL.revokeObjectURL(url);
+            });
         }
 
         function loadEnvironmentFile(file) {
@@ -862,19 +863,12 @@
             const container = document.getElementById('canvas-container');
             const ctxMenu = document.getElementById('objectContextMenu');
 
-            // Clique esquerdo para selecionar obstáculo no cenário
             container.addEventListener('pointerdown', (e) => {
-                if (e.button !== 0) return; // apenas botão esquerdo
+                if (e.button !== 0) return;
 
-                // MUITO IMPORTANTE: o TransformControls também recebe o
-                // pointerdown no canvas. Quando o usuário inicia um arraste no
-                // gizmo, não devemos executar a rotina de seleção novamente,
-                // pois detach/attach durante o pointerdown interrompe o arraste.
                 if (transformControls && transformControls.dragging) return;
 
-                if (pendingFbxPlacement) {
-                    // Durante o modo de inserção, o clique define o ponto do FBX
-                    // e não deve iniciar órbita/arraste da câmera.
+                if (pendingModelPlacement) {
                     e.preventDefault();
                     e.stopPropagation();
                     const placeRect = renderer.domElement.getBoundingClientRect();
@@ -887,16 +881,13 @@
                         const floorHits = raycaster.intersectObject(defaultFloorMesh, false);
                         if (floorHits.length) placementPoint = floorHits[0].point.clone();
                     }
-                    // Fallback para plano horizontal infinito em Y=0. Assim o
-                    // clique continua funcionando se o piso visual não estiver
-                    // presente ou se o ponto estiver fora de sua geometria.
                     if (!placementPoint) {
                         const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
                         const hit = new THREE.Vector3();
                         if (raycaster.ray.intersectPlane(groundPlane, hit)) placementPoint = hit;
                     }
-                    if (placementPoint) placePendingFbxAt(placementPoint);
-                    else log('Não foi possível projetar o clique no plano do chão. Escolha um ponto visível da cena.', 'warn');
+                    if (placementPoint) placePendingModelAt(placementPoint);
+                    else log('Não foi possível projetar o clique no piso da cena.', 'warn');
                     return;
                 }
 
@@ -907,9 +898,6 @@
                 mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 
                 raycaster.setFromCamera(mouse, camera);
-                // Intersectar as raízes completas, com recursividade.
-                // Isso contempla FBX/GLB/OBJ com vários níveis de Groups,
-                // meshes aninhadas e SkinnedMeshes.
                 const targets = obstacleCubes
                     .filter(c => c && c.group)
                     .map(c => c.group);
@@ -919,13 +907,11 @@
                     let node = hits[0].object;
                     let hitObj = null;
 
-                    // Subir na hierarquia até encontrar a raiz do obstáculo.
                     while (node && !hitObj) {
                         hitObj = node.userData && node.userData.obstacleData;
                         node = node.parent;
                     }
 
-                    // Fallback pela hierarquia cadastrada.
                     if (!hitObj) {
                         hitObj = obstacleCubes.find(c => {
                             let n = hits[0].object;
@@ -941,7 +927,6 @@
                 }
             });
 
-            // Clique direito para abrir menu de contexto e edição do obstáculo
             container.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 const rect = renderer.domElement.getBoundingClientRect();
@@ -1001,8 +986,6 @@
             const val = parseFloat(input.value);
             if (!selectedCube || !selectedCube.group || !isFinite(val) || val <= 0) return;
 
-            // Escala absoluta do Group raiz. O mesh importado continua no mesmo
-            // objeto usado pelo carregador unificado; apenas o Group é transformado.
             const currentScale = selectedCube.group.scale.clone();
             const base = Math.max(Math.abs(currentScale.x), 0.0001);
             const ratioY = currentScale.y / base;
@@ -1011,7 +994,6 @@
             selectedCube.group.updateMatrixWorld(true);
             syncObstacleTransform(selectedCube);
 
-            // Atualiza imediatamente o gizmo, lista e viewport.
             transformControls.attach(selectedCube.group);
             input.value = selectedCube.group.scale.x.toFixed(2);
             document.getElementById('objectContextMenu').classList.add('hidden');
@@ -1024,9 +1006,6 @@
             if (selectedCube) removeCube(selectedCube.id);
         }
 
-        // Cria uma hierarquia de edição robusta para qualquer modelo importado.
-        // O Group raiz é SEMPRE o alvo do TransformControls. O modelo fica como filho,
-        // inclusive quando for FBX/GLB com SkinnedMesh, bones ou vários nós internos.
         function createEditableObstacleRoot(source, name, spawnPos) {
             const root = new THREE.Group();
             root.name = name;
@@ -1038,15 +1017,13 @@
             prepareImported3DObject(model);
             model.position.set(0, 0, 0);
             model.rotation.set(0, 0, 0);
-            // Mantém a escala definida pelo carregamento do arquivo, mas elimina
-            // escala no Group de edição para que o Gizmo tenha um alvo estável.
+
             root.add(model);
 
             root.userData.editableObstacle = true;
             root.userData.model = model;
             root.userData.sourceName = name;
 
-            // Marcação da hierarquia para seleção de qualquer mesh descendente.
             root.traverse(child => {
                 child.userData.obstacleRoot = root;
                 child.userData.editableObstacle = true;
@@ -1073,7 +1050,6 @@
             obstacle.scaleY = g.scale.y;
             obstacle.scaleZ = g.scale.z;
 
-            // Atualiza dimensões reais após a transformação.
             const box = new THREE.Box3().setFromObject(g);
             const size = box.getSize(new THREE.Vector3());
             obstacle.worldWidth = size.x;
@@ -1083,55 +1059,45 @@
             if (renderer) renderer.render(scene, camera);
         }
 
-        function spawnObject(isCube = false) {
-            const name = isCube ? 'Cubo Padrão' : customObstacleName;
+        function spawnCube() {
+            const name = 'Cubo Padrão';
             const spawnPos = characterGroup.position.clone().add(new THREE.Vector3(0, 0, 2.5));
 
-            let group;
+            const group = new THREE.Group();
+            group.name = name;
+            group.position.copy(spawnPos);
 
-            if (!isCube && customObstacleTemplate) {
-                // IMPORTANTE: o personagem/modelo importado usa exatamente a mesma
-                // estrutura de edição do restante dos objetos: Group raiz + modelo filho.
-                group = createEditableObstacleRoot(customObstacleTemplate, name, spawnPos);
-            } else {
-                group = new THREE.Group();
-                group.name = name;
-                group.position.copy(spawnPos);
-
-                const w = 1.5, h = 1.5, d = 1.5;
-                const geometry = new THREE.BoxGeometry(w, h, d);
-                const material = new THREE.MeshStandardMaterial({ color: 0x4f46e5, roughness: 0.3 });
-                const mesh = new THREE.Mesh(geometry, material);
-                mesh.position.y = h / 2;
-                mesh.castShadow = true;
-                mesh.receiveShadow = true;
-                group.add(mesh);
-                group.userData.editableObstacle = true;
-                group.userData.model = mesh;
-            }
+            const w = 1.5, h = 1.5, d = 1.5;
+            const geometry = new THREE.BoxGeometry(w, h, d);
+            const material = new THREE.MeshStandardMaterial({ color: 0x4f46e5, roughness: 0.3 });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.y = h / 2;
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            group.add(mesh);
+            group.userData.editableObstacle = true;
+            group.userData.model = mesh;
 
             scene.add(group);
             group.updateMatrixWorld(true);
 
             const bbox = new THREE.Box3().setFromObject(group);
             const size = bbox.getSize(new THREE.Vector3());
-            const w = Math.max(size.x, 0.001);
-            const h = Math.max(size.y, 0.001);
-            const d = Math.max(size.z, 0.001);
+            const width = Math.max(size.x, 0.001);
+            const height = Math.max(size.y, 0.001);
+            const depth = Math.max(size.z, 0.001);
 
             const cubeData = {
                 id: 'obj_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
                 name: name,
                 group: group,
-                width: w, height: h, depth: d,
-                baseWidth: w, baseHeight: h, baseDepth: d,
+                width: width, height: height, depth: depth,
+                baseWidth: width, baseHeight: height, baseDepth: depth,
                 x: group.position.x, y: group.position.y, z: group.position.z,
                 rotationX: 0, rotationY: 0, rotationZ: 0,
                 scaleX: 1, scaleY: 1, scaleZ: 1
             };
 
-            // Cada nó do modelo importado aponta para o mesmo registro de obstáculo.
-            // A seleção nunca depende do tipo de arquivo ou do nível do Mesh.
             group.userData.obstacleData = cubeData;
             group.traverse(child => {
                 child.userData.obstacleData = cubeData;
@@ -1142,7 +1108,7 @@
             selectCube(cubeData);
             syncObstacleTransform(cubeData);
             updateCubesListUI();
-            log(`Objeto "${name}" inserido no cenário e pronto para edição.`, 'success');
+            log(`Cubo inserido no cenário.`, 'success');
         }
 
         function selectCube(cubeObj) {
@@ -1150,8 +1116,6 @@
 
             selectedCube = cubeObj;
 
-            // Garante que o alvo seja sempre o Group raiz editável, nunca o Mesh,
-            // SkinnedMesh ou bone interno do personagem.
             cubeObj.group.userData.obstacleData = cubeObj;
             cubeObj.group.traverse(child => {
                 child.userData.obstacleData = cubeObj;
@@ -1163,9 +1127,6 @@
             transformControls.attach(cubeObj.group);
             transformControls.enabled = true;
 
-            // Não altere o modo atual ao selecionar outro objeto. Assim, se o
-            // usuário estiver em TRANSLATE/ROTATE/SCALE, o novo objeto usa o
-            // mesmo gizmo imediatamente.
             if (!transformControls.getMode || !transformControls.getMode()) {
                 transformControls.setMode('translate');
             }
@@ -1221,10 +1182,8 @@
                     isSelected ? 'bg-amber-100 dark:bg-amber-950/60 border-amber-400 font-bold' : 'bg-white dark:bg-slate-800 border-slate-200'
                 }`;
                 
-                // Clique esquerdo na lista seleciona o obstáculo e acopla o Gizmo
                 row.onclick = () => selectCube(c);
 
-                // Clique direito na lista abre o menu de contexto do objeto correspondente
                 row.oncontextmenu = (e) => {
                     e.preventDefault();
                     selectCube(c);
@@ -1270,7 +1229,6 @@
                 if (e.key === ' ' || e.code === 'Space') keys[' '] = true;
                 if (keys.hasOwnProperty(e.key)) keys[e.key] = true;
                 if (keys.hasOwnProperty(e.code)) keys[e.code] = true;
-                // DELETE/BACKSPACE não atuam sobre obstáculos, pois eles não são selecionáveis.
             });
 
             window.addEventListener('keyup', (e) => {
