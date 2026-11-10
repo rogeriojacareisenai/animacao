@@ -1,0 +1,1584 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador 3D - Personagem e Cenário</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            user-select: none;
+        }
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        .dark .glass-card {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(51, 65, 85, 0.8);
+        }
+        #consoleLog::-webkit-scrollbar {
+            width: 6px;
+        }
+        #consoleLog::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+        #consoleLog::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.5);
+            border-radius: 3px;
+        }
+        .tab-btn.active {
+            background-color: #4f46e5;
+            color: white;
+        }
+    </style>
+
+    <!-- Standalone Script Includes -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+</head>
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-300">
+
+    <!-- 3D Viewport -->
+    <div id="canvas-container"></div>
+
+    <!-- Context Menu for Right Click on Objects or List items -->
+    <div id="objectContextMenu" class="hidden absolute z-30 glass-card p-2 rounded-xl shadow-2xl space-y-1 text-xs w-52 border border-slate-300 dark:border-slate-700">
+        <div class="px-2 py-1 font-bold text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+            <span id="ctxMenuTitle" class="truncate">Objeto</span>
+            <span class="text-[9px] bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 px-1.5 py-0.5 rounded">Gizmo</span>
+        </div>
+        <button onclick="setTransformMode('translate')" class="w-full text-left px-2 py-1.5 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded flex items-center gap-2">
+            <span>↔️</span> Mover (Transladar)
+        </button>
+        <button onclick="setTransformMode('rotate')" class="w-full text-left px-2 py-1.5 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded flex items-center gap-2">
+            <span>🔄</span> Rotacionar
+        </button>
+        <button onclick="setTransformMode('scale')" class="w-full text-left px-2 py-1.5 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded flex items-center gap-2">
+            <span>🔍</span> Alterar Escala (Gizmo)
+        </button>
+        <button onclick="duplicateSelectedFromContext()" class="w-full text-left px-2 py-1.5 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded flex items-center gap-2 font-semibold text-emerald-600 dark:text-emerald-400">
+            <span>📄</span> Duplicar Objeto
+        </button>
+        <button onclick="triggerApplyTexture()" class="w-full text-left px-2 py-1.5 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded flex items-center gap-2 font-semibold text-indigo-600 dark:text-indigo-400">
+            <span>🎨</span> Aplicar Textura
+        </button>
+        <div class="px-2 py-1.5 bg-slate-100 dark:bg-slate-900 rounded space-y-1">
+            <label class="text-[10px] font-bold text-slate-600 dark:text-slate-400 block">Escala Manual Direta:</label>
+            <div class="flex items-center gap-1">
+                <input type="number" id="ctxScaleInput" step="0.1" min="0.05" max="50" class="w-full px-1.5 py-0.5 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded font-mono">
+                <button onclick="applyCtxScale()" class="px-2 py-0.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded">OK</button>
+            </div>
+        </div>
+        <hr class="border-slate-200 dark:border-slate-700 my-1">
+        <button onclick="deleteSelectedFromContext()" class="w-full text-left px-2 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-rose-600 rounded flex items-center gap-2 font-bold">
+            <span>🗑️</span> Excluir Objeto
+        </button>
+    </div>
+
+    <!-- Input Oculto para Carregamento de Texturas -->
+    <input type="file" id="textureFileInput" accept="image/*" class="hidden">
+
+    <!-- UI Overlay Layer -->
+    <div class="relative z-10 p-4 h-full flex flex-col justify-between pointer-events-none">
+        
+        <!-- Top Header & Upload Control Panel -->
+        <div class="flex flex-col lg:flex-row justify-between items-start gap-4">
+            
+            <!-- Left Side Upload & Builder Panel -->
+            <div class="glass-card p-5 rounded-2xl w-full max-w-sm pointer-events-auto shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
+                <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+                    <div>
+                        <h1 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                            Estúdio 3D Interativo
+                        </h1>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Cenário, Personagem e Editor de Obstáculos.</p>
+                    </div>
+                    <!-- Theme Toggle Button -->
+                    <button id="themeToggleBtn" title="Alternar Modo Dark/Light" class="p-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-700 transition">
+                        <svg id="sunIcon" class="w-4 h-4 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                        <svg id="moonIcon" class="w-4 h-4 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                    </button>
+                </div>
+
+                <!-- Tabs selector for Panel -->
+                <div class="flex bg-slate-200/80 dark:bg-slate-800 p-1 rounded-xl text-xs font-semibold">
+                    <button id="tabFiles" onclick="switchTab('files')" class="flex-1 py-1.5 rounded-lg transition tab-btn active">Arquivos</button>
+                    <button id="tabBuilder" onclick="switchTab('builder')" class="flex-1 py-1.5 rounded-lg transition tab-btn text-slate-700 dark:text-slate-300">Obstáculos</button>
+                </div>
+
+                <!-- Files Tab Content -->
+                <div id="sectionFiles" class="space-y-3">
+                    <!-- Scenario (GLB / GLTF / FBX) -->
+                    <div class="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/50">
+                        <label class="block text-[11px] font-bold text-emerald-800 dark:text-emerald-300 mb-1 flex items-center justify-between">
+                            <span>CENÁRIO (.GLB, .GLTF, .FBX)</span>
+                            <span class="text-[9px] bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100 px-1.5 py-0.5 rounded font-mono">MAPA</span>
+                        </label>
+                        <input type="file" id="envInput" accept=".glb,.gltf,.fbx" class="hidden">
+                        <label for="envInput" class="flex items-center justify-between px-3 py-2 text-xs bg-white dark:bg-slate-800 hover:bg-emerald-100/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-emerald-300 dark:border-emerald-700 rounded-lg cursor-pointer transition shadow-sm">
+                            <span class="truncate pr-2 font-medium" id="envName">Carregar Cenário...</span>
+                            <span class="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded font-bold">SELECIONAR</span>
+                        </label>
+                    </div>
+
+                    <!-- Idle Character -->
+                    <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                        <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                            <span>1. PERSONAGEM / IDLE (.FBX, .GLB)</span>
+                            <span class="text-[9px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded font-mono">BASE</span>
+                        </label>
+                        <input type="file" id="idleInput" accept=".fbx,.glb,.gltf" class="hidden">
+                        <label for="idleInput" class="flex items-center justify-between px-3 py-2 text-xs bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer transition shadow-sm">
+                            <span class="truncate pr-2 font-medium" id="idleName">Carregar Malha / Idle...</span>
+                            <span class="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded font-bold">SELECIONAR</span>
+                        </label>
+                    </div>
+
+                    <!-- Run Animation -->
+                    <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                        <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                            <span>2. ANIMAÇÃO RUN (.FBX, .GLB)</span>
+                            <span class="text-[9px] bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded font-mono">CORRER</span>
+                        </label>
+                        <input type="file" id="runInput" accept=".fbx,.glb,.gltf" class="hidden">
+                        <label for="runInput" class="flex items-center justify-between px-3 py-2 text-xs bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer transition shadow-sm">
+                            <span class="truncate pr-2 font-medium" id="runName">Carregar Correr...</span>
+                            <span class="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded font-bold">SELECIONAR</span>
+                        </label>
+                    </div>
+
+                    <!-- Jump Animation -->
+                    <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                        <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                            <span>3. ANIMAÇÃO JUMP (.FBX, .GLB)</span>
+                            <span class="text-[9px] bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded font-mono">PULO</span>
+                        </label>
+                        <input type="file" id="jumpInput" accept=".fbx,.glb,.gltf" class="hidden">
+                        <label for="jumpInput" class="flex items-center justify-between px-3 py-2 text-xs bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer transition shadow-sm">
+                            <span class="truncate pr-2 font-medium" id="jumpName">Carregar Pulo...</span>
+                            <span class="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded font-bold">SELECIONAR</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Builder Tab Content -->
+                <div id="sectionBuilder" class="space-y-3 hidden">
+                    <!-- Custom 3D Object Asset Loader for Obstacles -->
+                    <div class="p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/50">
+                        <label class="block text-[11px] font-bold text-indigo-800 dark:text-indigo-300 mb-1 flex items-center justify-between">
+                            <span>IMPORTAR MODELO 3D (.FBX, .GLB, .OBJ)</span>
+                            <span class="text-[9px] bg-indigo-200 dark:bg-indigo-800 text-indigo-900 dark:text-indigo-100 px-1.5 py-0.5 rounded font-mono">3D ASSET</span>
+                        </label>
+                        <div class="mt-2">
+                            <input type="file" id="sceneModelInput" accept=".fbx,.glb,.gltf,.obj" class="hidden">
+                            <button id="importModelSceneBtn" type="button" class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-xs text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-2">
+                                <span>📥</span> Importar Modelo 3D e Posicionar
+                            </button>
+                            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Escolha um arquivo e clique no chão da cena para posicionar o obstáculo.</p>
+                        </div>
+                    </div>
+
+                    <!-- Dedicated Action Buttons -->
+                    <div class="grid grid-cols-1 gap-2">
+                        <button id="spawnCubeBtn" class="py-2.5 px-3 bg-amber-600 hover:bg-amber-700 active:scale-95 text-xs text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1.5">
+                            <span>🟩</span> Inserir Cubo Padrão
+                        </button>
+                    </div>
+
+                    <div class="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 space-y-1.5">
+                        <div class="text-xs font-bold text-amber-900 dark:text-amber-300 flex items-center justify-between">
+                            <span>CONTROLES DE GIZMO (ÂNCORAS)</span>
+                            <span class="text-[9px] bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 px-1.5 py-0.5 rounded font-mono">ATIVO</span>
+                        </div>
+                        <p class="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
+                            • Selecione qualquer obstáculo para mover, rotacionar ou escalar.<br>
+                            • **Duplicar:** Clique com o **botão direito** sobre o objeto ou na lista e escolha "Duplicar Objeto".<br>
+                            • Botão direito também gerencia texturas e exclusão.
+                        </p>
+                    </div>
+
+                    <!-- Obstacles List & Delete -->
+                    <div class="space-y-1">
+                        <div class="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                            <span>Objetos Criados (<span id="cubeCount">0</span>)</span>
+                            <button id="clearCubesBtn" class="text-[10px] text-rose-600 dark:text-rose-400 hover:underline">Deletar Todos</button>
+                        </div>
+                        <div id="cubesListContainer" class="max-h-32 overflow-y-auto space-y-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-[11px]">
+                            <span class="text-slate-400 italic">Nenhum obstáculo adicionado ainda.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="pt-2 flex gap-2 border-t border-slate-200 dark:border-slate-700">
+                    <button id="resetCamBtn" class="flex-1 py-2 px-3 bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 dark:hover:bg-slate-600 active:scale-95 text-xs text-white font-medium rounded-lg transition shadow">
+                        Resetar Posição
+                    </button>
+                    <button id="clearConsoleBtn" class="py-2 px-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 active:scale-95 text-xs text-slate-700 dark:text-slate-300 font-medium rounded-lg transition">
+                        Limpar Log
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Info Panel (Desktop) -->
+            <div class="glass-card p-4 rounded-2xl pointer-events-auto text-xs text-slate-600 dark:text-slate-300 max-w-xs shadow-xl hidden md:block space-y-2">
+                <div class="font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
+                    <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                    Instruções & Controles
+                </div>
+                <div class="space-y-1.5 pt-1">
+                    <div class="flex justify-between items-center">
+                        <span>Movimentação:</span>
+                        <span class="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold">WASD / Setas</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span>Pular:</span>
+                        <span class="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold">ESPAÇO</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span>Duplicar Objeto:</span>
+                        <span class="text-emerald-600 dark:text-emerald-400 font-bold">Botão Direito -> Duplicar</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Touch Controls (Mobile) -->
+        <div class="pointer-events-auto sm:hidden self-center my-2 glass-card p-3 rounded-2xl flex items-center gap-4 shadow-xl">
+            <div class="grid grid-cols-3 gap-1 w-32 h-32">
+                <div></div>
+                <button id="btnUp" class="bg-slate-200 dark:bg-slate-800 active:bg-indigo-500 active:text-white rounded-lg flex items-center justify-center text-lg font-bold">↑</button>
+                <div></div>
+                <button id="btnLeft" class="bg-slate-200 dark:bg-slate-800 active:bg-indigo-500 active:text-white rounded-lg flex items-center justify-center text-lg font-bold">←</button>
+                <button id="btnDown" class="bg-slate-200 dark:bg-slate-800 active:bg-indigo-500 active:text-white rounded-lg flex items-center justify-center text-lg font-bold">↓</button>
+                <button id="btnRight" class="bg-slate-200 dark:bg-slate-800 active:bg-indigo-500 active:text-white rounded-lg flex items-center justify-center text-lg font-bold">→</button>
+            </div>
+            <div class="flex flex-col gap-2">
+                <button id="btnJump" class="w-16 h-14 bg-indigo-600 active:bg-indigo-700 rounded-xl flex items-center justify-center text-xs font-bold text-white shadow-lg">
+                    PULO
+                </button>
+                <button id="btnAddCubeMobile" class="w-16 h-12 bg-amber-600 active:bg-amber-700 rounded-xl flex items-center justify-center text-[10px] font-bold text-white shadow-lg">
+                    + OBJ
+                </button>
+            </div>
+        </div>
+
+        <!-- Dynamic On-Screen Console / Terminal -->
+        <div class="glass-card p-3 rounded-xl pointer-events-auto w-full max-w-3xl self-center max-h-36 flex flex-col shadow-xl">
+            <div class="flex items-center justify-between pb-1.5 border-b border-slate-200 dark:border-slate-700 text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                <span class="flex items-center gap-1.5 font-bold text-slate-700 dark:text-slate-300">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Terminal de Status & Debug
+                </span>
+                <span id="currentStatusBadge" class="text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">Personagem: Manequim Padrão</span>
+            </div>
+            <div id="consoleLog" class="flex-1 overflow-y-auto text-[11px] font-mono space-y-1 mt-1.5 pr-1 text-slate-700 dark:text-slate-300">
+                <!-- Log messages -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Application Logic -->
+    <script>
+        let scene, camera, renderer, controls, transformControls;
+        let characterGroup, currentModel = null;
+        let environmentMesh = null;
+        let defaultGridHelper = null, defaultFloorMesh = null;
+        let ambientLight, hemiLight;
+
+        let pendingModelPlacement = null;
+
+        let obstacleCubes = [];
+        let selectedCube = null;
+
+        // Histórico de edição (Ctrl+Z / Ctrl+Y)
+        let obstacleHistory = [];
+        let obstacleHistoryIndex = -1;
+        let restoringHistory = false;
+
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let isDarkMode = false;
+
+        let mixer = null;
+        const actions = { idle: null, run: null, jump: null };
+        let currentActionState = 'idle';
+
+        let velocityY = 0;
+        const gravity = -26.0;
+        const jumpVelocity = 10.0;
+        let isGrounded = true;
+        let groundY = 0;
+
+        const moveSpeed = 6.0;
+        const rotationSpeed = 10.0;
+        const keys = { w: false, a: false, s: false, d: false, ArrowUp: false, ArrowLeft: false, ArrowDown: false, ArrowRight: false, ' ': false };
+
+        const clock = new THREE.Clock();
+        const fbxLoader = new THREE.FBXLoader();
+        const gltfLoader = new THREE.GLTFLoader();
+        const objLoader = new THREE.OBJLoader();
+        const textureLoader = new THREE.TextureLoader();
+
+        function log(msg, type = 'info') {
+            const consoleLog = document.getElementById('consoleLog');
+            const time = new Date().toLocaleTimeString();
+            const el = document.createElement('div');
+            
+            let badgeColor = 'text-slate-600 dark:text-slate-400';
+            if (type === 'error') badgeColor = 'text-rose-600 dark:text-rose-400 font-semibold';
+            if (type === 'success') badgeColor = 'text-emerald-600 dark:text-emerald-400 font-semibold';
+            if (type === 'warn') badgeColor = 'text-amber-600 dark:text-amber-400 font-semibold';
+
+            el.className = `${badgeColor} flex items-start gap-2`;
+            el.innerHTML = `<span class="text-slate-400 dark:text-slate-500 select-none">[${time}]</span> <span>${msg}</span>`;
+            
+            consoleLog.appendChild(el);
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+        }
+
+        function switchTab(tab) {
+            const tabFiles = document.getElementById('tabFiles');
+            const tabBuilder = document.getElementById('tabBuilder');
+            const secFiles = document.getElementById('sectionFiles');
+            const secBuilder = document.getElementById('sectionBuilder');
+
+            if (tab === 'files') {
+                tabFiles.classList.add('active');
+                tabBuilder.classList.remove('active');
+                tabBuilder.classList.add('text-slate-700', 'dark:text-slate-300');
+                secFiles.classList.remove('hidden');
+                secBuilder.classList.add('hidden');
+            } else {
+                tabBuilder.classList.add('active');
+                tabFiles.classList.remove('active');
+                tabFiles.classList.add('text-slate-700', 'dark:text-slate-300');
+                secBuilder.classList.remove('hidden');
+                secFiles.classList.add('hidden');
+            }
+        }
+
+        function setupThemeToggle() {
+            const btn = document.getElementById('themeToggleBtn');
+            btn.addEventListener('click', () => {
+                isDarkMode = !isDarkMode;
+                if (isDarkMode) {
+                    document.documentElement.classList.add('dark');
+                    scene.background.set(0x0f172a);
+                    scene.fog.color.set(0x0f172a);
+                    if (ambientLight) ambientLight.intensity = 0.4;
+                    if (hemiLight) hemiLight.intensity = 0.2;
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    scene.background.set(0xf1f5f9);
+                    scene.fog.color.set(0xf1f5f9);
+                    if (ambientLight) ambientLight.intensity = 0.7;
+                    if (hemiLight) hemiLight.intensity = 0.4;
+                }
+                log(`Modo ${isDarkMode ? 'Escuro' : 'Claro'} ativado.`, 'info');
+            });
+        }
+
+        function init() {
+            log('Iniciando engine Three.js com suporte a duplicação via menu de contexto.', 'info');
+
+            const container = document.getElementById('canvas-container');
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf1f5f9);
+            scene.fog = new THREE.FogExp2(0xf1f5f9, 0.015);
+
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 4, 8);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            container.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2 - 0.01;
+            controls.minDistance = 2.0;
+            controls.maxDistance = 50;
+            controls.target.set(0, 1.2, 0);
+
+            transformControls = new THREE.TransformControls(camera, renderer.domElement);
+            transformControls.size = 0.75;
+            scene.add(transformControls);
+
+            transformControls.addEventListener('dragging-changed', (event) => {
+                controls.enabled = !event.value;
+            });
+
+            transformControls.addEventListener('change', () => {
+                if (!selectedCube || !selectedCube.group) return;
+
+                selectedCube.group.updateMatrix();
+                selectedCube.group.updateMatrixWorld(true);
+
+                if (selectedCube.group.userData.model) {
+                    selectedCube.group.userData.model.updateMatrixWorld(true);
+                }
+
+                updateSelectedObstacleState();
+            });
+
+            transformControls.addEventListener('mouseUp', () => {
+                if (selectedCube && selectedCube.group) {
+                    selectedCube.group.updateMatrix();
+                    selectedCube.group.updateMatrixWorld(true);
+                    syncObstacleTransform(selectedCube);
+                    updateCubesListUI();
+                    recordObstacleHistory();
+                }
+            });
+
+            ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+
+            const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+            sun.position.set(15, 25, 15);
+            sun.castShadow = true;
+            sun.shadow.mapSize.width = 2048;
+            sun.shadow.mapSize.height = 2048;
+            scene.add(sun);
+
+            hemiLight = new THREE.HemisphereLight(0xffffff, 0x94a3b8, 0.4);
+            scene.add(hemiLight);
+
+            createDefaultGrid();
+
+            characterGroup = new THREE.Group();
+            scene.add(characterGroup);
+
+            createDummyCharacter();
+
+            window.addEventListener('resize', onResize);
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && pendingModelPlacement) {
+                    pendingModelPlacement = null;
+                    document.getElementById('canvas-container').style.cursor = '';
+                    log('Posicionamento do modelo cancelado.', 'info');
+                }
+            });
+
+            setupThemeToggle();
+            setupInputControls();
+            setupFileUploads();
+            setupBuilderInteraction();
+            document.getElementById('ctxScaleInput').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); applyCtxScale(); }
+            });
+            initializeObstacleHistory();
+
+            document.getElementById('resetCamBtn').addEventListener('click', resetCharacterAndCamera);
+            document.getElementById('clearConsoleBtn').addEventListener('click', () => {
+                document.getElementById('consoleLog').innerHTML = '';
+            });
+            document.getElementById('clearCubesBtn').addEventListener('click', removeAllCubes);
+            
+            document.getElementById('spawnCubeBtn').addEventListener('click', spawnCube);
+            document.getElementById('btnAddCubeMobile').addEventListener('click', spawnCube);
+
+            log('Engine pronta.', 'success');
+            animate();
+        }
+
+        function createDefaultGrid() {
+            const floorGeo = new THREE.PlaneGeometry(100, 100);
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.9, metalness: 0.1 });
+            defaultFloorMesh = new THREE.Mesh(floorGeo, floorMat);
+            defaultFloorMesh.rotation.x = -Math.PI / 2;
+            defaultFloorMesh.receiveShadow = true;
+            scene.add(defaultFloorMesh);
+
+            defaultGridHelper = new THREE.GridHelper(100, 50, 0x6366f1, 0xcbd5e1);
+            defaultGridHelper.position.y = 0.005;
+            scene.add(defaultGridHelper);
+        }
+
+        function createDummyCharacter() {
+            if (currentModel) characterGroup.remove(currentModel);
+            currentModel = new THREE.Group();
+
+            const bodyGeo = new THREE.CylinderGeometry(0.35, 0.25, 1.3, 16);
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x4f46e5, roughness: 0.4 });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 0.85;
+            body.castShadow = true;
+            currentModel.add(body);
+
+            const headGeo = new THREE.SphereGeometry(0.28, 16, 16);
+            const headMat = new THREE.MeshStandardMaterial({ color: 0x818cf8, roughness: 0.3 });
+            const head = new THREE.Mesh(headGeo, headMat);
+            head.position.y = 1.7;
+            head.castShadow = true;
+            currentModel.add(head);
+
+            characterGroup.add(currentModel);
+            mixer = null;
+            updateBadge('Manequim Padrão');
+        }
+
+        function setupFileUploads() {
+            document.getElementById('envInput').addEventListener('change', (e) => {
+                if (e.target.files[0]) loadEnvironmentFile(e.target.files[0]);
+            });
+            document.getElementById('idleInput').addEventListener('change', (e) => {
+                if (e.target.files[0]) loadCharacterOrAnimation(e.target.files[0], 'idle');
+            });
+            document.getElementById('runInput').addEventListener('change', (e) => {
+                if (e.target.files[0]) loadCharacterOrAnimation(e.target.files[0], 'run');
+            });
+            document.getElementById('jumpInput').addEventListener('change', (e) => {
+                if (e.target.files[0]) loadCharacterOrAnimation(e.target.files[0], 'jump');
+            });
+            document.getElementById('importModelSceneBtn').addEventListener('click', () => {
+                document.getElementById('sceneModelInput').click();
+            });
+            document.getElementById('sceneModelInput').addEventListener('change', (e) => {
+                const file = e.target.files && e.target.files[0];
+                if (!file) return;
+                loadModelForScenePlacement(file);
+                e.target.value = '';
+            });
+            document.getElementById('textureFileInput').addEventListener('change', (e) => {
+                const file = e.target.files && e.target.files[0];
+                if (file) applyTextureToSelected(file);
+                e.target.value = '';
+            });
+        }
+
+        function load3DAssetFile(file, onLoaded, onError) {
+            const fileName = file.name;
+            const ext = fileName.split('.').pop().toLowerCase();
+            const url = URL.createObjectURL(file);
+
+            const success = (obj, animations = []) => {
+                try {
+                    onLoaded(obj, animations, fileName, ext);
+                } finally {
+                    URL.revokeObjectURL(url);
+                }
+            };
+            const error = (err) => {
+                if (onError) onError(err);
+                else log(`Erro ao carregar ${fileName}: ${err?.message || err}`, 'error');
+                URL.revokeObjectURL(url);
+            };
+
+            if (ext === 'fbx') {
+                fbxLoader.load(url, f => success(f, f.animations || []), undefined, error);
+            } else if (ext === 'glb' || ext === 'gltf') {
+                gltfLoader.load(url, g => success(g.scene, g.animations || []), undefined, error);
+            } else if (ext === 'obj') {
+                objLoader.load(url, o => success(o, []), undefined, error);
+            } else {
+                error(new Error(`Formato não suportado: .${ext}`));
+            }
+        }
+
+        function prepareImported3DObject(obj) {
+            if (!obj) return obj;
+            obj.traverse(child => {
+                if (child.isMesh || child.isSkinnedMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                    child.frustumCulled = false;
+                    if (child.material) {
+                        const materials = Array.isArray(child.material) ? child.material : [child.material];
+                        materials.forEach(mat => {
+                            if (!mat) return;
+                            mat.side = THREE.DoubleSide;
+                            mat.needsUpdate = true;
+                        });
+                    }
+                    if (child.geometry && child.geometry.attributes && child.geometry.attributes.position && !child.geometry.attributes.normal) {
+                        child.geometry.computeVertexNormals();
+                    }
+                }
+            });
+            obj.updateMatrixWorld(true);
+            return obj;
+        }
+
+        function cloneImportedObject(source) {
+            if (THREE.SkeletonUtils && typeof THREE.SkeletonUtils.clone === 'function') {
+                return THREE.SkeletonUtils.clone(source);
+            }
+            return source.clone(true);
+        }
+
+        function loadModelForScenePlacement(file) {
+            const fileName = file.name;
+            const ext = fileName.split('.').pop().toLowerCase();
+            if (!['fbx', 'glb', 'gltf', 'obj'].includes(ext)) {
+                log('Selecione um arquivo 3D válido (.FBX, .GLB ou .OBJ).', 'warn');
+                return;
+            }
+            log(`Importando modelo 3D [${ext.toUpperCase()}]: ${fileName}...`, 'info');
+            load3DAssetFile(file, (obj) => {
+                prepareImported3DObject(obj);
+                obj.updateMatrixWorld(true);
+                const box = new THREE.Box3().setFromObject(obj);
+                const size = box.getSize(new THREE.Vector3());
+                const maxDim = Math.max(size.x, size.y, size.z);
+                if (maxDim > 0) obj.scale.multiplyScalar(1.5 / maxDim);
+                obj.updateMatrixWorld(true);
+                pendingModelPlacement = { object: obj, name: fileName, sourceFile: file };
+                document.getElementById('canvas-container').style.cursor = 'crosshair';
+                log(`Modelo "${fileName}" carregado. Clique no chão da cena para definir o local do obstáculo. Pressione ESC para cancelar.`, 'success');
+            }, (err) => {
+                pendingModelPlacement = null;
+                document.getElementById('canvas-container').style.cursor = '';
+                log(`Falha ao importar modelo "${fileName}": ${err?.message || err}`, 'error');
+            });
+        }
+
+        function placePendingModelAt(point) {
+            if (!pendingModelPlacement || !point) return false;
+            const pending = pendingModelPlacement;
+
+            const root = createEditableObstacleRoot(
+                pending.object,
+                pending.name,
+                new THREE.Vector3(point.x, 0, point.z)
+            );
+            const model = root.userData.model;
+            root.updateMatrixWorld(true);
+            const bounds = new THREE.Box3().setFromObject(model);
+            if (bounds.isEmpty()) {
+                log(`O modelo "${pending.name}" não possui malhas visíveis.`, 'error');
+                return false;
+            }
+            const center = bounds.getCenter(new THREE.Vector3());
+            const bottom = bounds.min.y;
+            model.position.x += point.x - center.x;
+            model.position.z += point.z - center.z;
+            model.position.y -= bottom;
+            root.updateMatrixWorld(true);
+
+            scene.add(root);
+            root.updateMatrixWorld(true);
+
+            const finalBounds = new THREE.Box3().setFromObject(root);
+            const dimensions = finalBounds.getSize(new THREE.Vector3());
+            const obstacle = {
+                id: 'obj_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                name: pending.name,
+                sourceFile: pending.sourceFile || null,
+                group: root,
+                width: Math.max(dimensions.x, 0.001),
+                height: Math.max(dimensions.y, 0.001),
+                depth: Math.max(dimensions.z, 0.001),
+                baseWidth: Math.max(dimensions.x, 0.001),
+                baseHeight: Math.max(dimensions.y, 0.001),
+                baseDepth: Math.max(dimensions.z, 0.001),
+                x: root.position.x, y: root.position.y, z: root.position.z,
+                rotationX: 0, rotationY: 0, rotationZ: 0,
+                scaleX: 1, scaleY: 1, scaleZ: 1
+            };
+            root.userData.obstacleData = obstacle;
+            root.traverse(child => {
+                child.userData.obstacleData = obstacle;
+                child.userData.obstacleRoot = root;
+            });
+            obstacleCubes.push(obstacle);
+
+            pendingModelPlacement = null;
+            document.getElementById('canvas-container').style.cursor = '';
+            selectCube(obstacle);
+            syncObstacleTransform(obstacle);
+            updateCubesListUI();
+            recordObstacleHistory();
+            log(`Modelo "${pending.name}" inserido com sucesso em (X: ${point.x.toFixed(2)}, Z: ${point.z.toFixed(2)}).`, 'success');
+            return true;
+        }
+
+        function duplicateSelectedFromContext() {
+            document.getElementById('objectContextMenu').classList.add('hidden');
+            if (!selectedCube || !selectedCube.group) {
+                log('Selecione um obstáculo para duplicar.', 'warn');
+                return;
+            }
+
+            const sourceObstacle = selectedCube;
+            const sourceFile = sourceObstacle.sourceFile;
+
+            // Para modelos importados, reabre o arquivo original e cria uma nova
+            // instância independente, em vez de clonar a instância já posicionada.
+            if (sourceFile instanceof File) {
+                const targetPoint = new THREE.Vector3(
+                    sourceObstacle.group.position.x + 1.5,
+                    0,
+                    sourceObstacle.group.position.z + 1.5
+                );
+                log(`Carregando novamente o modelo "${sourceObstacle.name}" para inserir outra instância...`, 'info');
+
+                load3DAssetFile(sourceFile, (obj) => {
+                    prepareImported3DObject(obj);
+                    obj.updateMatrixWorld(true);
+                    const box = new THREE.Box3().setFromObject(obj);
+                    const size = box.getSize(new THREE.Vector3());
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    if (maxDim > 0) obj.scale.multiplyScalar(1.5 / maxDim);
+                    obj.updateMatrixWorld(true);
+
+                    pendingModelPlacement = {
+                        object: obj,
+                        name: sourceObstacle.name + ' (Cópia)',
+                        sourceFile: sourceFile
+                    };
+                    if (placePendingModelAt(targetPoint)) {
+                        log(`Uma nova instância do arquivo "${sourceFile.name}" foi carregada na cena.`, 'success');
+                    }
+                }, (err) => {
+                    log(`Não foi possível carregar novamente "${sourceFile.name}": ${err?.message || err}`, 'error');
+                });
+                return;
+            }
+
+            // Objetos criados internamente (por exemplo, cubo padrão) não têm
+            // arquivo de origem; nesses casos, a cópia da geometria é o fallback.
+            const sourceRoot = sourceObstacle.group;
+            sourceRoot.updateMatrixWorld(true);
+            const newGroup = cloneObstacleGroup(sourceRoot);
+            newGroup.name = sourceRoot.name || sourceObstacle.name;
+            newGroup.position.copy(sourceRoot.position);
+            newGroup.position.x += 1.5;
+            newGroup.position.z += 1.5;
+            newGroup.rotation.copy(sourceRoot.rotation);
+            newGroup.scale.copy(sourceRoot.scale);
+            newGroup.visible = true;
+            newGroup.updateMatrixWorld(true);
+
+            const newObstacle = {
+                id: 'obj_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                name: sourceObstacle.name + ' (Cópia)',
+                sourceFile: null,
+                group: newGroup,
+                width: sourceObstacle.width,
+                height: sourceObstacle.height,
+                depth: sourceObstacle.depth,
+                baseWidth: sourceObstacle.baseWidth || sourceObstacle.width,
+                baseHeight: sourceObstacle.baseHeight || sourceObstacle.height,
+                baseDepth: sourceObstacle.baseDepth || sourceObstacle.depth,
+                x: newGroup.position.x, y: newGroup.position.y, z: newGroup.position.z,
+                rotationX: newGroup.rotation.x, rotationY: newGroup.rotation.y, rotationZ: newGroup.rotation.z,
+                scaleX: newGroup.scale.x, scaleY: newGroup.scale.y, scaleZ: newGroup.scale.z
+            };
+            rebindObstacleMetadata(newGroup, newObstacle, sourceRoot);
+            scene.add(newGroup);
+            newGroup.updateMatrixWorld(true);
+            obstacleCubes.push(newObstacle);
+            selectCube(newObstacle);
+            syncObstacleTransform(newObstacle);
+            updateCubesListUI();
+            recordObstacleHistory();
+            log(`Objeto interno duplicado na cena: "${newObstacle.name}".`, 'success');
+        }
+
+        // Clona a raiz inteira preservando a hierarquia de modelos importados.
+        function cloneObstacleGroup(sourceRoot) {
+            let cloned;
+            if (THREE.SkeletonUtils && typeof THREE.SkeletonUtils.clone === 'function') {
+                cloned = THREE.SkeletonUtils.clone(sourceRoot);
+            } else {
+                cloned = sourceRoot.clone(true);
+            }
+
+            // Materiais independentes: editar textura/cor da cópia não altera o original.
+            cloned.traverse(child => {
+                if (child.isMesh || child.isSkinnedMesh) {
+                    if (child.material) {
+                        child.material = Array.isArray(child.material)
+                            ? child.material.map(mat => mat ? mat.clone() : mat)
+                            : child.material.clone();
+                    }
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                    child.frustumCulled = false;
+                }
+            });
+
+            // Remapeia a referência userData.model para o nó correspondente da cópia.
+            const originalModel = sourceRoot.userData ? sourceRoot.userData.model : null;
+            if (originalModel) {
+                const originalNodes = [];
+                const clonedNodes = [];
+                sourceRoot.traverse(n => originalNodes.push(n));
+                cloned.traverse(n => clonedNodes.push(n));
+                const modelIndex = originalNodes.indexOf(originalModel);
+                cloned.userData.model = modelIndex >= 0 ? clonedNodes[modelIndex] : (cloned.children[0] || cloned);
+            } else {
+                cloned.userData.model = cloned.children[0] || cloned;
+            }
+            cloned.updateMatrixWorld(true);
+            return cloned;
+        }
+
+        function rebindObstacleMetadata(root, obstacle, sourceRoot = null) {
+            root.userData = root.userData || {};
+            root.userData.model = root.userData.model || root.children[0] || root;
+            root.userData.obstacleData = obstacle;
+            root.userData.obstacleRoot = root;
+            root.userData.editableObstacle = true;
+            root.traverse(child => {
+                child.userData = child.userData || {};
+                child.userData.obstacleData = obstacle;
+                child.userData.obstacleRoot = root;
+                child.userData.editableObstacle = true;
+            });
+            root.updateMatrixWorld(true);
+        }
+
+        function triggerApplyTexture() {
+            if (!selectedCube) {
+                log('Selecione um obstáculo para aplicar textura.', 'warn');
+                return;
+            }
+            document.getElementById('objectContextMenu').classList.add('hidden');
+            document.getElementById('textureFileInput').click();
+        }
+
+        function applyTextureToSelected(file) {
+            if (!selectedCube || !selectedCube.group) return;
+
+            const url = URL.createObjectURL(file);
+            log(`Carregando textura: ${file.name}...`, 'info');
+
+            textureLoader.load(url, (texture) => {
+                texture.encoding = THREE.sRGBEncoding;
+                texture.wrapS = THREE.RepeatWrapping;
+                texture.wrapT = THREE.RepeatWrapping;
+
+                selectedCube.group.traverse((child) => {
+                    if (child.isMesh) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(mat => {
+                                mat.map = texture;
+                                mat.color.setHex(0xffffff);
+                                mat.needsUpdate = true;
+                            });
+                        } else if (child.material) {
+                            child.material.map = texture;
+                            child.material.color.setHex(0xffffff);
+                            child.material.needsUpdate = true;
+                        }
+                    }
+                });
+
+                URL.revokeObjectURL(url);
+                log(`Textura "${file.name}" aplicada ao objeto "${selectedCube.name}".`, 'success');
+            }, undefined, (err) => {
+                log(`Erro ao carregar textura: ${err?.message || err}`, 'error');
+                URL.revokeObjectURL(url);
+            });
+        }
+
+        function loadEnvironmentFile(file) {
+            const fileName = file.name;
+            const ext = fileName.split('.').pop().toLowerCase();
+            log(`Carregando cenário [${ext.toUpperCase()}]: ${fileName}...`, 'info');
+            document.getElementById('envName').innerText = fileName;
+
+            const url = URL.createObjectURL(file);
+
+            const handleEnvSuccess = (obj) => {
+                if (environmentMesh) scene.remove(environmentMesh);
+                if (defaultFloorMesh) { scene.remove(defaultFloorMesh); defaultFloorMesh = null; }
+                if (defaultGridHelper) { scene.remove(defaultGridHelper); defaultGridHelper = null; }
+
+                environmentMesh = obj;
+                environmentMesh.traverse((child) => {
+                    if (child.isMesh) { child.receiveShadow = true; child.castShadow = true; }
+                });
+
+                scene.add(environmentMesh);
+                log('Cenário carregado com sucesso!', 'success');
+                resetCharacterAndCamera();
+                URL.revokeObjectURL(url);
+            };
+
+            const handleEnvError = (err) => {
+                log(`Erro ao carregar cenário: ${err.message || err}`, 'error');
+                URL.revokeObjectURL(url);
+            };
+
+            if (ext === 'fbx') fbxLoader.load(url, handleEnvSuccess, undefined, handleEnvError);
+            else if (ext === 'glb' || ext === 'gltf') gltfLoader.load(url, (g) => handleEnvSuccess(g.scene), undefined, handleEnvError);
+        }
+
+        function loadCharacterOrAnimation(file, type) {
+            const fileName = file.name;
+            log(`Carregando [${type.toUpperCase()}]: ${fileName}...`, 'info');
+
+            if (type === 'idle') document.getElementById('idleName').innerText = fileName;
+            if (type === 'run') document.getElementById('runName').innerText = fileName;
+            if (type === 'jump') document.getElementById('jumpName').innerText = fileName;
+
+            load3DAssetFile(file, (obj, animations, loadedName) => {
+                prepareImported3DObject(obj);
+                processLoadedAsset(obj, animations, type, loadedName);
+            }, (err) => {
+                log(`Erro ao ler arquivo: ${err?.message || err}`, 'error');
+            });
+        }
+
+        function processLoadedAsset(object3d, animations, type, fileName) {
+            if (type === 'idle') {
+                if (currentModel) characterGroup.remove(currentModel);
+                currentModel = object3d;
+                currentModel.traverse((c) => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+
+                currentModel.updateMatrixWorld(true);
+                const bbox = new THREE.Box3().setFromObject(currentModel);
+                const size = bbox.getSize(new THREE.Vector3());
+                if (size.y > 0) {
+                    const scaleFactor = 2.0 / size.y;
+                    currentModel.scale.setScalar(scaleFactor);
+                    currentModel.updateMatrixWorld(true);
+                }
+
+                characterGroup.add(currentModel);
+                mixer = new THREE.AnimationMixer(currentModel);
+                actions.idle = null; actions.run = null; actions.jump = null;
+
+                if (animations && animations.length > 0) {
+                    actions.idle = mixer.clipAction(animations[0]);
+                    actions.idle.play();
+                    currentActionState = 'idle';
+                }
+                updateBadge(`Personagem: ${fileName}`);
+            } else if (type === 'run' || type === 'jump') {
+                if (!currentModel || !mixer) return;
+                if (animations && animations.length > 0) {
+                    let clip = animations[0].clone();
+                    actions[type] = mixer.clipAction(clip);
+                    if (type === 'jump') {
+                        actions.jump.setLoop(THREE.LoopOnce, 1);
+                        actions.jump.clampWhenFinished = true;
+                    }
+                }
+            }
+        }
+
+        function fadeToState(newState) {
+            if (currentActionState === newState) return;
+            const prevAction = actions[currentActionState];
+            const nextAction = actions[newState];
+            currentActionState = newState;
+            if (prevAction && nextAction) {
+                nextAction.reset().fadeIn(0.25).play();
+                prevAction.crossFadeTo(nextAction, 0.25, true);
+            } else if (nextAction) {
+                nextAction.reset().play();
+            }
+        }
+
+        function setupBuilderInteraction() {
+            const container = document.getElementById('canvas-container');
+            const ctxMenu = document.getElementById('objectContextMenu');
+
+            container.addEventListener('pointerdown', (e) => {
+                if (e.button !== 0) return;
+
+                if (transformControls && transformControls.dragging) return;
+
+                if (pendingModelPlacement) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const placeRect = renderer.domElement.getBoundingClientRect();
+                    mouse.x = ((e.clientX - placeRect.left) / placeRect.width) * 2 - 1;
+                    mouse.y = -((e.clientY - placeRect.top) / placeRect.height) * 2 + 1;
+                    raycaster.setFromCamera(mouse, camera);
+
+                    let placementPoint = null;
+                    if (defaultFloorMesh) {
+                        const floorHits = raycaster.intersectObject(defaultFloorMesh, false);
+                        if (floorHits.length) placementPoint = floorHits[0].point.clone();
+                    }
+                    if (!placementPoint) {
+                        const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+                        const hit = new THREE.Vector3();
+                        if (raycaster.ray.intersectPlane(groundPlane, hit)) placementPoint = hit;
+                    }
+                    if (placementPoint) placePendingModelAt(placementPoint);
+                    else log('Não foi possível projetar o clique no piso da cena.', 'warn');
+                    return;
+                }
+
+                ctxMenu.classList.add('hidden');
+
+                const rect = renderer.domElement.getBoundingClientRect();
+                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+                const targets = obstacleCubes
+                    .filter(c => c && c.group)
+                    .map(c => c.group);
+
+                const hits = raycaster.intersectObjects(targets, true);
+                if (hits.length > 0) {
+                    let node = hits[0].object;
+                    let hitObj = null;
+
+                    while (node && !hitObj) {
+                        hitObj = node.userData && node.userData.obstacleData;
+                        node = node.parent;
+                    }
+
+                    if (!hitObj) {
+                        hitObj = obstacleCubes.find(c => {
+                            let n = hits[0].object;
+                            while (n) {
+                                if (n === c.group) return true;
+                                n = n.parent;
+                            }
+                            return false;
+                        });
+                    }
+
+                    if (hitObj) selectCube(hitObj);
+                }
+            });
+
+            container.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                const rect = renderer.domElement.getBoundingClientRect();
+                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+                const targets = obstacleCubes
+                    .filter(c => c && c.group)
+                    .map(c => c.group);
+
+                const hits = raycaster.intersectObjects(targets, true);
+                if (hits.length > 0) {
+                    let node = hits[0].object;
+                    let hitObj = null;
+
+                    while (node && !hitObj) {
+                        hitObj = node.userData && node.userData.obstacleData;
+                        node = node.parent;
+                    }
+
+                    if (!hitObj) {
+                        hitObj = obstacleCubes.find(c => {
+                            let n = hits[0].object;
+                            while (n) {
+                                if (n === c.group) return true;
+                                n = n.parent;
+                            }
+                            return false;
+                        });
+                    }
+
+                    if (hitObj) {
+                        selectCube(hitObj);
+                        document.getElementById('ctxMenuTitle').innerText = hitObj.name;
+                        document.getElementById('ctxScaleInput').value = hitObj.group.scale.x.toFixed(2);
+                        ctxMenu.style.left = `${e.clientX}px`;
+                        ctxMenu.style.top = `${e.clientY}px`;
+                        ctxMenu.classList.remove('hidden');
+                    }
+                } else {
+                    ctxMenu.classList.add('hidden');
+                    deselectCube();
+                }
+            });
+        }
+
+        function setTransformMode(mode) {
+            if (!transformControls || !selectedCube) { log('Selecione um obstáculo antes de usar este comando.', 'warn'); return; }
+            transformControls.setMode(mode);
+            document.getElementById('objectContextMenu').classList.add('hidden');
+            log(`Modo de Gizmo alterado para: ${mode.toUpperCase()}`, 'info');
+        }
+
+        function applyCtxScale() {
+            const input = document.getElementById('ctxScaleInput');
+            const val = parseFloat(input.value);
+            if (!selectedCube || !selectedCube.group || !isFinite(val) || val <= 0) return;
+
+            const currentScale = selectedCube.group.scale.clone();
+            const base = Math.max(Math.abs(currentScale.x), 0.0001);
+            const ratioY = currentScale.y / base;
+            const ratioZ = currentScale.z / base;
+            selectedCube.group.scale.set(val, val * ratioY, val * ratioZ);
+            selectedCube.group.updateMatrixWorld(true);
+            syncObstacleTransform(selectedCube);
+            recordObstacleHistory();
+
+            transformControls.attach(selectedCube.group);
+            input.value = selectedCube.group.scale.x.toFixed(2);
+            document.getElementById('objectContextMenu').classList.add('hidden');
+            renderer.render(scene, camera);
+            log(`Escala de "${selectedCube.name}" alterada para ${val.toFixed(2)}.`, 'success');
+        }
+
+        function deleteSelectedFromContext() {
+            document.getElementById('objectContextMenu').classList.add('hidden');
+            if (selectedCube) removeCube(selectedCube.id);
+        }
+
+        function createEditableObstacleRoot(source, name, spawnPos) {
+            const root = new THREE.Group();
+            root.name = name;
+            root.position.copy(spawnPos);
+            root.rotation.set(0, 0, 0);
+            root.scale.set(1, 1, 1);
+
+            const model = cloneImportedObject(source);
+            prepareImported3DObject(model);
+            model.position.set(0, 0, 0);
+            model.rotation.set(0, 0, 0);
+
+            root.add(model);
+
+            root.userData.editableObstacle = true;
+            root.userData.model = model;
+            root.userData.sourceName = name;
+
+            root.traverse(child => {
+                child.userData.obstacleRoot = root;
+                child.userData.editableObstacle = true;
+            });
+
+            root.updateMatrixWorld(true);
+            return root;
+        }
+
+        function syncObstacleTransform(obstacle) {
+            if (!obstacle || !obstacle.group) return;
+            const g = obstacle.group;
+
+            g.updateMatrix();
+            g.updateMatrixWorld(true);
+
+            obstacle.x = g.position.x;
+            obstacle.y = g.position.y;
+            obstacle.z = g.position.z;
+            obstacle.rotationX = g.rotation.x;
+            obstacle.rotationY = g.rotation.y;
+            obstacle.rotationZ = g.rotation.z;
+            obstacle.scaleX = g.scale.x;
+            obstacle.scaleY = g.scale.y;
+            obstacle.scaleZ = g.scale.z;
+
+            const box = new THREE.Box3().setFromObject(g);
+            const size = box.getSize(new THREE.Vector3());
+            obstacle.worldWidth = size.x;
+            obstacle.worldHeight = size.y;
+            obstacle.worldDepth = size.z;
+
+            if (renderer) renderer.render(scene, camera);
+        }
+
+        function spawnCube() {
+            const name = 'Cubo Padrão';
+            const spawnPos = characterGroup.position.clone().add(new THREE.Vector3(0, 0, 2.5));
+
+            const group = new THREE.Group();
+            group.name = name;
+            group.position.copy(spawnPos);
+
+            const w = 1.5, h = 1.5, d = 1.5;
+            const geometry = new THREE.BoxGeometry(w, h, d);
+            const material = new THREE.MeshStandardMaterial({ color: 0x4f46e5, roughness: 0.3 });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.y = h / 2;
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            group.add(mesh);
+            group.userData.editableObstacle = true;
+            group.userData.model = mesh;
+
+            scene.add(group);
+            group.updateMatrixWorld(true);
+
+            const bbox = new THREE.Box3().setFromObject(group);
+            const size = bbox.getSize(new THREE.Vector3());
+            const width = Math.max(size.x, 0.001);
+            const height = Math.max(size.y, 0.001);
+            const depth = Math.max(size.z, 0.001);
+
+            const cubeData = {
+                id: 'obj_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                name: name,
+                group: group,
+                width: width, height: height, depth: depth,
+                baseWidth: width, baseHeight: height, baseDepth: depth,
+                x: group.position.x, y: group.position.y, z: group.position.z,
+                rotationX: 0, rotationY: 0, rotationZ: 0,
+                scaleX: 1, scaleY: 1, scaleZ: 1
+            };
+
+            group.userData.obstacleData = cubeData;
+            group.traverse(child => {
+                child.userData.obstacleData = cubeData;
+                child.userData.obstacleRoot = group;
+            });
+
+            obstacleCubes.push(cubeData);
+            selectCube(cubeData);
+            syncObstacleTransform(cubeData);
+            updateCubesListUI();
+            recordObstacleHistory();
+            log(`Cubo inserido no cenário.`, 'success');
+        }
+
+        function selectCube(cubeObj) {
+            if (!cubeObj || !cubeObj.group || !transformControls) return;
+
+            selectedCube = cubeObj;
+
+            cubeObj.group.userData.obstacleData = cubeObj;
+            cubeObj.group.traverse(child => {
+                child.userData.obstacleData = cubeObj;
+                child.userData.obstacleRoot = cubeObj.group;
+            });
+
+            cubeObj.group.updateMatrixWorld(true);
+            transformControls.detach();
+            transformControls.attach(cubeObj.group);
+            transformControls.enabled = true;
+
+            if (!transformControls.getMode || !transformControls.getMode()) {
+                transformControls.setMode('translate');
+            }
+
+            syncObstacleTransform(cubeObj);
+            updateCubesListUI();
+            log(`Objeto selecionado: ${cubeObj.name}.`, 'info');
+        }
+
+        function deselectCube() {
+            if (transformControls) transformControls.detach();
+            selectedCube = null;
+            updateCubesListUI();
+        }
+
+        function updateSelectedObstacleState() {
+            if (!selectedCube || !selectedCube.group) return;
+            syncObstacleTransform(selectedCube);
+        }
+
+        window.removeCube = function(id) {
+            const index = obstacleCubes.findIndex(c => c.id === id);
+            if (index !== -1) {
+                if (selectedCube && selectedCube.id === id) deselectCube();
+                scene.remove(obstacleCubes[index].group);
+                obstacleCubes.splice(index, 1);
+                updateCubesListUI();
+                recordObstacleHistory();
+                log('Obstáculo removido.', 'info');
+            }
+        };
+
+        function removeAllCubes() {
+            deselectCube();
+            obstacleCubes.forEach(c => scene.remove(c.group));
+            obstacleCubes = [];
+            updateCubesListUI();
+            recordObstacleHistory();
+            log('Todos os obstáculos removidos.', 'info');
+        }
+
+        function updateCubesListUI() {
+            document.getElementById('cubeCount').innerText = obstacleCubes.length;
+            const container = document.getElementById('cubesListContainer');
+            if (obstacleCubes.length === 0) {
+                container.innerHTML = `<span class="text-slate-400 italic">Nenhum obstáculo adicionado ainda.</span>`;
+                return;
+            }
+
+            container.innerHTML = '';
+            obstacleCubes.forEach((c, idx) => {
+                const isSelected = selectedCube && selectedCube.id === c.id;
+                const row = document.createElement('div');
+                row.className = `flex items-center justify-between p-1.5 rounded border transition cursor-pointer ${
+                    isSelected ? 'bg-amber-100 dark:bg-amber-950/60 border-amber-400 font-bold' : 'bg-white dark:bg-slate-800 border-slate-200'
+                }`;
+                
+                row.onclick = () => selectCube(c);
+
+                row.oncontextmenu = (e) => {
+                    e.preventDefault();
+                    selectCube(c);
+                    const ctxMenu = document.getElementById('objectContextMenu');
+                    document.getElementById('ctxMenuTitle').innerText = c.name;
+                    document.getElementById('ctxScaleInput').value = c.group.scale.x.toFixed(2);
+                    ctxMenu.style.left = `${e.clientX}px`;
+                    ctxMenu.style.top = `${e.clientY}px`;
+                    ctxMenu.classList.remove('hidden');
+                };
+
+                row.innerHTML = `
+                    <span class="font-mono text-[10px] truncate max-w-[170px]">#${idx+1} ${c.name}</span>
+                    <button onclick="event.stopPropagation(); removeCube('${c.id}')" class="text-[10px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded font-bold">Excluir</button>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function captureObstacleSnapshot() {
+            return {
+                obstacles: obstacleCubes.map(ob => {
+                    const root = cloneObstacleGroup(ob.group);
+                    const data = { ...ob, group: root };
+                    rebindObstacleMetadata(root, data, ob.group);
+                    return data;
+                }),
+                selectedId: selectedCube ? selectedCube.id : null
+            };
+        }
+
+        function initializeObstacleHistory() {
+            obstacleHistory = [captureObstacleSnapshot()];
+            obstacleHistoryIndex = 0;
+        }
+
+        function recordObstacleHistory() {
+            if (restoringHistory) return;
+            if (obstacleHistoryIndex < obstacleHistory.length - 1) {
+                obstacleHistory = obstacleHistory.slice(0, obstacleHistoryIndex + 1);
+            }
+            obstacleHistory.push(captureObstacleSnapshot());
+            obstacleHistoryIndex = obstacleHistory.length - 1;
+            // Limita o histórico para evitar consumo excessivo de memória.
+            if (obstacleHistory.length > 60) {
+                obstacleHistory.shift();
+                obstacleHistoryIndex--;
+            }
+        }
+
+        function restoreObstacleSnapshot(snapshot) {
+            if (!snapshot) return;
+            restoringHistory = true;
+            if (transformControls) transformControls.detach();
+            obstacleCubes.forEach(ob => { if (ob.group) scene.remove(ob.group); });
+            obstacleCubes = snapshot.obstacles.map(saved => {
+                const root = cloneObstacleGroup(saved.group);
+                const ob = { ...saved, group: root };
+                rebindObstacleMetadata(root, ob, saved.group);
+                scene.add(root);
+                root.updateMatrixWorld(true);
+                return ob;
+            });
+            selectedCube = obstacleCubes.find(ob => ob.id === snapshot.selectedId) || null;
+            if (selectedCube && transformControls) transformControls.attach(selectedCube.group);
+            updateCubesListUI();
+            obstacleCubes.forEach(syncObstacleTransform);
+            if (renderer) renderer.render(scene, camera);
+            restoringHistory = false;
+        }
+
+        function undoObstacleEdit() {
+            if (obstacleHistoryIndex <= 0) return;
+            obstacleHistoryIndex--;
+            restoreObstacleSnapshot(obstacleHistory[obstacleHistoryIndex]);
+            log('Ação desfeita (Ctrl+Z).', 'info');
+        }
+
+        function redoObstacleEdit() {
+            if (obstacleHistoryIndex >= obstacleHistory.length - 1) return;
+            obstacleHistoryIndex++;
+            restoreObstacleSnapshot(obstacleHistory[obstacleHistoryIndex]);
+            log('Ação refeita (Ctrl+Y).', 'info');
+        }
+
+        function checkCollisions(nextPos) {
+            const charRadius = 0.35;
+            for (let c of obstacleCubes) {
+                const scaleX = c.group.scale.x;
+                const scaleZ = c.group.scale.z;
+                const halfW = (c.width * scaleX) / 2;
+                const halfD = (c.depth * scaleZ) / 2;
+                const minX = c.x - halfW - charRadius;
+                const maxX = c.x + halfW + charRadius;
+                const minZ = c.z - halfD - charRadius;
+                const maxZ = c.z + halfD + charRadius;
+
+                if (nextPos.x >= minX && nextPos.x <= maxX && nextPos.z >= minZ && nextPos.z <= maxZ) {
+                    const cubeTop = c.y + (c.height * c.group.scale.y);
+                    if (characterGroup.position.y >= cubeTop - 0.2) return cubeTop;
+                    else return false;
+                }
+            }
+            return null;
+        }
+
+        function setupInputControls() {
+            window.addEventListener('keydown', (e) => {
+                const target = e.target;
+                const isTyping = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+                if ((e.ctrlKey || e.metaKey) && !isTyping) {
+                    const key = e.key.toLowerCase();
+                    if (key === 'z' && e.shiftKey) { e.preventDefault(); redoObstacleEdit(); return; }
+                    if (key === 'z') { e.preventDefault(); undoObstacleEdit(); return; }
+                    if (key === 'y') { e.preventDefault(); redoObstacleEdit(); return; }
+                }
+                if (e.key === ' ' || e.code === 'Space') keys[' '] = true;
+                if (keys.hasOwnProperty(e.key)) keys[e.key] = true;
+                if (keys.hasOwnProperty(e.code)) keys[e.code] = true;
+            });
+
+            window.addEventListener('keyup', (e) => {
+                if (e.key === ' ' || e.code === 'Space') keys[' '] = false;
+                if (keys.hasOwnProperty(e.key)) keys[e.key] = false;
+                if (keys.hasOwnProperty(e.code)) keys[e.code] = false;
+            });
+        }
+
+        function isMoving() {
+            return keys.w || keys.a || keys.s || keys.d || keys.ArrowUp || keys.ArrowLeft || keys.ArrowDown || keys.ArrowRight;
+        }
+
+        function updateGroundHeight() {
+            if (environmentMesh) {
+                const origin = characterGroup.position.clone();
+                origin.y += 10.0;
+                raycaster.set(origin, new THREE.Vector3(0, -1, 0));
+                const envMeshes = [];
+                environmentMesh.traverse(child => { if (child.isMesh) envMeshes.push(child); });
+                const hits = raycaster.intersectObjects(envMeshes, true);
+                if (hits.length > 0) { groundY = hits[0].point.y; return; }
+            }
+            groundY = 0;
+        }
+
+        function resetCharacterAndCamera() {
+            characterGroup.position.set(0, groundY, 0);
+            velocityY = 0;
+            isGrounded = true;
+            controls.target.set(0, 1.2, 0);
+            camera.position.set(0, 4, 8);
+            controls.update();
+            log('Câmera resetada.', 'info');
+        }
+
+        function updateBadge(txt) {
+            document.getElementById('currentStatusBadge').innerText = txt;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            if (mixer) mixer.update(delta);
+
+            if (characterGroup) {
+                const moving = isMoving();
+                updateGroundHeight();
+
+                if (keys[' '] && isGrounded) {
+                    velocityY = jumpVelocity;
+                    isGrounded = false;
+                    fadeToState('jump');
+                }
+
+                if (!isGrounded) {
+                    velocityY += gravity * delta;
+                    characterGroup.position.y += velocityY * delta;
+                    const topCollision = checkCollisions(characterGroup.position);
+                    const effectiveFloor = topCollision !== null && topCollision > groundY ? topCollision : groundY;
+
+                    if (characterGroup.position.y <= effectiveFloor) {
+                        characterGroup.position.y = effectiveFloor;
+                        velocityY = 0;
+                        isGrounded = true;
+                        fadeToState(moving ? 'run' : 'idle');
+                    }
+                } else {
+                    const topCollision = checkCollisions(characterGroup.position);
+                    const effectiveFloor = topCollision !== null && topCollision > groundY ? topCollision : groundY;
+                    characterGroup.position.y = effectiveFloor;
+                    fadeToState(moving ? 'run' : 'idle');
+                }
+
+                if (moving) {
+                    const camDir = new THREE.Vector3();
+                    camera.getWorldDirection(camDir);
+                    camDir.y = 0;
+                    camDir.normalize();
+
+                    const camRight = new THREE.Vector3().crossVectors(camDir, new THREE.Vector3(0, 1, 0)).normalize();
+                    const moveVector = new THREE.Vector3(0, 0, 0);
+
+                    if (keys.w || keys.ArrowUp) moveVector.add(camDir);
+                    if (keys.s || keys.ArrowDown) moveVector.sub(camDir);
+                    if (keys.d || keys.ArrowRight) moveVector.add(camRight);
+                    if (keys.a || keys.ArrowLeft) moveVector.sub(camRight);
+
+                    if (moveVector.lengthSq() > 0) {
+                        moveVector.normalize();
+                        const nextPos = characterGroup.position.clone().addScaledVector(moveVector, moveSpeed * delta);
+                        const collisionResult = checkCollisions(nextPos);
+
+                        if (collisionResult !== false) characterGroup.position.copy(nextPos);
+
+                        const targetAngle = Math.atan2(moveVector.x, moveVector.z);
+                        let angleDiff = targetAngle - characterGroup.rotation.y;
+                        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                        characterGroup.rotation.y += angleDiff * rotationSpeed * delta;
+                    }
+                }
+
+                const camOffset = new THREE.Vector3().subVectors(camera.position, controls.target);
+                controls.target.copy(characterGroup.position).add(new THREE.Vector3(0, 1.2, 0));
+                camera.position.copy(controls.target).add(camOffset);
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function onResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
