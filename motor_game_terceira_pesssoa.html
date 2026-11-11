@@ -71,6 +71,28 @@
     <!-- 3D Viewport -->
     <div id="canvas-container"></div>
 
+    <!-- Modal Gerenciador de Projetos -->
+    <div id="projectsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+        <div class="glass-card w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4 border border-slate-300 dark:border-slate-700">
+            <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+                <h3 class="font-bold text-base flex items-center gap-2 text-slate-900 dark:text-white">
+                    <span>📁</span> Gerenciador de Projetos
+                </h3>
+                <button onclick="toggleProjectsModal(false)" class="text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold text-lg">✕</button>
+            </div>
+            
+            <div id="projectsListContainer" class="max-h-60 overflow-y-auto space-y-2 pr-1">
+                <!-- Lista de projetos renderizada via JS -->
+            </div>
+
+            <div class="pt-2 flex justify-end gap-2 border-t border-slate-200 dark:border-slate-700">
+                <button onclick="toggleProjectsModal(false)" class="px-4 py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-xs font-semibold rounded-xl transition">
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Context Menu for Right Click on Objects or List items -->
     <div id="objectContextMenu" class="hidden absolute z-30 glass-card p-2 rounded-xl shadow-2xl space-y-1 text-xs w-52 border border-slate-300 dark:border-slate-700">
         <div class="px-2 py-1 font-bold text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
@@ -105,24 +127,31 @@
         </button>
     </div>
 
+    <!-- Botão Flutuante para Sair do Modo de Teste do Jogo -->
+    <div id="gamePlayModeUI" class="hidden absolute top-4 left-1/2 -translate-x-1/2 z-40">
+        <button id="exitGameModeBtn" onclick="toggleGameMode(false)" class="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold text-sm rounded-full shadow-2xl transition flex items-center gap-2 border-2 border-white/20">
+            <span>❌</span> Sair do Modo de Teste
+        </button>
+    </div>
+
     <!-- Input Oculto para Carregamento de Texturas -->
     <input type="file" id="textureFileInput" accept="image/*" class="hidden">
 
     <!-- UI Overlay Layer -->
-    <div class="relative z-10 p-4 h-full flex flex-col justify-between pointer-events-none">
+    <div id="uiOverlay" class="relative z-10 p-4 h-full flex flex-col justify-between pointer-events-none">
         
         <!-- Top Header & Upload Control Panel -->
         <div class="flex flex-col lg:flex-row justify-between items-start gap-4">
             
             <!-- Left Side Upload & Builder Panel -->
-            <div class="glass-card p-5 rounded-2xl w-full max-w-sm pointer-events-auto shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div id="leftConfigPanel" class="glass-card p-5 rounded-2xl w-full max-w-sm pointer-events-auto shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
                 <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
                     <div>
                         <h1 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                             <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
                             Estúdio 3D Interativo
                         </h1>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Cenário, Personagem e Editor de Obstáculos.</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Projeto Ativo: <span id="currentProjectTitle" class="font-bold text-indigo-600 dark:text-indigo-400">Projeto Padrão</span></p>
                     </div>
                     <!-- Theme Toggle Button -->
                     <button id="themeToggleBtn" title="Alternar Modo Dark/Light" class="p-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-700 transition">
@@ -130,6 +159,21 @@
                         <svg id="moonIcon" class="w-4 h-4 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
                     </button>
                 </div>
+
+                <!-- Painel de Gerenciamento de Projeto (Salvar Como / Meus Projetos) -->
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="handleSaveAsProject()" class="py-2 px-3 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-xs text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1.5">
+                        <span>💾</span> Salvar Como...
+                    </button>
+                    <button onclick="openProjectsManager()" class="py-2 px-3 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 active:scale-95 text-xs text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1.5">
+                        <span>📂</span> Meus Projetos
+                    </button>
+                </div>
+
+                <!-- Botão de Testar Jogo -->
+                <button id="playGameBtn" onclick="toggleGameMode(true)" class="w-full py-2.5 px-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-95 text-xs text-white font-extrabold rounded-xl transition shadow-lg flex items-center justify-center gap-2 tracking-wide uppercase">
+                    <span>🎮</span> Testar Jogo
+                </button>
 
                 <!-- Tabs selector for Panel -->
                 <div class="flex bg-slate-200/80 dark:bg-slate-800 p-1 rounded-xl text-xs font-semibold">
@@ -245,18 +289,23 @@
                 </div>
 
                 <!-- Action Buttons -->
-                <div class="pt-2 flex gap-2 border-t border-slate-200 dark:border-slate-700">
-                    <button id="resetCamBtn" class="flex-1 py-2 px-3 bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 dark:hover:bg-slate-600 active:scale-95 text-xs text-white font-medium rounded-lg transition shadow">
-                        Resetar Posição
-                    </button>
-                    <button id="clearConsoleBtn" class="py-2 px-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 active:scale-95 text-xs text-slate-700 dark:text-slate-300 font-medium rounded-lg transition">
-                        Limpar Log
+                <div class="pt-2 flex flex-col gap-2 border-t border-slate-200 dark:border-slate-700">
+                    <div class="flex gap-2">
+                        <button id="resetCamBtn" class="flex-1 py-2 px-3 bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 dark:hover:bg-slate-600 active:scale-95 text-xs text-white font-medium rounded-lg transition shadow">
+                            Resetar Posição
+                        </button>
+                        <button id="clearConsoleBtn" class="py-2 px-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 active:scale-95 text-xs text-slate-700 dark:text-slate-300 font-medium rounded-lg transition">
+                            Limpar Log
+                        </button>
+                    </div>
+                    <button id="clearStorageBtn" onclick="clearAllPersistedData()" class="w-full py-1.5 px-3 bg-rose-100 hover:bg-rose-200 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300 text-[11px] font-bold rounded-lg transition border border-rose-300 dark:border-rose-800">
+                        🗑️ Limpar Todos os Projetos
                     </button>
                 </div>
             </div>
 
             <!-- Right Info Panel (Desktop) -->
-            <div class="glass-card p-4 rounded-2xl pointer-events-auto text-xs text-slate-600 dark:text-slate-300 max-w-xs shadow-xl hidden md:block space-y-2">
+            <div id="rightInfoPanel" class="glass-card p-4 rounded-2xl pointer-events-auto text-xs text-slate-600 dark:text-slate-300 max-w-xs shadow-xl hidden md:block space-y-2">
                 <div class="font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
                     <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                     Instruções & Controles
@@ -279,7 +328,7 @@
         </div>
 
         <!-- Touch Controls (Mobile) -->
-        <div class="pointer-events-auto sm:hidden self-center my-2 glass-card p-3 rounded-2xl flex items-center gap-4 shadow-xl">
+        <div id="touchControlsPanel" class="pointer-events-auto sm:hidden self-center my-2 glass-card p-3 rounded-2xl flex items-center gap-4 shadow-xl">
             <div class="grid grid-cols-3 gap-1 w-32 h-32">
                 <div></div>
                 <button id="btnUp" class="bg-slate-200 dark:bg-slate-800 active:bg-indigo-500 active:text-white rounded-lg flex items-center justify-center text-lg font-bold">↑</button>
@@ -299,7 +348,7 @@
         </div>
 
         <!-- Dynamic On-Screen Console / Terminal -->
-        <div class="glass-card p-3 rounded-xl pointer-events-auto w-full max-w-3xl self-center max-h-36 flex flex-col shadow-xl">
+        <div id="consoleTerminalPanel" class="glass-card p-3 rounded-xl pointer-events-auto w-full max-w-3xl self-center max-h-36 flex flex-col shadow-xl">
             <div class="flex items-center justify-between pb-1.5 border-b border-slate-200 dark:border-slate-700 text-[11px] font-mono text-slate-500 dark:text-slate-400">
                 <span class="flex items-center gap-1.5 font-bold text-slate-700 dark:text-slate-300">
                     <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -315,6 +364,136 @@
 
     <!-- Script Application Logic -->
     <script>
+        // IndexedDB Manager para gerenciamento de múltiplos projetos e binários
+        const DB_NAME = 'Studio3DDB_MultiProject';
+        const DB_VERSION = 1;
+        let dbInstance = null;
+        let currentProjectId = 'default_project';
+        let currentProjectName = 'Projeto Padrão';
+
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                if (dbInstance) return resolve(dbInstance);
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains('projects')) db.createObjectStore('projects', { keyPath: 'id' });
+                    if (!db.objectStoreNames.contains('files')) db.createObjectStore('files');
+                };
+                request.onsuccess = (e) => {
+                    dbInstance = e.target.result;
+                    resolve(dbInstance);
+                };
+                request.onerror = (e) => reject(e);
+            });
+        }
+
+        async function saveFileToDB(key, fileObj) {
+            try {
+                const buffer = await fileObj.arrayBuffer();
+                const db = await openDB();
+                const tx = db.transaction('files', 'readwrite');
+                const store = tx.objectStore('files');
+                store.put({ buffer, name: fileObj.name, type: fileObj.type }, key);
+            } catch (err) {
+                console.error('Erro ao salvar arquivo no DB:', err);
+            }
+        }
+
+        async function getFileFromDB(key) {
+            try {
+                const db = await openDB();
+                return new Promise((resolve) => {
+                    const tx = db.transaction('files', 'readonly');
+                    const store = tx.objectStore('files');
+                    const req = store.get(key);
+                    req.onsuccess = () => {
+                        if (req.result && req.result.buffer) {
+                            resolve(new File([req.result.buffer], req.result.name, { type: req.result.type }));
+                        } else {
+                            resolve(null);
+                        }
+                    };
+                    req.onerror = () => resolve(null);
+                });
+            } catch (err) {
+                return null;
+            }
+        }
+
+        async function getAllProjectsFromDB() {
+            try {
+                const db = await openDB();
+                return new Promise((resolve) => {
+                    const tx = db.transaction('projects', 'readonly');
+                    const store = tx.objectStore('projects');
+                    const req = store.getAll();
+                    req.onsuccess = () => resolve(req.result || []);
+                    req.onerror = () => resolve([]);
+                });
+            } catch (err) {
+                return [];
+            }
+        }
+
+        async function saveProjectToDB(projId, projName, projData) {
+            try {
+                const db = await openDB();
+                const tx = db.transaction('projects', 'readwrite');
+                const store = tx.objectStore('projects');
+                const record = {
+                    id: projId,
+                    name: projName,
+                    updatedAt: new Date().toISOString(),
+                    data: projData
+                };
+                store.put(record);
+            } catch (err) {
+                console.error('Erro ao salvar projeto no DB:', err);
+            }
+        }
+
+        async function getProjectFromDB(projId) {
+            try {
+                const db = await openDB();
+                return new Promise((resolve) => {
+                    const tx = db.transaction('projects', 'readonly');
+                    const store = tx.objectStore('projects');
+                    const req = store.get(projId);
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => resolve(null);
+                });
+            } catch (err) {
+                return null;
+            }
+        }
+
+        async function deleteProjectFromDB(projId) {
+            try {
+                const db = await openDB();
+                const tx = db.transaction('projects', 'readwrite');
+                const store = tx.objectStore('projects');
+                store.delete(projId);
+            } catch (err) {
+                console.error('Erro ao deletar projeto:', err);
+            }
+        }
+
+        async function clearAllPersistedData() {
+            if (!confirm('Deseja realmente apagar todos os projetos e arquivos salvos? Esta ação é irreversível.')) return;
+            try {
+                const db = await openDB();
+                const tx = db.transaction(['files', 'projects'], 'readwrite');
+                tx.objectStore('files').clear();
+                tx.objectStore('projects').clear();
+                localStorage.removeItem('active_project_id');
+                log('Dados totalmente limpos. Recarregando...', 'warn');
+                setTimeout(() => window.location.reload(), 1000);
+            } catch (err) {
+                log('Erro ao limpar dados salvos.', 'error');
+            }
+        }
+
         let scene, camera, renderer, controls, transformControls;
         let characterGroup, currentModel = null;
         let environmentMesh = null;
@@ -322,12 +501,12 @@
         let ambientLight, hemiLight;
 
         let pendingModelPlacement = null;
+        let isGameTestingMode = false;
 
         let obstacleCubes = [];
         let selectedCube = null;
-        let pendingTextureTarget = 'obstacle'; // 'obstacle' ou 'floor'
+        let pendingTextureTarget = 'obstacle';
 
-        // Histórico de edição (Ctrl+Z / Ctrl+Y)
         let obstacleHistory = [];
         let obstacleHistoryIndex = -1;
         let restoringHistory = false;
@@ -358,6 +537,7 @@
 
         function log(msg, type = 'info') {
             const consoleLog = document.getElementById('consoleLog');
+            if (!consoleLog) return;
             const time = new Date().toLocaleTimeString();
             const el = document.createElement('div');
             
@@ -371,6 +551,29 @@
             
             consoleLog.appendChild(el);
             consoleLog.scrollTop = consoleLog.scrollHeight;
+        }
+
+        function toggleGameMode(testing) {
+            isGameTestingMode = testing;
+            const leftPanel = document.getElementById('leftConfigPanel');
+            const rightPanel = document.getElementById('rightInfoPanel');
+            const consolePanel = document.getElementById('consoleTerminalPanel');
+            const gamePlayUI = document.getElementById('gamePlayModeUI');
+
+            if (testing) {
+                deselectCube();
+                if (leftPanel) leftPanel.classList.add('hidden');
+                if (rightPanel) rightPanel.classList.add('hidden');
+                if (consolePanel) consolePanel.classList.add('hidden');
+                if (gamePlayUI) gamePlayUI.classList.remove('hidden');
+                log('Modo de Teste iniciado.', 'info');
+            } else {
+                if (leftPanel) leftPanel.classList.remove('hidden');
+                if (rightPanel) rightPanel.classList.remove('hidden');
+                if (consolePanel) consolePanel.classList.remove('hidden');
+                if (gamePlayUI) gamePlayUI.classList.add('hidden');
+                log('Retornado ao modo de edição e configurações.', 'info');
+            }
         }
 
         function switchTab(tab) {
@@ -398,25 +601,34 @@
             const btn = document.getElementById('themeToggleBtn');
             btn.addEventListener('click', () => {
                 isDarkMode = !isDarkMode;
-                if (isDarkMode) {
-                    document.documentElement.classList.add('dark');
-                    scene.background.set(0x0f172a);
-                    scene.fog.color.set(0x0f172a);
-                    if (ambientLight) ambientLight.intensity = 0.4;
-                    if (hemiLight) hemiLight.intensity = 0.2;
-                } else {
-                    document.documentElement.classList.remove('dark');
-                    scene.background.set(0xf1f5f9);
-                    scene.fog.color.set(0xf1f5f9);
-                    if (ambientLight) ambientLight.intensity = 0.7;
-                    if (hemiLight) hemiLight.intensity = 0.4;
-                }
-                log(`Modo ${isDarkMode ? 'Escuro' : 'Claro'} ativado.`, 'info');
+                applyTheme(isDarkMode);
+                localStorage.setItem('darkMode', isDarkMode ? 'true' : 'false');
             });
         }
 
-        function init() {
-            log('Iniciando engine Three.js com suporte a duplicação via menu de contexto.', 'info');
+        function applyTheme(dark) {
+            isDarkMode = dark;
+            if (isDarkMode) {
+                document.documentElement.classList.add('dark');
+                if (scene) {
+                    scene.background.set(0x0f172a);
+                    scene.fog.color.set(0x0f172a);
+                }
+                if (ambientLight) ambientLight.intensity = 0.4;
+                if (hemiLight) hemiLight.intensity = 0.2;
+            } else {
+                document.documentElement.classList.remove('dark');
+                if (scene) {
+                    scene.background.set(0xf1f5f9);
+                    scene.fog.color.set(0xf1f5f9);
+                }
+                if (ambientLight) ambientLight.intensity = 0.7;
+                if (hemiLight) hemiLight.intensity = 0.4;
+            }
+        }
+
+        async function init() {
+            log('Iniciando Estúdio 3D com Suporte a Múltiplos Projetos...', 'info');
 
             const container = document.getElementById('canvas-container');
 
@@ -471,6 +683,7 @@
                     syncObstacleTransform(selectedCube);
                     updateCubesListUI();
                     recordObstacleHistory();
+                    persistCurrentProjectState();
                 }
             });
 
@@ -504,6 +717,8 @@
             });
 
             setupThemeToggle();
+            if (localStorage.getItem('darkMode') === 'true') applyTheme(true);
+
             setupInputControls();
             setupFileUploads();
             setupBuilderInteraction();
@@ -521,9 +736,222 @@
             document.getElementById('spawnCubeBtn').addEventListener('click', spawnCube);
             document.getElementById('btnAddCubeMobile').addEventListener('click', spawnCube);
 
-            log('Engine pronta.', 'success');
+            log('Engine iniciada.', 'success');
             animate();
+
+            // Carrega projeto salvo anteriormente ou cria o padrão
+            const lastProjId = localStorage.getItem('active_project_id') || 'default_project';
+            await loadProject(lastProjId);
         }
+
+        // ==========================================
+        // SISTEMA DE GERENCIAMENTO DE PROJETOS
+        // ==========================================
+
+        function updateProjectTitleUI() {
+            document.getElementById('currentProjectTitle').innerText = currentProjectName;
+        }
+
+        async function handleSaveAsProject() {
+            const name = prompt('Digite o nome para o novo projeto (Salvar Como):', `${currentProjectName} - Cópia`);
+            if (!name || !name.trim()) return;
+
+            const newId = 'proj_' + Date.now();
+            currentProjectId = newId;
+            currentProjectName = name.trim();
+            updateProjectTitleUI();
+
+            localStorage.setItem('active_project_id', currentProjectId);
+            await persistCurrentProjectState();
+            log(`Projeto salvo como "${currentProjectName}".`, 'success');
+        }
+
+        async function openProjectsManager() {
+            await renderProjectsList();
+            toggleProjectsModal(true);
+        }
+
+        function toggleProjectsModal(show) {
+            const modal = document.getElementById('projectsModal');
+            if (show) modal.classList.remove('hidden');
+            else modal.classList.add('hidden');
+        }
+
+        async function renderProjectsList() {
+            const container = document.getElementById('projectsListContainer');
+            const projects = await getAllProjectsFromDB();
+
+            if (!projects.length) {
+                container.innerHTML = `<div class="text-xs text-slate-400 italic text-center py-4">Nenhum projeto salvo.</div>`;
+                return;
+            }
+
+            container.innerHTML = '';
+            projects.forEach(p => {
+                const isCurrent = p.id === currentProjectId;
+                const dateStr = new Date(p.updatedAt).toLocaleString();
+                const card = document.createElement('div');
+                card.className = `p-3 rounded-xl border transition flex items-center justify-between ${
+                    isCurrent 
+                    ? 'bg-indigo-50/80 dark:bg-indigo-950/50 border-indigo-400' 
+                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-slate-400'
+                }`;
+
+                card.innerHTML = `
+                    <div class="truncate max-w-[200px]">
+                        <h4 class="text-xs font-bold ${isCurrent ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-800 dark:text-slate-200'} truncate">${p.name}</h4>
+                        <p class="text-[10px] text-slate-400">${dateStr}</p>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        ${!isCurrent ? `<button onclick="switchProject('${p.id}')" class="px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold rounded-lg transition">Carregar</button>` : `<span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950 px-2 py-0.5 rounded">Ativo</span>`}
+                        <button onclick="renameProject('${p.id}', '${p.name}')" class="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-xs" title="Renomear">✏️</button>
+                        ${projects.length > 1 ? `<button onclick="deleteProject('${p.id}')" class="p-1 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 rounded text-xs" title="Excluir">🗑️</button>` : ''}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function switchProject(projId) {
+            toggleProjectsModal(false);
+            localStorage.setItem('active_project_id', projId);
+            log(`Carregando projeto...`, 'info');
+            await loadProject(projId);
+        }
+
+        async function renameProject(projId, oldName) {
+            const newName = prompt('Novo nome do projeto:', oldName);
+            if (!newName || !newName.trim() || newName === oldName) return;
+            const proj = await getProjectFromDB(projId);
+            if (proj) {
+                proj.name = newName.trim();
+                await saveProjectToDB(proj.id, proj.name, proj.data);
+                if (projId === currentProjectId) {
+                    currentProjectName = proj.name;
+                    updateProjectTitleUI();
+                }
+                renderProjectsList();
+                log(`Projeto renomeado para "${proj.name}".`, 'success');
+            }
+        }
+
+        async function deleteProject(projId) {
+            if (!confirm('Excluir este projeto permanentemente?')) return;
+            await deleteProjectFromDB(projId);
+            if (projId === currentProjectId) {
+                const remaining = await getAllProjectsFromDB();
+                const nextId = remaining.length > 0 ? remaining[0].id : 'default_project';
+                localStorage.setItem('active_project_id', nextId);
+                await loadProject(nextId);
+            } else {
+                renderProjectsList();
+            }
+            log('Projeto excluído.', 'info');
+        }
+
+        async function persistCurrentProjectState() {
+            const projData = {
+                envFileKey: window.currentEnvFileKey || null,
+                idleFileKey: window.currentIdleFileKey || null,
+                runFileKey: window.currentRunFileKey || null,
+                jumpFileKey: window.currentJumpFileKey || null,
+                floorTextureFileKey: window.currentFloorTextureKey || null,
+                obstacles: obstacleCubes.map(ob => ({
+                    id: ob.id,
+                    name: ob.name,
+                    isCube: !ob.sourceFileKey,
+                    sourceFileKey: ob.sourceFileKey || null,
+                    textureFileKey: ob.textureFileKey || null,
+                    width: ob.width, height: ob.height, depth: ob.depth,
+                    baseWidth: ob.baseWidth, baseHeight: ob.baseHeight, baseDepth: ob.baseDepth,
+                    x: ob.group.position.x, y: ob.group.position.y, z: ob.group.position.z,
+                    rotationX: ob.group.rotation.x, rotationY: ob.group.rotation.y, rotationZ: ob.group.rotation.z,
+                    scaleX: ob.group.scale.x, scaleY: ob.group.scale.y, scaleZ: ob.group.scale.z
+                }))
+            };
+            await saveProjectToDB(currentProjectId, currentProjectName, projData);
+        }
+
+        async function loadProject(projId) {
+            deselectCube();
+            obstacleCubes.forEach(c => scene.remove(c.group));
+            obstacleCubes = [];
+            updateCubesListUI();
+
+            let projRecord = await getProjectFromDB(projId);
+            if (!projRecord) {
+                currentProjectId = projId;
+                currentProjectName = projId === 'default_project' ? 'Projeto Padrão' : 'Novo Projeto';
+                updateProjectTitleUI();
+                await persistCurrentProjectState();
+                return;
+            }
+
+            currentProjectId = projRecord.id;
+            currentProjectName = projRecord.name;
+            updateProjectTitleUI();
+
+            const d = projRecord.data || {};
+
+            // 1. Cenário
+            if (d.envFileKey) {
+                window.currentEnvFileKey = d.envFileKey;
+                const file = await getFileFromDB(d.envFileKey);
+                if (file) loadEnvironmentFile(file, false);
+            }
+
+            // 2. Personagem / Animações
+            if (d.idleFileKey) {
+                window.currentIdleFileKey = d.idleFileKey;
+                const file = await getFileFromDB(d.idleFileKey);
+                if (file) loadCharacterOrAnimation(file, 'idle', false);
+            }
+            if (d.runFileKey) {
+                window.currentRunFileKey = d.runFileKey;
+                const file = await getFileFromDB(d.runFileKey);
+                if (file) loadCharacterOrAnimation(file, 'run', false);
+            }
+            if (d.jumpFileKey) {
+                window.currentJumpFileKey = d.jumpFileKey;
+                const file = await getFileFromDB(d.jumpFileKey);
+                if (file) loadCharacterOrAnimation(file, 'jump', false);
+            }
+
+            // 3. Textura do Chão
+            if (d.floorTextureFileKey) {
+                window.currentFloorTextureKey = d.floorTextureFileKey;
+                const file = await getFileFromDB(d.floorTextureFileKey);
+                if (file) applyTextureToFloor(file, false);
+            }
+
+            // 4. Obstáculos e Modelos 3D
+            if (d.obstacles && Array.isArray(d.obstacles)) {
+                for (const item of d.obstacles) {
+                    let createdObstacle = null;
+                    if (item.isCube) {
+                        createdObstacle = spawnCubeAt(item);
+                    } else if (item.sourceFileKey) {
+                        const file = await getFileFromDB(item.sourceFileKey);
+                        if (file) {
+                            createdObstacle = await loadAndPlaceSavedModel(file, item);
+                        }
+                    }
+
+                    if (createdObstacle && item.textureFileKey) {
+                        const texFile = await getFileFromDB(item.textureFileKey);
+                        if (texFile) {
+                            applyTextureToObstacle(createdObstacle, texFile, false);
+                        }
+                    }
+                }
+            }
+
+            log(`Projeto "${currentProjectName}" carregado com sucesso.`, 'success');
+        }
+
+        // ==========================================
+        // LÓGICA DE CENA E ELEMENTOS 3D
+        // ==========================================
 
         function createDefaultGrid() {
             const floorGeo = new THREE.PlaneGeometry(100, 100);
@@ -563,16 +991,16 @@
 
         function setupFileUploads() {
             document.getElementById('envInput').addEventListener('change', (e) => {
-                if (e.target.files[0]) loadEnvironmentFile(e.target.files[0]);
+                if (e.target.files[0]) loadEnvironmentFile(e.target.files[0], true);
             });
             document.getElementById('idleInput').addEventListener('change', (e) => {
-                if (e.target.files[0]) loadCharacterOrAnimation(e.target.files[0], 'idle');
+                if (e.target.files[0]) loadCharacterOrAnimation(e.target.files[0], 'idle', true);
             });
             document.getElementById('runInput').addEventListener('change', (e) => {
-                if (e.target.files[0]) loadCharacterOrAnimation(e.target.files[0], 'run');
+                if (e.target.files[0]) loadCharacterOrAnimation(e.target.files[0], 'run', true);
             });
             document.getElementById('jumpInput').addEventListener('change', (e) => {
-                if (e.target.files[0]) loadCharacterOrAnimation(e.target.files[0], 'jump');
+                if (e.target.files[0]) loadCharacterOrAnimation(e.target.files[0], 'jump', true);
             });
             document.getElementById('importModelSceneBtn').addEventListener('click', () => {
                 document.getElementById('sceneModelInput').click();
@@ -586,7 +1014,7 @@
             document.getElementById('textureFileInput').addEventListener('change', (e) => {
                 const file = e.target.files && e.target.files[0];
                 if (file) {
-                    if (pendingTextureTarget === 'floor') applyTextureToFloor(file);
+                    if (pendingTextureTarget === 'floor') applyTextureToFloor(file, true);
                     else applyTextureToSelected(file);
                 }
                 e.target.value = '';
@@ -654,7 +1082,7 @@
             return source.clone(true);
         }
 
-        function loadModelForScenePlacement(file) {
+        async function loadModelForScenePlacement(file) {
             const fileName = file.name;
             const ext = fileName.split('.').pop().toLowerCase();
             if (!['fbx', 'glb', 'gltf', 'obj'].includes(ext)) {
@@ -662,6 +1090,10 @@
                 return;
             }
             log(`Importando modelo 3D [${ext.toUpperCase()}]: ${fileName}...`, 'info');
+            
+            const fileKey = 'asset_' + Date.now() + '_' + file.name;
+            await saveFileToDB(fileKey, file);
+
             load3DAssetFile(file, (obj) => {
                 prepareImported3DObject(obj);
                 obj.updateMatrixWorld(true);
@@ -670,9 +1102,10 @@
                 const maxDim = Math.max(size.x, size.y, size.z);
                 if (maxDim > 0) obj.scale.multiplyScalar(1.5 / maxDim);
                 obj.updateMatrixWorld(true);
-                pendingModelPlacement = { object: obj, name: fileName, sourceFile: file };
+
+                pendingModelPlacement = { object: obj, name: fileName, sourceFile: file, fileKey: fileKey };
                 document.getElementById('canvas-container').style.cursor = 'crosshair';
-                log(`Modelo "${fileName}" carregado. Clique no chão da cena para definir o local do obstáculo. Pressione ESC para cancelar.`, 'success');
+                log(`Modelo "${fileName}" carregado. Clique no chão para posicionar.`, 'success');
             }, (err) => {
                 pendingModelPlacement = null;
                 document.getElementById('canvas-container').style.cursor = '';
@@ -712,6 +1145,8 @@
                 id: 'obj_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
                 name: pending.name,
                 sourceFile: pending.sourceFile || null,
+                sourceFileKey: pending.fileKey || null,
+                textureFileKey: null,
                 group: root,
                 width: Math.max(dimensions.x, 0.001),
                 height: Math.max(dimensions.y, 0.001),
@@ -736,8 +1171,63 @@
             syncObstacleTransform(obstacle);
             updateCubesListUI();
             recordObstacleHistory();
-            log(`Modelo "${pending.name}" inserido com sucesso em (X: ${point.x.toFixed(2)}, Z: ${point.z.toFixed(2)}).`, 'success');
+            persistCurrentProjectState();
+            log(`Modelo "${pending.name}" inserido com sucesso.`, 'success');
             return true;
+        }
+
+        async function loadAndPlaceSavedModel(file, itemData) {
+            return new Promise((resolve) => {
+                load3DAssetFile(file, (obj) => {
+                    prepareImported3DObject(obj);
+                    obj.updateMatrixWorld(true);
+                    const box = new THREE.Box3().setFromObject(obj);
+                    const size = box.getSize(new THREE.Vector3());
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    if (maxDim > 0) obj.scale.multiplyScalar(1.5 / maxDim);
+                    obj.updateMatrixWorld(true);
+
+                    const root = createEditableObstacleRoot(obj, itemData.name, new THREE.Vector3(itemData.x, itemData.y, itemData.z));
+                    root.rotation.set(itemData.rotationX, itemData.rotationY, itemData.rotationZ);
+                    root.scale.set(itemData.scaleX, itemData.scaleY, itemData.scaleZ);
+
+                    const model = root.userData.model;
+                    root.updateMatrixWorld(true);
+                    const bounds = new THREE.Box3().setFromObject(model);
+                    if (!bounds.isEmpty()) {
+                        const center = bounds.getCenter(new THREE.Vector3());
+                        const bottom = bounds.min.y;
+                        model.position.x += itemData.x - center.x;
+                        model.position.z += itemData.z - center.z;
+                        model.position.y -= bottom;
+                    }
+                    root.updateMatrixWorld(true);
+                    scene.add(root);
+
+                    const obstacle = {
+                        id: itemData.id,
+                        name: itemData.name,
+                        sourceFile: file,
+                        sourceFileKey: itemData.sourceFileKey,
+                        textureFileKey: itemData.textureFileKey || null,
+                        group: root,
+                        width: itemData.width, height: itemData.height, depth: itemData.depth,
+                        baseWidth: itemData.baseWidth, baseHeight: itemData.baseHeight, baseDepth: itemData.baseDepth,
+                        x: itemData.x, y: itemData.y, z: itemData.z,
+                        rotationX: itemData.rotationX, rotationY: itemData.rotationY, rotationZ: itemData.rotationZ,
+                        scaleX: itemData.scaleX, scaleY: itemData.scaleY, scaleZ: itemData.scaleZ
+                    };
+                    root.userData.obstacleData = obstacle;
+                    root.traverse(child => {
+                        child.userData.obstacleData = obstacle;
+                        child.userData.obstacleRoot = root;
+                    });
+                    obstacleCubes.push(obstacle);
+                    syncObstacleTransform(obstacle);
+                    updateCubesListUI();
+                    resolve(obstacle);
+                }, () => resolve(null));
+            });
         }
 
         function duplicateSelectedFromContext() {
@@ -750,15 +1240,12 @@
             const sourceObstacle = selectedCube;
             const sourceFile = sourceObstacle.sourceFile;
 
-            // Para modelos importados, reabre o arquivo original e cria uma nova
-            // instância independente, em vez de clonar a instância já posicionada.
             if (sourceFile instanceof File) {
                 const targetPoint = new THREE.Vector3(
                     sourceObstacle.group.position.x + 1.5,
                     0,
                     sourceObstacle.group.position.z + 1.5
                 );
-                log(`Carregando novamente o modelo "${sourceObstacle.name}" para inserir outra instância...`, 'info');
 
                 load3DAssetFile(sourceFile, (obj) => {
                     prepareImported3DObject(obj);
@@ -772,19 +1259,16 @@
                     pendingModelPlacement = {
                         object: obj,
                         name: sourceObstacle.name + ' (Cópia)',
-                        sourceFile: sourceFile
+                        sourceFile: sourceFile,
+                        fileKey: sourceObstacle.sourceFileKey
                     };
-                    if (placePendingModelAt(targetPoint)) {
-                        log(`Uma nova instância do arquivo "${sourceFile.name}" foi carregada na cena.`, 'success');
-                    }
+                    placePendingModelAt(targetPoint);
                 }, (err) => {
-                    log(`Não foi possível carregar novamente "${sourceFile.name}": ${err?.message || err}`, 'error');
+                    log(`Erro ao duplicar: ${err?.message || err}`, 'error');
                 });
                 return;
             }
 
-            // Objetos criados internamente (por exemplo, cubo padrão) não têm
-            // arquivo de origem; nesses casos, a cópia da geometria é o fallback.
             const sourceRoot = sourceObstacle.group;
             sourceRoot.updateMatrixWorld(true);
             const newGroup = cloneObstacleGroup(sourceRoot);
@@ -801,6 +1285,8 @@
                 id: 'obj_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
                 name: sourceObstacle.name + ' (Cópia)',
                 sourceFile: null,
+                sourceFileKey: sourceObstacle.sourceFileKey || null,
+                textureFileKey: sourceObstacle.textureFileKey || null,
                 group: newGroup,
                 width: sourceObstacle.width,
                 height: sourceObstacle.height,
@@ -820,10 +1306,10 @@
             syncObstacleTransform(newObstacle);
             updateCubesListUI();
             recordObstacleHistory();
-            log(`Objeto interno duplicado na cena: "${newObstacle.name}".`, 'success');
+            persistCurrentProjectState();
+            log(`Objeto duplicado: "${newObstacle.name}".`, 'success');
         }
 
-        // Clona a raiz inteira preservando a hierarquia de modelos importados.
         function cloneObstacleGroup(sourceRoot) {
             let cloned;
             if (THREE.SkeletonUtils && typeof THREE.SkeletonUtils.clone === 'function') {
@@ -832,7 +1318,6 @@
                 cloned = sourceRoot.clone(true);
             }
 
-            // Materiais independentes: editar textura/cor da cópia não altera o original.
             cloned.traverse(child => {
                 if (child.isMesh || child.isSkinnedMesh) {
                     if (child.material) {
@@ -846,7 +1331,6 @@
                 }
             });
 
-            // Remapeia a referência userData.model para o nó correspondente da cópia.
             const originalModel = sourceRoot.userData ? sourceRoot.userData.model : null;
             if (originalModel) {
                 const originalNodes = [];
@@ -918,19 +1402,24 @@
             return allMeshes.filter(item => item.area >= largestArea * 0.35).map(item => item.mesh);
         }
 
-        function applyTextureToFloor(file) {
+        async function applyTextureToFloor(file, saveToDb = true) {
             let targets = [];
             if (defaultFloorMesh) targets = [defaultFloorMesh];
             else targets = findEnvironmentFloorMeshes();
 
             if (!targets.length) {
-                log('Não foi possível localizar o chão. Carregue um cenário com uma malha de piso ou utilize o piso padrão.', 'warn');
+                log('Não foi possível localizar o chão.', 'warn');
                 return;
             }
 
-            const url = URL.createObjectURL(file);
-            log(`Carregando textura para o chão: ${file.name}...`, 'info');
+            if (saveToDb) {
+                const key = 'tex_floor_' + Date.now();
+                await saveFileToDB(key, file);
+                window.currentFloorTextureKey = key;
+                persistCurrentProjectState();
+            }
 
+            const url = URL.createObjectURL(file);
             textureLoader.load(url, (texture) => {
                 texture.encoding = THREE.sRGBEncoding;
                 texture.wrapS = THREE.RepeatWrapping;
@@ -960,25 +1449,30 @@
 
                 texture.dispose();
                 URL.revokeObjectURL(url);
-                log(`Textura "${file.name}" aplicada ao chão (${targets.length} malha(s)).`, 'success');
+                log(`Textura "${file.name}" aplicada ao chão.`, 'success');
             }, undefined, (err) => {
                 log(`Erro ao carregar textura do chão: ${err?.message || err}`, 'error');
                 URL.revokeObjectURL(url);
             });
         }
 
-        function applyTextureToSelected(file) {
-            if (!selectedCube || !selectedCube.group) return;
+        async function applyTextureToObstacle(targetObstacle, file, saveToDb = true) {
+            if (!targetObstacle || !targetObstacle.group) return;
+
+            const texKey = 'tex_' + targetObstacle.id + '_' + Date.now();
+            if (saveToDb) {
+                await saveFileToDB(texKey, file);
+                targetObstacle.textureFileKey = texKey;
+                persistCurrentProjectState();
+            }
 
             const url = URL.createObjectURL(file);
-            log(`Carregando textura: ${file.name}...`, 'info');
-
             textureLoader.load(url, (texture) => {
                 texture.encoding = THREE.sRGBEncoding;
                 texture.wrapS = THREE.RepeatWrapping;
                 texture.wrapT = THREE.RepeatWrapping;
 
-                selectedCube.group.traverse((child) => {
+                targetObstacle.group.traverse((child) => {
                     if (child.isMesh) {
                         if (Array.isArray(child.material)) {
                             child.material.forEach(mat => {
@@ -995,21 +1489,32 @@
                 });
 
                 URL.revokeObjectURL(url);
-                log(`Textura "${file.name}" aplicada ao objeto "${selectedCube.name}".`, 'success');
+                log(`Textura "${file.name}" aplicada ao objeto "${targetObstacle.name}".`, 'success');
             }, undefined, (err) => {
                 log(`Erro ao carregar textura: ${err?.message || err}`, 'error');
                 URL.revokeObjectURL(url);
             });
         }
 
-        function loadEnvironmentFile(file) {
+        function applyTextureToSelected(file) {
+            if (!selectedCube) return;
+            applyTextureToObstacle(selectedCube, file, true);
+        }
+
+        async function loadEnvironmentFile(file, saveToDb = true) {
             const fileName = file.name;
             const ext = fileName.split('.').pop().toLowerCase();
             log(`Carregando cenário [${ext.toUpperCase()}]: ${fileName}...`, 'info');
             document.getElementById('envName').innerText = fileName;
 
-            const url = URL.createObjectURL(file);
+            if (saveToDb) {
+                const key = 'env_' + Date.now();
+                await saveFileToDB(key, file);
+                window.currentEnvFileKey = key;
+                persistCurrentProjectState();
+            }
 
+            const url = URL.createObjectURL(file);
             const handleEnvSuccess = (obj) => {
                 if (environmentMesh) scene.remove(environmentMesh);
                 if (defaultFloorMesh) { scene.remove(defaultFloorMesh); defaultFloorMesh = null; }
@@ -1035,9 +1540,18 @@
             else if (ext === 'glb' || ext === 'gltf') gltfLoader.load(url, (g) => handleEnvSuccess(g.scene), undefined, handleEnvError);
         }
 
-        function loadCharacterOrAnimation(file, type) {
+        async function loadCharacterOrAnimation(file, type, saveToDb = true) {
             const fileName = file.name;
             log(`Carregando [${type.toUpperCase()}]: ${fileName}...`, 'info');
+
+            const fileKey = `${type}_` + Date.now();
+            if (saveToDb) {
+                await saveFileToDB(fileKey, file);
+                if (type === 'idle') window.currentIdleFileKey = fileKey;
+                if (type === 'run') window.currentRunFileKey = fileKey;
+                if (type === 'jump') window.currentJumpFileKey = fileKey;
+                persistCurrentProjectState();
+            }
 
             if (type === 'idle') document.getElementById('idleName').innerText = fileName;
             if (type === 'run') document.getElementById('runName').innerText = fileName;
@@ -1167,6 +1681,8 @@
                     }
 
                     if (hitObj) selectCube(hitObj);
+                } else {
+                    deselectCube();
                 }
             });
 
@@ -1218,7 +1734,7 @@
         }
 
         function setTransformMode(mode) {
-            if (!transformControls || !selectedCube) { log('Selecione um obstáculo antes de usar este comando.', 'warn'); return; }
+            if (!transformControls || !selectedCube) { log('Selecione um obstáculo primeiro.', 'warn'); return; }
             transformControls.setMode(mode);
             document.getElementById('objectContextMenu').classList.add('hidden');
             log(`Modo de Gizmo alterado para: ${mode.toUpperCase()}`, 'info');
@@ -1237,6 +1753,7 @@
             selectedCube.group.updateMatrixWorld(true);
             syncObstacleTransform(selectedCube);
             recordObstacleHistory();
+            persistCurrentProjectState();
 
             transformControls.attach(selectedCube.group);
             input.value = selectedCube.group.scale.x.toFixed(2);
@@ -1303,13 +1820,20 @@
             if (renderer) renderer.render(scene, camera);
         }
 
-        function spawnCube() {
+        function spawnCubeAt(posData = null) {
             const name = 'Cubo Padrão';
-            const spawnPos = characterGroup.position.clone().add(new THREE.Vector3(0, 0, 2.5));
+            const spawnPos = posData 
+                ? new THREE.Vector3(posData.x, posData.y, posData.z) 
+                : characterGroup.position.clone().add(new THREE.Vector3(0, 0, 2.5));
 
             const group = new THREE.Group();
             group.name = name;
             group.position.copy(spawnPos);
+
+            if (posData) {
+                group.rotation.set(posData.rotationX, posData.rotationY, posData.rotationZ);
+                group.scale.set(posData.scaleX, posData.scaleY, posData.scaleZ);
+            }
 
             const w = 1.5, h = 1.5, d = 1.5;
             const geometry = new THREE.BoxGeometry(w, h, d);
@@ -1332,14 +1856,15 @@
             const depth = Math.max(size.z, 0.001);
 
             const cubeData = {
-                id: 'obj_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                id: posData ? posData.id : ('obj_' + Date.now() + '_' + Math.floor(Math.random() * 1000)),
                 name: name,
                 group: group,
+                textureFileKey: posData ? posData.textureFileKey : null,
                 width: width, height: height, depth: depth,
                 baseWidth: width, baseHeight: height, baseDepth: depth,
                 x: group.position.x, y: group.position.y, z: group.position.z,
-                rotationX: 0, rotationY: 0, rotationZ: 0,
-                scaleX: 1, scaleY: 1, scaleZ: 1
+                rotationX: group.rotation.x, rotationY: group.rotation.y, rotationZ: group.rotation.z,
+                scaleX: group.scale.x, scaleY: group.scale.y, scaleZ: group.scale.z
             };
 
             group.userData.obstacleData = cubeData;
@@ -1349,11 +1874,19 @@
             });
 
             obstacleCubes.push(cubeData);
-            selectCube(cubeData);
             syncObstacleTransform(cubeData);
             updateCubesListUI();
-            recordObstacleHistory();
-            log(`Cubo inserido no cenário.`, 'success');
+            if (!posData) {
+                selectCube(cubeData);
+                recordObstacleHistory();
+                persistCurrentProjectState();
+                log(`Cubo inserido no cenário.`, 'success');
+            }
+            return cubeData;
+        }
+
+        function spawnCube() {
+            spawnCubeAt(null);
         }
 
         function selectCube(cubeObj) {
@@ -1400,6 +1933,7 @@
                 obstacleCubes.splice(index, 1);
                 updateCubesListUI();
                 recordObstacleHistory();
+                persistCurrentProjectState();
                 log('Obstáculo removido.', 'info');
             }
         };
@@ -1410,12 +1944,17 @@
             obstacleCubes = [];
             updateCubesListUI();
             recordObstacleHistory();
+            persistCurrentProjectState();
             log('Todos os obstáculos removidos.', 'info');
         }
 
         function updateCubesListUI() {
-            document.getElementById('cubeCount').innerText = obstacleCubes.length;
+            const cubeCountEl = document.getElementById('cubeCount');
+            if (cubeCountEl) cubeCountEl.innerText = obstacleCubes.length;
+
             const container = document.getElementById('cubesListContainer');
+            if (!container) return;
+
             if (obstacleCubes.length === 0) {
                 container.innerHTML = `<span class="text-slate-400 italic">Nenhum obstáculo adicionado ainda.</span>`;
                 return;
@@ -1474,7 +2013,6 @@
             }
             obstacleHistory.push(captureObstacleSnapshot());
             obstacleHistoryIndex = obstacleHistory.length - 1;
-            // Limita o histórico para evitar consumo excessivo de memória.
             if (obstacleHistory.length > 60) {
                 obstacleHistory.shift();
                 obstacleHistoryIndex--;
@@ -1500,6 +2038,7 @@
             obstacleCubes.forEach(syncObstacleTransform);
             if (renderer) renderer.render(scene, camera);
             restoringHistory = false;
+            persistCurrentProjectState();
         }
 
         function undoObstacleEdit() {
@@ -1587,7 +2126,8 @@
         }
 
         function updateBadge(txt) {
-            document.getElementById('currentStatusBadge').innerText = txt;
+            const badge = document.getElementById('currentStatusBadge');
+            if (badge) badge.innerText = txt;
         }
 
         function animate() {
