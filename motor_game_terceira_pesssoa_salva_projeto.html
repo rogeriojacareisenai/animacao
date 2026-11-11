@@ -162,13 +162,16 @@
                     </button>
                 </div>
 
-                <!-- Painel de Gerenciamento de Projeto -->
-                <div class="grid grid-cols-2 gap-2">
-                    <button onclick="handleSaveProject()" class="py-2 px-3 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-xs text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1.5">
-                        <span>💾</span> Salvar Projeto
+                <!-- Painel de Gerenciamento de Projeto (Salvar, Salvar Como e Meus Projetos) -->
+                <div class="grid grid-cols-3 gap-1.5">
+                    <button onclick="handleSaveProject()" class="py-2 px-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-[11px] text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1" title="Atualizar / Salvar alterações no projeto atual">
+                        <span>💾</span> Salvar
                     </button>
-                    <button onclick="openProjectsManager()" class="py-2 px-3 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 active:scale-95 text-xs text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1.5">
-                        <span>📂</span> Meus Projetos
+                    <button onclick="handleSaveAsProject()" class="py-2 px-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-[11px] text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1" title="Salvar como um novo projeto">
+                        <span>📑</span> Como...
+                    </button>
+                    <button onclick="openProjectsManager()" class="py-2 px-2 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 active:scale-95 text-[11px] text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1" title="Ver lista de projetos salvos">
+                        <span>📂</span> Projetos
                     </button>
                 </div>
 
@@ -421,8 +424,7 @@
         let currentProjectId = 'default_project';
         let currentProjectName = 'Projeto Padrão';
 
-        // Mapeamento dinâmico de Teclas Personalizadas para Animações
-        // Estrutura: { 'e': { key: 'e', name: 'Dança.fbx', fileKey: 'custom_e_123', loop: 'loop', action: AnimationAction } }
+        // Mapeamento dinâmico de Teclas Personalizadas
         let customKeyAnimations = {};
 
         function openDB() {
@@ -541,7 +543,7 @@
                 tx.objectStore('files').clear();
                 tx.objectStore('projects').clear();
                 localStorage.removeItem('active_project_id');
-                log('Dados limpos com sucesso. Recarregando...', 'warn');
+                log('Todos os dados foram limpos. Recarregando...', 'warn');
                 setTimeout(() => window.location.reload(), 800);
             } catch (err) {
                 log('Erro ao limpar dados salvos.', 'error');
@@ -807,42 +809,32 @@
         }
 
         // ==========================================
-        // GERENCIAMENTO DE PROJETOS (SEM DUPLICAÇÃO)
+        // GERENCIAMENTO DE PROJETOS (SALVAR, SALVAR COMO, EXCLUIR)
         // ==========================================
 
         function updateProjectTitleUI() {
             document.getElementById('currentProjectTitle').innerText = currentProjectName;
         }
 
+        // 1. Atualizar/Salvar Projeto Atual (mesmo ID/Nome)
         async function handleSaveProject() {
-            const allProjects = await getAllProjectsFromDB();
-            const existingSameName = allProjects.find(p => p.name.toLowerCase() === currentProjectName.toLowerCase());
+            await persistCurrentProjectState();
+            log(`Projeto "${currentProjectName}" salvo com sucesso!`, 'success');
+        }
 
-            let nameToSave = currentProjectName;
+        // 2. Salvar Como (Cria uma nova cópia independente com outro nome/ID)
+        async function handleSaveAsProject() {
+            const name = prompt('Digite o novo nome para salvar este projeto:', `${currentProjectName} (Cópia)`);
+            if (!name || !name.trim()) return;
 
-            if (!existingSameName) {
-                const inputName = prompt('Nome do Projeto para Salvar:', currentProjectName);
-                if (!inputName || !inputName.trim()) return;
-                nameToSave = inputName.trim();
-                
-                const matchFound = allProjects.find(p => p.name.toLowerCase() === nameToSave.toLowerCase());
-                if (matchFound) {
-                    currentProjectId = matchFound.id;
-                    currentProjectName = matchFound.name;
-                    log(`Atualizando projeto existente: "${currentProjectName}"...`, 'info');
-                } else {
-                    currentProjectId = 'proj_' + Date.now();
-                    currentProjectName = nameToSave;
-                }
-            } else {
-                currentProjectId = existingSameName.id;
-                currentProjectName = existingSameName.name;
-            }
-
+            const newId = 'proj_' + Date.now();
+            currentProjectId = newId;
+            currentProjectName = name.trim();
+            
             updateProjectTitleUI();
             localStorage.setItem('active_project_id', currentProjectId);
             await persistCurrentProjectState();
-            log(`Projeto "${currentProjectName}" salvo com sucesso!`, 'success');
+            log(`Projeto salvo como novo projeto: "${currentProjectName}".`, 'success');
         }
 
         async function openProjectsManager() {
@@ -884,7 +876,7 @@
                     <div class="flex items-center gap-1.5">
                         ${!isCurrent ? `<button onclick="switchProject('${p.id}')" class="px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold rounded-lg transition">Carregar</button>` : `<span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950 px-2 py-0.5 rounded">Ativo</span>`}
                         <button onclick="renameProject('${p.id}', '${p.name}')" class="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-xs" title="Renomear">✏️</button>
-                        ${projects.length > 1 ? `<button onclick="deleteProject('${p.id}')" class="p-1 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 rounded text-xs" title="Excluir">🗑️</button>` : ''}
+                        <button onclick="deleteProject('${p.id}', '${p.name}')" class="p-1 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 rounded text-xs" title="Excluir Projeto">🗑️</button>
                     </div>
                 `;
                 container.appendChild(card);
@@ -914,18 +906,30 @@
             }
         }
 
-        async function deleteProject(projId) {
-            if (!confirm('Excluir este projeto permanentemente?')) return;
+        // 3. Excluir Projeto Específico
+        async function deleteProject(projId, projName) {
+            if (!confirm(`Deseja realmente excluir o projeto "${projName}"?`)) return;
+            
             await deleteProjectFromDB(projId);
+            log(`Projeto "${projName}" excluído.`, 'info');
+
+            // Se o projeto excluído for o atual ativo, alterna para outro projeto
             if (projId === currentProjectId) {
                 const remaining = await getAllProjectsFromDB();
-                const nextId = remaining.length > 0 ? remaining[0].id : 'default_project';
-                localStorage.setItem('active_project_id', nextId);
-                await loadProject(nextId);
-            } else {
-                renderProjectsList();
+                if (remaining.length > 0) {
+                    const nextProj = remaining[0];
+                    localStorage.setItem('active_project_id', nextProj.id);
+                    await loadProject(nextProj.id);
+                } else {
+                    currentProjectId = 'default_project';
+                    currentProjectName = 'Projeto Padrão';
+                    localStorage.setItem('active_project_id', currentProjectId);
+                    await persistCurrentProjectState();
+                    await loadProject(currentProjectId);
+                }
             }
-            log('Projeto excluído.', 'info');
+            
+            renderProjectsList();
         }
 
         // ==========================================
@@ -959,14 +963,14 @@
 
             load3DAssetFile(file, (obj, animations) => {
                 if (!animations || !animations.length) {
-                    log(`Nenhuma clipe de animação encontrado em "${file.name}".`, 'error');
+                    log(`Nenhum clipe de animação encontrado em "${file.name}".`, 'error');
                     return;
                 }
                 bindCustomKeyAnimation(keyChar, file.name, fileKey, loopMode, animations[0]);
                 keyInput.value = '';
                 fileInput.value = '';
                 persistCurrentProjectState();
-                log(`Tecla [${keyChar.toUpperCase()}] vinculada com sucesso a "${file.name}".`, 'success');
+                log(`Tecla [${keyChar.toUpperCase()}] vinculada a "${file.name}".`, 'success');
             });
         }
 
@@ -1020,7 +1024,6 @@
             activeKeys.forEach(k => {
                 const item = customKeyAnimations[k];
                 
-                // Item da Lista do Painel Esquerdo
                 const row = document.createElement('div');
                 row.className = 'flex items-center justify-between p-1.5 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 text-xs';
                 row.innerHTML = `
@@ -1032,7 +1035,6 @@
                 `;
                 listContainer.appendChild(row);
 
-                // Ajuda no Painel Direito
                 if (helpContainer) {
                     const helpRow = document.createElement('div');
                     helpRow.className = 'flex justify-between items-center text-[11px]';
