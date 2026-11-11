@@ -75,7 +75,7 @@
     <div id="canvas-container"></div>
 
     <!-- HUD de Pontuação / Jogo -->
-    <div id="gameHud" class="hidden absolute z-20 pointer-events-none transition-all duration-75 font-mono font-bold text-lg bg-slate-900/80 text-emerald-400 px-4 py-2 rounded-xl shadow-2xl border border-emerald-500/30 backdrop-blur-md flex items-center gap-2">
+    <div id="gameHud" class="hidden absolute z-25 pointer-events-none transition-all duration-75 font-mono font-bold text-lg bg-slate-900/80 text-emerald-400 px-4 py-2 rounded-xl shadow-2xl border border-emerald-500/30 backdrop-blur-md flex items-center gap-2">
         <span id="hudLabelText">Pontos:</span> <span id="hudScoreValue">0</span>
     </div>
 
@@ -119,19 +119,23 @@
 
         <!-- Parâmetros de Colisão & Gameplay Integrados no Botão Direito -->
         <div class="p-2 bg-amber-50 dark:bg-amber-950/40 rounded border border-amber-200 dark:border-amber-800/60 space-y-2">
-            <span class="text-[10px] font-extrabold text-amber-800 dark:text-amber-300 block">⚡ Configurações de Colisão</span>
+            <span class="text-[10px] font-extrabold text-amber-800 dark:text-amber-300 block">⚡ Configurações de Colisão & Peso</span>
             
             <label class="flex items-center gap-2 text-[11px] font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
                 <input type="checkbox" id="ctxSensible" class="accent-amber-600 w-3.5 h-3.5"> Sensível à Colisão
             </label>
 
-            <div class="grid grid-cols-2 gap-1 text-[10px]">
+            <div class="grid grid-cols-3 gap-1 text-[10px]">
                 <div>
-                    <label class="block text-slate-500">Escala Larg (X):</label>
+                    <label class="block text-slate-500">Peso (Massa):</label>
+                    <input type="number" id="ctxWeight" step="0.1" min="0.001" max="10000" class="w-full px-1 py-0.5 bg-white dark:bg-slate-800 border rounded font-mono">
+                </div>
+                <div>
+                    <label class="block text-slate-500">Escala (X):</label>
                     <input type="number" id="ctxColScaleX" step="0.1" min="0.1" max="10" class="w-full px-1 py-0.5 bg-white dark:bg-slate-800 border rounded font-mono">
                 </div>
                 <div>
-                    <label class="block text-slate-500">Escala Prof (Z):</label>
+                    <label class="block text-slate-500">Escala (Z):</label>
                     <input type="number" id="ctxColScaleZ" step="0.1" min="0.1" max="10" class="w-full px-1 py-0.5 bg-white dark:bg-slate-800 border rounded font-mono">
                 </div>
             </div>
@@ -139,12 +143,13 @@
             <div class="space-y-1 pt-1 border-t border-amber-200/50 dark:border-amber-800/40">
                 <div class="flex items-center gap-2">
                     <label class="text-[10px] font-semibold text-slate-600 dark:text-slate-400">Efeito:</label>
-                    <select id="ctxEffectType" class="w-full px-1 py-0.5 bg-white dark:bg-slate-800 border rounded text-[10px]">
+                    <select id="ctxEffectType" onchange="onCtxEffectTypeChange()" class="w-full px-1 py-0.5 bg-white dark:bg-slate-800 border rounded text-[10px]">
                         <option value="score">Somar Pontos</option>
                         <option value="damage">Causar Dano</option>
+                        <option value="neutral">Neutro</option>
                     </select>
                 </div>
-                <div>
+                <div id="ctxValueContainer">
                     <label class="block text-[10px] text-slate-500">Valor do Efeito:</label>
                     <input type="number" id="ctxEffectValue" value="10" step="1" class="w-full px-1.5 py-0.5 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
                 </div>
@@ -174,7 +179,7 @@
     <div id="uiOverlay" class="relative z-10 p-4 h-full flex flex-col justify-between pointer-events-none">
         
         <!-- Top Header & Upload Control Panel -->
-        <div class="flex flex-col lg:flex-row justify-between items-start gap-4">
+        <div id="mainTopBar" class="flex flex-col lg:flex-row justify-between items-start gap-4">
             
             <!-- Left Side Config Panel -->
             <div id="leftConfigPanel" class="glass-card p-5 rounded-2xl w-full max-w-sm pointer-events-auto shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
@@ -355,22 +360,26 @@
                     </div>
                 </div>
 
-                <!-- ABA DE CONFIGURAÇÃO DE COLISÃO / JOGO -->
+                <!-- ABA DE CONFIGURAÇÃO DE COLISÃO / JOGO / PESO -->
                 <div id="sectionPhysics" class="space-y-3 hidden">
-                    <!-- Colisão do Jogador -->
+                    <!-- Colisão do Jogador & Peso -->
                     <div class="p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/50 space-y-2">
                         <h3 class="font-bold text-xs text-indigo-900 dark:text-indigo-300 flex items-center justify-between">
-                            <span>🧍🏽‍♂️ Colisão do Jogador</span>
-                            <span class="text-[9px] bg-indigo-200 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 px-1.5 py-0.5 rounded">CILINDRO</span>
+                            <span>🧍🏽‍♂️ Jogador (Cilindro & Peso)</span>
+                            <span class="text-[9px] bg-indigo-200 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 px-1.5 py-0.5 rounded">JOGADOR</span>
                         </h3>
-                        <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div class="grid grid-cols-3 gap-1 text-xs">
                             <div>
-                                <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Raio (X/Z):</label>
-                                <input type="number" id="playerColRadius" step="0.05" min="0.1" max="3.0" class="w-full px-2 py-1 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
+                                <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Raio:</label>
+                                <input type="number" id="playerColRadius" step="0.05" min="0.1" max="3.0" class="w-full px-1.5 py-1 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
                             </div>
                             <div>
-                                <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Altura (Y):</label>
-                                <input type="number" id="playerColHeight" step="0.1" min="0.5" max="5.0" class="w-full px-2 py-1 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
+                                <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Altura:</label>
+                                <input type="number" id="playerColHeight" step="0.1" min="0.5" max="5.0" class="w-full px-1.5 py-1 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Peso:</label>
+                                <input type="number" id="playerWeight" step="0.1" min="0.001" max="10000" class="w-full px-1.5 py-1 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
                             </div>
                         </div>
                     </div>
@@ -491,13 +500,14 @@
 
         let customKeyAnimations = {};
 
-        // CONFIGURAÇÕES DE JOGO / HUD
+        // CONFIGURAÇÕES DE JOGO / HUD / PESO DO JOGADOR
         let gameConfig = {
             scoreEnabled: true,
             scoreText: 'Pontos:',
-            scoreX: 32, // Canto superior direito padrão (calculado dinamicamente ou fixo)
+            scoreX: 32,
             scoreY: 32,
-            showBounds: true
+            showBounds: true,
+            playerWeight: 1.0
         };
         let currentScore = 0;
 
@@ -703,9 +713,7 @@
 
         function toggleGameMode(testing) {
             isGameTestingMode = testing;
-            const leftPanel = document.getElementById('leftConfigPanel');
-            const rightPanel = document.getElementById('rightInfoPanel');
-            const consolePanel = document.getElementById('consoleTerminalPanel');
+            const uiOverlay = document.getElementById('uiOverlay');
             const gamePlayUI = document.getElementById('gamePlayModeUI');
             const hud = document.getElementById('gameHud');
 
@@ -713,18 +721,14 @@
 
             if (testing) {
                 deselectCube();
-                if (leftPanel) leftPanel.classList.add('hidden');
-                if (rightPanel) rightPanel.classList.add('hidden');
-                if (consolePanel) consolePanel.classList.add('hidden');
+                if (uiOverlay) uiOverlay.classList.add('hidden');
                 if (gamePlayUI) gamePlayUI.classList.remove('hidden');
                 if (gameConfig.scoreEnabled && hud) hud.classList.remove('hidden');
                 currentScore = 0;
                 updateHudDisplay();
-                log('Modo de Teste iniciado.', 'info');
+                log('Modo de Teste iniciado. Telas de configuração ocultadas.', 'info');
             } else {
-                if (leftPanel) leftPanel.classList.remove('hidden');
-                if (rightPanel) rightPanel.classList.remove('hidden');
-                if (consolePanel) consolePanel.classList.remove('hidden');
+                if (uiOverlay) uiOverlay.classList.remove('hidden');
                 if (gamePlayUI) gamePlayUI.classList.add('hidden');
                 if (hud) hud.classList.add('hidden');
                 log('Modo Edição retornado.', 'info');
@@ -741,7 +745,6 @@
             valEl.innerText = currentScore;
 
             hud.style.top = `${gameConfig.scoreY}px`;
-            // Canto superior direito por padrão se X for calculado ou fornecido
             if (gameConfig.scoreX === 32) {
                 hud.style.right = `${gameConfig.scoreX}px`;
                 hud.style.left = 'auto';
@@ -927,12 +930,13 @@
         }
 
         // ==========================================
-        // CONFIGURAÇÕES DE FÍSICA & UI DE COLISÃO
+        // CONFIGURAÇÕES DE FÍSICA & PESO
         // ==========================================
 
         function setupPhysicsTabUI() {
             const radInput = document.getElementById('playerColRadius');
             const heiInput = document.getElementById('playerColHeight');
+            const weightInput = document.getElementById('playerWeight');
             const showBoundsCheck = document.getElementById('toggleShowBounds');
             const scoreCheck = document.getElementById('toggleScoreEnabled');
             const scoreLabelInput = document.getElementById('scoreTextLabel');
@@ -941,6 +945,7 @@
 
             radInput.value = playerCollider.radius;
             heiInput.value = playerCollider.height;
+            weightInput.value = gameConfig.playerWeight;
             showBoundsCheck.checked = gameConfig.showBounds;
             scoreCheck.checked = gameConfig.scoreEnabled;
             scoreLabelInput.value = gameConfig.scoreText;
@@ -955,6 +960,10 @@
             heiInput.addEventListener('change', (e) => {
                 playerCollider.height = Math.max(0.5, parseFloat(e.target.value) || 1.8);
                 updatePlayerDebugHelper();
+                persistCurrentProjectState();
+            });
+            weightInput.addEventListener('change', (e) => {
+                gameConfig.playerWeight = Math.max(0.001, parseFloat(e.target.value) || 1.0);
                 persistCurrentProjectState();
             });
             showBoundsCheck.addEventListener('change', (e) => {
@@ -1033,18 +1042,33 @@
             obstacle.group.add(lineSegments);
         }
 
+        function onCtxEffectTypeChange() {
+            const effectType = document.getElementById('ctxEffectType').value;
+            const valContainer = document.getElementById('ctxValueContainer');
+            const valInput = document.getElementById('ctxEffectValue');
+
+            if (effectType === 'neutral') {
+                valInput.value = 0;
+                valContainer.style.display = 'none';
+            } else {
+                valContainer.style.display = 'block';
+                if (parseFloat(valInput.value) === 0) valInput.value = 10;
+            }
+        }
+
         function applyCtxCollisionParams() {
             if (!selectedCube) return;
             selectedCube.sensible = document.getElementById('ctxSensible').checked;
+            selectedCube.weight = Math.max(0.001, parseFloat(document.getElementById('ctxWeight').value) || 1.0);
             selectedCube.colScaleX = parseFloat(document.getElementById('ctxColScaleX').value) || 1.0;
             selectedCube.colScaleZ = parseFloat(document.getElementById('ctxColScaleZ').value) || 1.0;
             selectedCube.effectType = document.getElementById('ctxEffectType').value;
-            selectedCube.effectValue = parseFloat(document.getElementById('ctxEffectValue').value) || 0;
+            selectedCube.effectValue = selectedCube.effectType === 'neutral' ? 0 : (parseFloat(document.getElementById('ctxEffectValue').value) || 0);
 
             updateObstacleDebugHelper(selectedCube);
             persistCurrentProjectState();
             document.getElementById('objectContextMenu').classList.add('hidden');
-            log(`Parâmetros de colisão de "${selectedCube.name}" atualizados!`, 'success');
+            log(`Configurações de "${selectedCube.name}" atualizadas!`, 'success');
         }
 
         // ==========================================
@@ -1313,6 +1337,7 @@
                     sourceFileKey: ob.sourceFileKey || null,
                     textureFileKey: ob.textureFileKey || null,
                     sensible: ob.sensible !== false,
+                    weight: ob.weight !== undefined ? ob.weight : 1.0,
                     colScaleX: ob.colScaleX || 1.0,
                     colScaleZ: ob.colScaleZ || 1.0,
                     effectType: ob.effectType || 'score',
@@ -1359,6 +1384,7 @@
 
             if (d.gameConfig) {
                 gameConfig = { ...gameConfig, ...d.gameConfig };
+                document.getElementById('playerWeight').value = gameConfig.playerWeight;
                 document.getElementById('toggleShowBounds').checked = gameConfig.showBounds;
                 document.getElementById('toggleScoreEnabled').checked = gameConfig.scoreEnabled;
                 document.getElementById('scoreTextLabel').value = gameConfig.scoreText;
@@ -1422,6 +1448,7 @@
 
                     if (createdObstacle) {
                         createdObstacle.sensible = item.sensible !== false;
+                        createdObstacle.weight = item.weight !== undefined ? item.weight : 1.0;
                         createdObstacle.colScaleX = item.colScaleX || 1.0;
                         createdObstacle.colScaleZ = item.colScaleZ || 1.0;
                         createdObstacle.effectType = item.effectType || 'score';
@@ -1639,6 +1666,7 @@
                 sourceFileKey: pending.fileKey || null,
                 textureFileKey: null,
                 sensible: true,
+                weight: 1.0,
                 colScaleX: 1.0,
                 colScaleZ: 1.0,
                 effectType: 'score',
@@ -1708,6 +1736,7 @@
                         sourceFileKey: itemData.sourceFileKey,
                         textureFileKey: itemData.textureFileKey || null,
                         sensible: itemData.sensible !== false,
+                        weight: itemData.weight !== undefined ? itemData.weight : 1.0,
                         colScaleX: itemData.colScaleX || 1.0,
                         colScaleZ: itemData.colScaleZ || 1.0,
                         effectType: itemData.effectType || 'score',
@@ -1791,6 +1820,7 @@
                 sourceFileKey: sourceObstacle.sourceFileKey || null,
                 textureFileKey: sourceObstacle.textureFileKey || null,
                 sensible: sourceObstacle.sensible,
+                weight: sourceObstacle.weight,
                 colScaleX: sourceObstacle.colScaleX || 1.0,
                 colScaleZ: sourceObstacle.colScaleZ || 1.0,
                 effectType: sourceObstacle.effectType || 'score',
@@ -2239,10 +2269,13 @@
                         document.getElementById('ctxMenuTitle').innerText = hitObj.name;
                         document.getElementById('ctxScaleInput').value = hitObj.group.scale.x.toFixed(2);
                         document.getElementById('ctxSensible').checked = hitObj.sensible !== false;
+                        document.getElementById('ctxWeight').value = (hitObj.weight !== undefined ? hitObj.weight : 1.0);
                         document.getElementById('ctxColScaleX').value = (hitObj.colScaleX || 1.0).toFixed(2);
                         document.getElementById('ctxColScaleZ').value = (hitObj.colScaleZ || 1.0).toFixed(2);
                         document.getElementById('ctxEffectType').value = hitObj.effectType || 'score';
                         document.getElementById('ctxEffectValue').value = hitObj.effectValue !== undefined ? hitObj.effectValue : 10;
+                        
+                        onCtxEffectTypeChange();
 
                         ctxMenu.style.left = `${e.clientX}px`;
                         ctxMenu.style.top = `${e.clientY}px`;
@@ -2385,6 +2418,7 @@
                 group: group,
                 textureFileKey: posData ? posData.textureFileKey : null,
                 sensible: posData ? (posData.sensible !== false) : true,
+                weight: posData ? (posData.weight !== undefined ? posData.weight : 1.0) : 1.0,
                 colScaleX: posData ? (posData.colScaleX || 1.0) : 1.0,
                 colScaleZ: posData ? (posData.colScaleZ || 1.0) : 1.0,
                 effectType: posData ? (posData.effectType || 'score') : 'score',
@@ -2505,10 +2539,13 @@
                     document.getElementById('ctxMenuTitle').innerText = c.name;
                     document.getElementById('ctxScaleInput').value = c.group.scale.x.toFixed(2);
                     document.getElementById('ctxSensible').checked = c.sensible !== false;
+                    document.getElementById('ctxWeight').value = (c.weight !== undefined ? c.weight : 1.0);
                     document.getElementById('ctxColScaleX').value = (c.colScaleX || 1.0).toFixed(2);
                     document.getElementById('ctxColScaleZ').value = (c.colScaleZ || 1.0).toFixed(2);
                     document.getElementById('ctxEffectType').value = c.effectType || 'score';
                     document.getElementById('ctxEffectValue').value = c.effectValue !== undefined ? c.effectValue : 10;
+                    
+                    onCtxEffectTypeChange();
 
                     ctxMenu.style.left = `${e.clientX}px`;
                     ctxMenu.style.top = `${e.clientY}px`;
@@ -2593,15 +2630,15 @@
         }
 
         // ==========================================
-        // DETECÇÃO DE COLISÕES & GAMEPLAY (DANO / PONTUAÇÃO)
+        // DETECÇÃO DE COLISÕES, PONTUAÇÃO E EMPURRÃO POR PESO
         // ==========================================
 
         let lastCollisionTime = 0;
-        function checkCollisions(nextPos) {
+        function checkCollisions(nextPos, movementDir = null) {
             const charRadius = playerCollider.radius;
 
             for (let c of obstacleCubes) {
-                if (c.sensible === false) continue; // Ignora se não for sensível à colisão
+                if (c.sensible === false) continue;
 
                 const colScaleX = c.colScaleX || 1.0;
                 const colScaleZ = c.colScaleZ || 1.0;
@@ -2618,18 +2655,36 @@
                 const maxZ = c.z + halfD + charRadius;
 
                 if (nextPos.x >= minX && nextPos.x <= maxX && nextPos.z >= minZ && nextPos.z <= maxZ) {
-                    // Trata eventos de gameplay durante teste
+                    
+                    // MECÂNICA DE PESO APRIMORADA: Se o peso do personagem for maior que o do obstáculo, empurra o objeto com força proporcional à diferença
+                    const pWeight = gameConfig.playerWeight !== undefined ? gameConfig.playerWeight : 1.0;
+                    const oWeight = c.weight !== undefined ? c.weight : 1.0;
+
+                    if (isGameTestingMode && pWeight > oWeight) {
+                        const ratio = pWeight / oWeight; // Ex: 100 / 1 = 100x mais pesado
+                        const pushDir = movementDir ? movementDir.clone() : new THREE.Vector3(nextPos.x - c.x, 0, nextPos.z - c.z).normalize().negate();
+                        if (pushDir.lengthSq() === 0) pushDir.set(0, 0, 1);
+                        
+                        // Força proporcional à diferença massiva
+                        const pushForce = Math.min(ratio * 0.15, 5.0);
+                        c.group.position.addScaledVector(pushDir, pushForce);
+                        syncObstacleTransform(c);
+                        log(`Obstáculo "${c.name}" empurrado pelo personagem (Peso P: ${pWeight} vs O: ${oWeight}, Razão: ${ratio.toFixed(1)}x)`, 'success');
+                    }
+
                     if (isGameTestingMode) {
                         const now = Date.now();
-                        if (now - lastCollisionTime > 600) { // Cooldown para evitar spam de colisão
+                        if (now - lastCollisionTime > 500) {
                             lastCollisionTime = now;
                             const val = c.effectValue !== undefined ? c.effectValue : 10;
                             if (c.effectType === 'damage') {
                                 currentScore = Math.max(0, currentScore - val);
                                 log(`Colisão com "${c.name}" - Causou Dano (-${val})`, 'warn');
-                            } else {
+                            } else if (c.effectType === 'score') {
                                 currentScore += val;
                                 log(`Colisão com "${c.name}" - Pontuação (+${val})`, 'success');
+                            } else {
+                                log(`Colisão com "${c.name}" - Efeito Neutro (0)`, 'info');
                             }
                             updateHudDisplay();
                         }
@@ -2739,7 +2794,7 @@
                 if (!isGrounded) {
                     velocityY += gravity * delta;
                     characterGroup.position.y += velocityY * delta;
-                    const topCollision = checkCollisions(characterGroup.position);
+                    const topCollision = checkCollisions(characterGroup.position, null);
                     const effectiveFloor = topCollision !== null && topCollision > groundY ? topCollision : groundY;
 
                     if (characterGroup.position.y <= effectiveFloor) {
@@ -2749,7 +2804,7 @@
                         fadeToState(activeCustomKey ? activeCustomKey : (moving ? 'run' : 'idle'));
                     }
                 } else {
-                    const topCollision = checkCollisions(characterGroup.position);
+                    const topCollision = checkCollisions(characterGroup.position, null);
                     const effectiveFloor = topCollision !== null && topCollision > groundY ? topCollision : groundY;
                     characterGroup.position.y = effectiveFloor;
                     
@@ -2775,7 +2830,7 @@
                     if (moveVector.lengthSq() > 0) {
                         moveVector.normalize();
                         const nextPos = characterGroup.position.clone().addScaledVector(moveVector, moveSpeed * delta);
-                        const collisionResult = checkCollisions(nextPos);
+                        const collisionResult = checkCollisions(nextPos, moveVector);
 
                         if (collisionResult !== false) characterGroup.position.copy(nextPos);
 
@@ -2805,4 +2860,4 @@
         window.onload = init;
     </script>
 </body>
-</html> 
+</html>
