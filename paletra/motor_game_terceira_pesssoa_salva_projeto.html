@@ -1671,6 +1671,7 @@
                 colScaleZ: 1.0,
                 effectType: 'score',
                 effectValue: 10,
+                velocity: new THREE.Vector3(0, 0, 0), // Vetor de velocidade inercial para empurrão interpolado
                 group: root,
                 width: Math.max(dimensions.x, 0.001),
                 height: Math.max(dimensions.y, 0.001),
@@ -1741,6 +1742,7 @@
                         colScaleZ: itemData.colScaleZ || 1.0,
                         effectType: itemData.effectType || 'score',
                         effectValue: itemData.effectValue !== undefined ? itemData.effectValue : 10,
+                        velocity: new THREE.Vector3(0, 0, 0),
                         group: root,
                         width: itemData.width, height: itemData.height, depth: itemData.depth,
                         baseWidth: itemData.baseWidth, baseHeight: itemData.baseHeight, baseDepth: itemData.baseDepth,
@@ -1825,6 +1827,7 @@
                 colScaleZ: sourceObstacle.colScaleZ || 1.0,
                 effectType: sourceObstacle.effectType || 'score',
                 effectValue: sourceObstacle.effectValue || 10,
+                velocity: new THREE.Vector3(0, 0, 0),
                 group: newGroup,
                 width: sourceObstacle.width,
                 height: sourceObstacle.height,
@@ -2423,6 +2426,7 @@
                 colScaleZ: posData ? (posData.colScaleZ || 1.0) : 1.0,
                 effectType: posData ? (posData.effectType || 'score') : 'score',
                 effectValue: posData ? (posData.effectValue !== undefined ? posData.effectValue : 10) : 10,
+                velocity: new THREE.Vector3(0, 0, 0),
                 width: width, height: height, depth: depth,
                 baseWidth: width, baseHeight: height, baseDepth: depth,
                 x: group.position.x, y: group.position.y, z: group.position.z,
@@ -2630,7 +2634,7 @@
         }
 
         // ==========================================
-        // DETECÇÃO DE COLISÕES, PONTUAÇÃO E EMPURRÃO POR PESO
+        // DETECÇÃO DE COLISÕES, PONTUAÇÃO E EMPURRÃO INERCIAL POR PESO
         // ==========================================
 
         let lastCollisionTime = 0;
@@ -2656,20 +2660,20 @@
 
                 if (nextPos.x >= minX && nextPos.x <= maxX && nextPos.z >= minZ && nextPos.z <= maxZ) {
                     
-                    // MECÂNICA DE PESO APRIMORADA: Se o peso do personagem for maior que o do obstáculo, empurra o objeto com força proporcional à diferença
+                    // MECÂNICA DE PESO COM INércia E ACELERAÇÃO ADICIONAL
                     const pWeight = gameConfig.playerWeight !== undefined ? gameConfig.playerWeight : 1.0;
                     const oWeight = c.weight !== undefined ? c.weight : 1.0;
 
                     if (isGameTestingMode && pWeight > oWeight) {
-                        const ratio = pWeight / oWeight; // Ex: 100 / 1 = 100x mais pesado
+                        const ratio = pWeight / oWeight;
                         const pushDir = movementDir ? movementDir.clone() : new THREE.Vector3(nextPos.x - c.x, 0, nextPos.z - c.z).normalize().negate();
                         if (pushDir.lengthSq() === 0) pushDir.set(0, 0, 1);
                         
-                        // Força proporcional à diferença massiva
-                        const pushForce = Math.min(ratio * 0.15, 5.0);
-                        c.group.position.addScaledVector(pushDir, pushForce);
-                        syncObstacleTransform(c);
-                        log(`Obstáculo "${c.name}" empurrado pelo personagem (Peso P: ${pWeight} vs O: ${oWeight}, Razão: ${ratio.toFixed(1)}x)`, 'success');
+                        // Adiciona impulso imediato ao vetor de velocidade inercial do objeto (com escala para suavidade)
+                        const impulseMagnitude = Math.min(ratio * 0.8, 15.0);
+                        c.velocity.addScaledVector(pushDir, impulseMagnitude);
+                        
+                        log(`Obstáculo "${c.name}" atingido! Impulso aplicado (Razão: ${ratio.toFixed(1)}x)`, 'success');
                     }
 
                     if (isGameTestingMode) {
@@ -2778,6 +2782,23 @@
             requestAnimationFrame(animate);
             const delta = clock.getDelta();
             if (mixer) mixer.update(delta);
+
+            // ATUALIZAÇÃO DA FÍSICA DOS OBSTÁCULOS (Inércia, Interpolação e Amortecimento / Decay)
+            obstacleCubes.forEach(c => {
+                if (!c.velocity) c.velocity = new THREE.Vector3(0, 0, 0);
+                if (c.velocity.lengthSq() > 0.00001) {
+                    // Desloca o objeto baseado na velocidade atual
+                    c.group.position.addScaledVector(c.velocity, delta);
+                    syncObstacleTransform(c);
+
+                    // Amortecimento progressivo (Perde força/desacelera ao longo do tempo)
+                    const damping = Math.pow(0.08, delta); // Fator de atrito suave
+                    c.velocity.multiplyScalar(damping);
+                    if (c.velocity.lengthSq() < 0.0001) {
+                        c.velocity.set(0, 0, 0);
+                    }
+                }
+            });
 
             if (characterGroup) {
                 const moving = isMoving();
