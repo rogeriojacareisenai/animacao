@@ -74,6 +74,11 @@
     <!-- 3D Viewport -->
     <div id="canvas-container"></div>
 
+    <!-- HUD de Pontuação / Jogo -->
+    <div id="gameHud" class="hidden absolute z-20 pointer-events-none transition-all duration-75 font-mono font-bold text-lg bg-slate-900/80 text-emerald-400 px-4 py-2 rounded-xl shadow-2xl border border-emerald-500/30 backdrop-blur-md flex items-center gap-2">
+        <span id="hudLabelText">Pontos:</span> <span id="hudScoreValue">0</span>
+    </div>
+
     <!-- Modal Gerenciador de Projetos -->
     <div id="projectsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
         <div class="glass-card w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4 border border-slate-300 dark:border-slate-700">
@@ -97,37 +102,62 @@
     </div>
 
     <!-- Context Menu for Right Click on Objects -->
-    <div id="objectContextMenu" class="hidden absolute z-30 glass-card p-2 rounded-xl shadow-2xl space-y-1 text-xs w-52 border border-slate-300 dark:border-slate-700">
+    <div id="objectContextMenu" class="hidden absolute z-30 glass-card p-2.5 rounded-xl shadow-2xl space-y-2 text-xs w-64 border border-slate-300 dark:border-slate-700">
         <div class="px-2 py-1 font-bold text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
             <span id="ctxMenuTitle" class="truncate">Objeto</span>
             <span class="text-[9px] bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 px-1.5 py-0.5 rounded">Gizmo</span>
         </div>
-        <button onclick="setTransformMode('translate')" class="w-full text-left px-2 py-1.5 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded flex items-center gap-2">
-            <span>↔️</span> Mover (Transladar)
-        </button>
-        <button onclick="setTransformMode('rotate')" class="w-full text-left px-2 py-1.5 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded flex items-center gap-2">
-            <span>🔄</span> Rotacionar
-        </button>
-        <button onclick="setTransformMode('scale')" class="w-full text-left px-2 py-1.5 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded flex items-center gap-2">
-            <span>🔍</span> Alterar Escala
-        </button>
-        <button onclick="duplicateSelectedFromContext()" class="w-full text-left px-2 py-1.5 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded flex items-center gap-2 font-semibold text-emerald-600 dark:text-emerald-400">
-            <span>📄</span> Duplicar Objeto
-        </button>
-        <button onclick="triggerApplyTexture()" class="w-full text-left px-2 py-1.5 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded flex items-center gap-2 font-semibold text-indigo-600 dark:text-indigo-400">
-            <span>🎨</span> Aplicar Textura
-        </button>
-        <div class="px-2 py-1.5 bg-slate-100 dark:bg-slate-900 rounded space-y-1">
-            <label class="text-[10px] font-bold text-slate-600 dark:text-slate-400 block">Escala Manual Direta:</label>
-            <div class="flex items-center gap-1">
-                <input type="number" id="ctxScaleInput" step="0.1" min="0.05" max="50" class="w-full px-1.5 py-0.5 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded font-mono">
-                <button onclick="applyCtxScale()" class="px-2 py-0.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded">OK</button>
-            </div>
+        <div class="grid grid-cols-3 gap-1">
+            <button onclick="setTransformMode('translate')" class="px-2 py-1.5 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded text-center font-medium">Mover</button>
+            <button onclick="setTransformMode('rotate')" class="px-2 py-1.5 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded text-center font-medium">Girar</button>
+            <button onclick="setTransformMode('scale')" class="px-2 py-1.5 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded text-center font-medium">Escala</button>
         </div>
-        <hr class="border-slate-200 dark:border-slate-700 my-1">
-        <button onclick="deleteSelectedFromContext()" class="w-full text-left px-2 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-rose-600 rounded flex items-center gap-2 font-bold">
-            <span>🗑️</span> Excluir Objeto
-        </button>
+        <div class="flex gap-1">
+            <button onclick="duplicateSelectedFromContext()" class="flex-1 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded text-[10px]">Duplicar</button>
+            <button onclick="triggerApplyTexture()" class="flex-1 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded text-[10px]">Textura</button>
+        </div>
+
+        <!-- Parâmetros de Colisão & Gameplay Integrados no Botão Direito -->
+        <div class="p-2 bg-amber-50 dark:bg-amber-950/40 rounded border border-amber-200 dark:border-amber-800/60 space-y-2">
+            <span class="text-[10px] font-extrabold text-amber-800 dark:text-amber-300 block">⚡ Configurações de Colisão</span>
+            
+            <label class="flex items-center gap-2 text-[11px] font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+                <input type="checkbox" id="ctxSensible" class="accent-amber-600 w-3.5 h-3.5"> Sensível à Colisão
+            </label>
+
+            <div class="grid grid-cols-2 gap-1 text-[10px]">
+                <div>
+                    <label class="block text-slate-500">Escala Larg (X):</label>
+                    <input type="number" id="ctxColScaleX" step="0.1" min="0.1" max="10" class="w-full px-1 py-0.5 bg-white dark:bg-slate-800 border rounded font-mono">
+                </div>
+                <div>
+                    <label class="block text-slate-500">Escala Prof (Z):</label>
+                    <input type="number" id="ctxColScaleZ" step="0.1" min="0.1" max="10" class="w-full px-1 py-0.5 bg-white dark:bg-slate-800 border rounded font-mono">
+                </div>
+            </div>
+
+            <div class="space-y-1 pt-1 border-t border-amber-200/50 dark:border-amber-800/40">
+                <div class="flex items-center gap-2">
+                    <label class="text-[10px] font-semibold text-slate-600 dark:text-slate-400">Efeito:</label>
+                    <select id="ctxEffectType" class="w-full px-1 py-0.5 bg-white dark:bg-slate-800 border rounded text-[10px]">
+                        <option value="score">Somar Pontos</option>
+                        <option value="damage">Causar Dano</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] text-slate-500">Valor do Efeito:</label>
+                    <input type="number" id="ctxEffectValue" value="10" step="1" class="w-full px-1.5 py-0.5 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
+                </div>
+            </div>
+
+            <button onclick="applyCtxCollisionParams()" class="w-full py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded text-[10px] shadow">Salvar Colisão</button>
+        </div>
+
+        <div class="px-2 py-1 bg-slate-100 dark:bg-slate-900 rounded flex items-center gap-1">
+            <input type="number" id="ctxScaleInput" step="0.1" min="0.05" max="50" class="w-full px-1.5 py-0.5 text-xs bg-white dark:bg-slate-800 border rounded font-mono">
+            <button onclick="applyCtxScale()" class="px-2 py-0.5 bg-indigo-600 text-white font-bold rounded text-[10px]">Escalar</button>
+        </div>
+        <button onclick="deleteSelectedFromContext()" class="w-full py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded text-[10px]">Excluir Objeto</button>
     </div>
 
     <!-- Botão Flutuante para Sair do Modo de Teste -->
@@ -162,15 +192,15 @@
                     </button>
                 </div>
 
-                <!-- Painel de Gerenciamento de Projeto (Salvar, Salvar Como e Meus Projetos) -->
+                <!-- Painel de Gerenciamento de Projeto -->
                 <div class="grid grid-cols-3 gap-1.5">
-                    <button onclick="handleSaveProject()" class="py-2 px-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-[11px] text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1" title="Atualizar / Salvar alterações no projeto atual">
+                    <button onclick="handleSaveProject()" class="py-2 px-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-[11px] text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1">
                         <span>💾</span> Salvar
                     </button>
-                    <button onclick="handleSaveAsProject()" class="py-2 px-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-[11px] text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1" title="Salvar como um novo projeto">
+                    <button onclick="handleSaveAsProject()" class="py-2 px-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-[11px] text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1">
                         <span>📑</span> Como...
                     </button>
-                    <button onclick="openProjectsManager()" class="py-2 px-2 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 active:scale-95 text-[11px] text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1" title="Ver lista de projetos salvos">
+                    <button onclick="openProjectsManager()" class="py-2 px-2 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 active:scale-95 text-[11px] text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1">
                         <span>📂</span> Projetos
                     </button>
                 </div>
@@ -184,6 +214,7 @@
                 <div class="flex bg-slate-200/80 dark:bg-slate-800 p-1 rounded-xl text-xs font-semibold">
                     <button id="tabFiles" onclick="switchTab('files')" class="flex-1 py-1.5 rounded-lg transition tab-btn active">Arquivos & Animações</button>
                     <button id="tabBuilder" onclick="switchTab('builder')" class="flex-1 py-1.5 rounded-lg transition tab-btn text-slate-700 dark:text-slate-300">Obstáculos</button>
+                    <button id="tabPhysics" onclick="switchTab('physics')" class="flex-1 py-1.5 rounded-lg transition tab-btn text-slate-700 dark:text-slate-300">Colisão ⚡</button>
                 </div>
 
                 <!-- Files & Animations Tab Content -->
@@ -201,7 +232,7 @@
                         </label>
                     </div>
 
-                    <!-- EXPANSÍVEL: Animações Base (Idle, Run, Jump) -->
+                    <!-- EXPANSÍVEL: Animações Base -->
                     <div class="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-slate-50/50 dark:bg-slate-900/50">
                         <button onclick="toggleAccordion('baseAnimAccordion')" class="w-full px-3 py-2.5 text-left text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition">
                             <span class="flex items-center gap-1.5">🏃🏽‍♂️ Animações Principais (Idle/Run/Jump)</span>
@@ -209,7 +240,6 @@
                         </button>
                         
                         <div id="baseAnimAccordion" class="p-3 space-y-3 hidden border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
-                            <!-- Idle Character -->
                             <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
                                 <label class="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
                                     <span>1. PERSONAGEM / IDLE (.FBX, .GLB)</span>
@@ -222,7 +252,6 @@
                                 </label>
                             </div>
 
-                            <!-- Run Animation -->
                             <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
                                 <label class="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
                                     <span>2. ANIMAÇÃO RUN (.FBX, .GLB)</span>
@@ -235,7 +264,6 @@
                                 </label>
                             </div>
 
-                            <!-- Jump Animation -->
                             <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
                                 <label class="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
                                     <span>3. ANIMAÇÃO JUMP (.FBX, .GLB)</span>
@@ -250,7 +278,7 @@
                         </div>
                     </div>
 
-                    <!-- EXPANSÍVEL: Animações e Teclas Extra / Personalizadas -->
+                    <!-- EXPANSÍVEL: Teclas Extra -->
                     <div class="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-slate-50/50 dark:bg-slate-900/50">
                         <button onclick="toggleAccordion('customAnimAccordion')" class="w-full px-3 py-2.5 text-left text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition">
                             <span class="flex items-center gap-1.5">⌨️ Teclas & Animações Extras</span>
@@ -258,7 +286,6 @@
                         </button>
                         
                         <div id="customAnimAccordion" class="p-3 space-y-3 hidden border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
-                            <!-- Formulário de Adicionar Nova Tecla/Animação -->
                             <div class="space-y-2 border-b border-slate-200 dark:border-slate-700 pb-3">
                                 <div class="grid grid-cols-2 gap-2">
                                     <div>
@@ -282,7 +309,6 @@
                                 </button>
                             </div>
 
-                            <!-- Lista de Teclas Cadastradas -->
                             <div class="space-y-1">
                                 <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Teclas Personalizadas Ativas:</label>
                                 <div id="customKeysList" class="space-y-1 max-h-32 overflow-y-auto">
@@ -291,12 +317,10 @@
                             </div>
                         </div>
                     </div>
-
                 </div>
 
                 <!-- Builder Tab Content -->
                 <div id="sectionBuilder" class="space-y-3 hidden">
-                    <!-- Custom 3D Object Asset Loader -->
                     <div class="p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/50">
                         <label class="block text-[11px] font-bold text-indigo-800 dark:text-indigo-300 mb-1 flex items-center justify-between">
                             <span>IMPORTAR MODELO 3D (.FBX, .GLB, .OBJ)</span>
@@ -311,7 +335,6 @@
                         </div>
                     </div>
 
-                    <!-- Dedicated Action Buttons -->
                     <div class="grid grid-cols-1 gap-2">
                         <button id="spawnCubeBtn" class="py-2.5 px-3 bg-amber-600 hover:bg-amber-700 active:scale-95 text-xs text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1.5">
                             <span>🟩</span> Inserir Cubo Padrão
@@ -321,17 +344,6 @@
                         </button>
                     </div>
 
-                    <div class="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 space-y-1.5">
-                        <div class="text-xs font-bold text-amber-900 dark:text-amber-300 flex items-center justify-between">
-                            <span>CONTROLES DE GIZMO</span>
-                        </div>
-                        <p class="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
-                            • Selecione qualquer obstáculo para mover, rotacionar ou escalar.<br>
-                            • **Duplicar:** Clique com o **botão direito** sobre o objeto.
-                        </p>
-                    </div>
-
-                    <!-- Obstacles List & Delete -->
                     <div class="space-y-1">
                         <div class="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-300">
                             <span>Objetos Criados (<span id="cubeCount">0</span>)</span>
@@ -339,6 +351,59 @@
                         </div>
                         <div id="cubesListContainer" class="max-h-32 overflow-y-auto space-y-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-[11px]">
                             <span class="text-slate-400 italic">Nenhum obstáculo adicionado ainda.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ABA DE CONFIGURAÇÃO DE COLISÃO / JOGO -->
+                <div id="sectionPhysics" class="space-y-3 hidden">
+                    <!-- Colisão do Jogador -->
+                    <div class="p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/50 space-y-2">
+                        <h3 class="font-bold text-xs text-indigo-900 dark:text-indigo-300 flex items-center justify-between">
+                            <span>🧍🏽‍♂️ Colisão do Jogador</span>
+                            <span class="text-[9px] bg-indigo-200 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 px-1.5 py-0.5 rounded">CILINDRO</span>
+                        </h3>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                                <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Raio (X/Z):</label>
+                                <input type="number" id="playerColRadius" step="0.05" min="0.1" max="3.0" class="w-full px-2 py-1 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Altura (Y):</label>
+                                <input type="number" id="playerColHeight" step="0.1" min="0.5" max="5.0" class="w-full px-2 py-1 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Configuração Visual Bounds -->
+                    <div class="p-3 rounded-xl bg-orange-50/70 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-800/50 flex items-center justify-between">
+                        <label for="toggleShowBounds" class="text-xs font-bold text-orange-900 dark:text-orange-300 cursor-pointer flex items-center gap-2">
+                            <span>🟠</span> Exibir Área de Colisão (Bounds)
+                        </label>
+                        <input type="checkbox" id="toggleShowBounds" checked class="w-4 h-4 cursor-pointer accent-orange-600">
+                    </div>
+
+                    <!-- Configuração do HUD / Pontuação -->
+                    <div class="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 space-y-2.5">
+                        <div class="flex items-center justify-between">
+                            <label for="toggleScoreEnabled" class="text-xs font-bold text-emerald-900 dark:text-emerald-300 cursor-pointer flex items-center gap-1.5">
+                                <span>🏆</span> Habilitar Pontuação do Jogo
+                            </label>
+                            <input type="checkbox" id="toggleScoreEnabled" checked class="w-4 h-4 cursor-pointer accent-emerald-600">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400 mb-0.5">Texto do Placar:</label>
+                            <input type="text" id="scoreTextLabel" value="Pontos:" class="w-full px-2 py-1 text-xs bg-white dark:bg-slate-800 border rounded">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                                <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Posição X (px):</label>
+                                <input type="number" id="scorePosX" value="32" step="5" class="w-full px-2 py-1 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Posição Y (px):</label>
+                                <input type="number" id="scorePosY" value="32" step="5" class="w-full px-2 py-1 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -375,7 +440,7 @@
                         <span class="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold">ESPAÇO</span>
                     </div>
                     <div id="customKeysHelp" class="space-y-1 border-t border-slate-200 dark:border-slate-700 pt-1">
-                        <!-- Ajuda de teclas customizadas via JS -->
+                        <!-- Ajuda via JS -->
                     </div>
                 </div>
             </div>
@@ -424,8 +489,23 @@
         let currentProjectId = 'default_project';
         let currentProjectName = 'Projeto Padrão';
 
-        // Mapeamento dinâmico de Teclas Personalizadas
         let customKeyAnimations = {};
+
+        // CONFIGURAÇÕES DE JOGO / HUD
+        let gameConfig = {
+            scoreEnabled: true,
+            scoreText: 'Pontos:',
+            scoreX: 32, // Canto superior direito padrão (calculado dinamicamente ou fixo)
+            scoreY: 32,
+            showBounds: true
+        };
+        let currentScore = 0;
+
+        let playerCollider = {
+            radius: 0.35,
+            height: 1.8
+        };
+        let playerDebugHelper = null;
 
         function openDB() {
             return new Promise((resolve, reject) => {
@@ -627,6 +707,9 @@
             const rightPanel = document.getElementById('rightInfoPanel');
             const consolePanel = document.getElementById('consoleTerminalPanel');
             const gamePlayUI = document.getElementById('gamePlayModeUI');
+            const hud = document.getElementById('gameHud');
+
+            updateHelpersVisibility();
 
             if (testing) {
                 deselectCube();
@@ -634,34 +717,68 @@
                 if (rightPanel) rightPanel.classList.add('hidden');
                 if (consolePanel) consolePanel.classList.add('hidden');
                 if (gamePlayUI) gamePlayUI.classList.remove('hidden');
+                if (gameConfig.scoreEnabled && hud) hud.classList.remove('hidden');
+                currentScore = 0;
+                updateHudDisplay();
                 log('Modo de Teste iniciado.', 'info');
             } else {
                 if (leftPanel) leftPanel.classList.remove('hidden');
                 if (rightPanel) rightPanel.classList.remove('hidden');
                 if (consolePanel) consolePanel.classList.remove('hidden');
                 if (gamePlayUI) gamePlayUI.classList.add('hidden');
+                if (hud) hud.classList.add('hidden');
                 log('Modo Edição retornado.', 'info');
             }
+        }
+
+        function updateHudDisplay() {
+            const hud = document.getElementById('gameHud');
+            const labelEl = document.getElementById('hudLabelText');
+            const valEl = document.getElementById('hudScoreValue');
+            if (!hud) return;
+
+            labelEl.innerText = gameConfig.scoreText;
+            valEl.innerText = currentScore;
+
+            hud.style.top = `${gameConfig.scoreY}px`;
+            // Canto superior direito por padrão se X for calculado ou fornecido
+            if (gameConfig.scoreX === 32) {
+                hud.style.right = `${gameConfig.scoreX}px`;
+                hud.style.left = 'auto';
+            } else {
+                hud.style.left = `${gameConfig.scoreX}px`;
+                hud.style.right = 'auto';
+            }
+        }
+
+        function updateHelpersVisibility() {
+            const show = gameConfig.showBounds && !isGameTestingMode;
+            if (playerDebugHelper) playerDebugHelper.visible = show;
+            obstacleCubes.forEach(ob => {
+                if (ob.debugHelper) ob.debugHelper.visible = show;
+            });
         }
 
         function switchTab(tab) {
             const tabFiles = document.getElementById('tabFiles');
             const tabBuilder = document.getElementById('tabBuilder');
+            const tabPhysics = document.getElementById('tabPhysics');
             const secFiles = document.getElementById('sectionFiles');
             const secBuilder = document.getElementById('sectionBuilder');
+            const secPhysics = document.getElementById('sectionPhysics');
+
+            [tabFiles, tabBuilder, tabPhysics].forEach(t => t.classList.remove('active'));
+            [secFiles, secBuilder, secPhysics].forEach(s => s.classList.add('hidden'));
 
             if (tab === 'files') {
                 tabFiles.classList.add('active');
-                tabBuilder.classList.remove('active');
-                tabBuilder.classList.add('text-slate-700', 'dark:text-slate-300');
                 secFiles.classList.remove('hidden');
-                secBuilder.classList.add('hidden');
-            } else {
+            } else if (tab === 'builder') {
                 tabBuilder.classList.add('active');
-                tabFiles.classList.remove('active');
-                tabFiles.classList.add('text-slate-700', 'dark:text-slate-300');
                 secBuilder.classList.remove('hidden');
-                secFiles.classList.add('hidden');
+            } else if (tab === 'physics') {
+                tabPhysics.classList.add('active');
+                secPhysics.classList.remove('hidden');
             }
         }
 
@@ -771,6 +888,7 @@
             scene.add(characterGroup);
 
             createDummyCharacter();
+            setupPhysicsTabUI();
 
             window.addEventListener('resize', onResize);
             window.addEventListener('keydown', (e) => {
@@ -809,20 +927,139 @@
         }
 
         // ==========================================
-        // GERENCIAMENTO DE PROJETOS (SALVAR, SALVAR COMO, EXCLUIR)
+        // CONFIGURAÇÕES DE FÍSICA & UI DE COLISÃO
+        // ==========================================
+
+        function setupPhysicsTabUI() {
+            const radInput = document.getElementById('playerColRadius');
+            const heiInput = document.getElementById('playerColHeight');
+            const showBoundsCheck = document.getElementById('toggleShowBounds');
+            const scoreCheck = document.getElementById('toggleScoreEnabled');
+            const scoreLabelInput = document.getElementById('scoreTextLabel');
+            const scoreXInput = document.getElementById('scorePosX');
+            const scoreYInput = document.getElementById('scorePosY');
+
+            radInput.value = playerCollider.radius;
+            heiInput.value = playerCollider.height;
+            showBoundsCheck.checked = gameConfig.showBounds;
+            scoreCheck.checked = gameConfig.scoreEnabled;
+            scoreLabelInput.value = gameConfig.scoreText;
+            scoreXInput.value = gameConfig.scoreX;
+            scoreYInput.value = gameConfig.scoreY;
+
+            radInput.addEventListener('change', (e) => {
+                playerCollider.radius = Math.max(0.1, parseFloat(e.target.value) || 0.35);
+                updatePlayerDebugHelper();
+                persistCurrentProjectState();
+            });
+            heiInput.addEventListener('change', (e) => {
+                playerCollider.height = Math.max(0.5, parseFloat(e.target.value) || 1.8);
+                updatePlayerDebugHelper();
+                persistCurrentProjectState();
+            });
+            showBoundsCheck.addEventListener('change', (e) => {
+                gameConfig.showBounds = e.target.checked;
+                updateHelpersVisibility();
+                persistCurrentProjectState();
+            });
+            scoreCheck.addEventListener('change', (e) => {
+                gameConfig.scoreEnabled = e.target.checked;
+                persistCurrentProjectState();
+            });
+            scoreLabelInput.addEventListener('input', (e) => {
+                gameConfig.scoreText = e.target.value;
+                updateHudDisplay();
+                persistCurrentProjectState();
+            });
+            scoreXInput.addEventListener('change', (e) => {
+                gameConfig.scoreX = parseFloat(e.target.value) || 32;
+                updateHudDisplay();
+                persistCurrentProjectState();
+            });
+            scoreYInput.addEventListener('change', (e) => {
+                gameConfig.scoreY = parseFloat(e.target.value) || 32;
+                updateHudDisplay();
+                persistCurrentProjectState();
+            });
+
+            updatePlayerDebugHelper();
+        }
+
+        function updatePlayerDebugHelper() {
+            if (playerDebugHelper) {
+                characterGroup.remove(playerDebugHelper);
+                playerDebugHelper.geometry.dispose();
+                playerDebugHelper.material.dispose();
+                playerDebugHelper = null;
+            }
+
+            const geo = new THREE.CylinderGeometry(playerCollider.radius, playerCollider.radius, playerCollider.height, 16);
+            const mat = new THREE.LineDashedMaterial({ color: 0xff7f00, dashSize: 0.15, gapSize: 0.1 });
+            const wireframeGeo = new THREE.WireframeGeometry(geo);
+            playerDebugHelper = new THREE.LineSegments(wireframeGeo, mat);
+            playerDebugHelper.computeLineDistances();
+            playerDebugHelper.position.y = playerCollider.height / 2;
+            playerDebugHelper.visible = gameConfig.showBounds && !isGameTestingMode;
+            characterGroup.add(playerDebugHelper);
+        }
+
+        function updateObstacleDebugHelper(obstacle) {
+            if (!obstacle || !obstacle.group) return;
+
+            if (obstacle.debugHelper) {
+                obstacle.group.remove(obstacle.debugHelper);
+                obstacle.debugHelper.geometry.dispose();
+                obstacle.debugHelper.material.dispose();
+                obstacle.debugHelper = null;
+            }
+
+            const scaleX = obstacle.group.scale.x * (obstacle.colScaleX || 1.0);
+            const scaleY = obstacle.group.scale.y;
+            const scaleZ = obstacle.group.scale.z * (obstacle.colScaleZ || 1.0);
+
+            const w = obstacle.baseWidth * scaleX;
+            const h = obstacle.baseHeight * scaleY;
+            const d = obstacle.baseDepth * scaleZ;
+
+            const geo = new THREE.BoxGeometry(w, h, d);
+            const mat = new THREE.LineDashedMaterial({ color: 0xff7f00, dashSize: 0.15, gapSize: 0.1 });
+            const wireframeGeo = new THREE.WireframeGeometry(geo);
+            const lineSegments = new THREE.LineSegments(wireframeGeo, mat);
+            lineSegments.computeLineDistances();
+            lineSegments.position.y = h / 2;
+            lineSegments.visible = gameConfig.showBounds && !isGameTestingMode;
+
+            obstacle.debugHelper = lineSegments;
+            obstacle.group.add(lineSegments);
+        }
+
+        function applyCtxCollisionParams() {
+            if (!selectedCube) return;
+            selectedCube.sensible = document.getElementById('ctxSensible').checked;
+            selectedCube.colScaleX = parseFloat(document.getElementById('ctxColScaleX').value) || 1.0;
+            selectedCube.colScaleZ = parseFloat(document.getElementById('ctxColScaleZ').value) || 1.0;
+            selectedCube.effectType = document.getElementById('ctxEffectType').value;
+            selectedCube.effectValue = parseFloat(document.getElementById('ctxEffectValue').value) || 0;
+
+            updateObstacleDebugHelper(selectedCube);
+            persistCurrentProjectState();
+            document.getElementById('objectContextMenu').classList.add('hidden');
+            log(`Parâmetros de colisão de "${selectedCube.name}" atualizados!`, 'success');
+        }
+
+        // ==========================================
+        // GERENCIAMENTO DE PROJETOS
         // ==========================================
 
         function updateProjectTitleUI() {
             document.getElementById('currentProjectTitle').innerText = currentProjectName;
         }
 
-        // 1. Atualizar/Salvar Projeto Atual (mesmo ID/Nome)
         async function handleSaveProject() {
             await persistCurrentProjectState();
             log(`Projeto "${currentProjectName}" salvo com sucesso!`, 'success');
         }
 
-        // 2. Salvar Como (Cria uma nova cópia independente com outro nome/ID)
         async function handleSaveAsProject() {
             const name = prompt('Digite o novo nome para salvar este projeto:', `${currentProjectName} (Cópia)`);
             if (!name || !name.trim()) return;
@@ -906,14 +1143,12 @@
             }
         }
 
-        // 3. Excluir Projeto Específico
         async function deleteProject(projId, projName) {
             if (!confirm(`Deseja realmente excluir o projeto "${projName}"?`)) return;
             
             await deleteProjectFromDB(projId);
             log(`Projeto "${projName}" excluído.`, 'info');
 
-            // Se o projeto excluído for o atual ativo, alterna para outro projeto
             if (projId === currentProjectId) {
                 const remaining = await getAllProjectsFromDB();
                 if (remaining.length > 0) {
@@ -1068,6 +1303,8 @@
                 runFileKey: window.currentRunFileKey || null,
                 jumpFileKey: window.currentJumpFileKey || null,
                 floorTextureFileKey: window.currentFloorTextureKey || null,
+                playerCollider: playerCollider,
+                gameConfig: gameConfig,
                 customKeys: customKeysArray,
                 obstacles: obstacleCubes.map(ob => ({
                     id: ob.id,
@@ -1075,6 +1312,11 @@
                     isCube: !ob.sourceFileKey,
                     sourceFileKey: ob.sourceFileKey || null,
                     textureFileKey: ob.textureFileKey || null,
+                    sensible: ob.sensible !== false,
+                    colScaleX: ob.colScaleX || 1.0,
+                    colScaleZ: ob.colScaleZ || 1.0,
+                    effectType: ob.effectType || 'score',
+                    effectValue: ob.effectValue !== undefined ? ob.effectValue : 10,
                     width: ob.width, height: ob.height, depth: ob.depth,
                     baseWidth: ob.baseWidth, baseHeight: ob.baseHeight, baseDepth: ob.baseDepth,
                     x: ob.group.position.x, y: ob.group.position.y, z: ob.group.position.z,
@@ -1107,6 +1349,23 @@
             updateProjectTitleUI();
 
             const d = projRecord.data || {};
+
+            if (d.playerCollider) {
+                playerCollider = d.playerCollider;
+                document.getElementById('playerColRadius').value = playerCollider.radius;
+                document.getElementById('playerColHeight').value = playerCollider.height;
+                updatePlayerDebugHelper();
+            }
+
+            if (d.gameConfig) {
+                gameConfig = { ...gameConfig, ...d.gameConfig };
+                document.getElementById('toggleShowBounds').checked = gameConfig.showBounds;
+                document.getElementById('toggleScoreEnabled').checked = gameConfig.scoreEnabled;
+                document.getElementById('scoreTextLabel').value = gameConfig.scoreText;
+                document.getElementById('scorePosX').value = gameConfig.scoreX;
+                document.getElementById('scorePosY').value = gameConfig.scoreY;
+                updateHudDisplay();
+            }
 
             if (d.envFileKey) {
                 window.currentEnvFileKey = d.envFileKey;
@@ -1159,6 +1418,14 @@
                         if (file) {
                             createdObstacle = await loadAndPlaceSavedModel(file, item);
                         }
+                    }
+
+                    if (createdObstacle) {
+                        createdObstacle.sensible = item.sensible !== false;
+                        createdObstacle.colScaleX = item.colScaleX || 1.0;
+                        createdObstacle.colScaleZ = item.colScaleZ || 1.0;
+                        createdObstacle.effectType = item.effectType || 'score';
+                        createdObstacle.effectValue = item.effectValue !== undefined ? item.effectValue : 10;
                     }
 
                     if (createdObstacle && item.textureFileKey) {
@@ -1371,6 +1638,11 @@
                 sourceFile: pending.sourceFile || null,
                 sourceFileKey: pending.fileKey || null,
                 textureFileKey: null,
+                sensible: true,
+                colScaleX: 1.0,
+                colScaleZ: 1.0,
+                effectType: 'score',
+                effectValue: 10,
                 group: root,
                 width: Math.max(dimensions.x, 0.001),
                 height: Math.max(dimensions.y, 0.001),
@@ -1393,6 +1665,7 @@
             document.getElementById('canvas-container').style.cursor = '';
             selectCube(obstacle);
             syncObstacleTransform(obstacle);
+            updateObstacleDebugHelper(obstacle);
             updateCubesListUI();
             recordObstacleHistory();
             persistCurrentProjectState();
@@ -1434,6 +1707,11 @@
                         sourceFile: file,
                         sourceFileKey: itemData.sourceFileKey,
                         textureFileKey: itemData.textureFileKey || null,
+                        sensible: itemData.sensible !== false,
+                        colScaleX: itemData.colScaleX || 1.0,
+                        colScaleZ: itemData.colScaleZ || 1.0,
+                        effectType: itemData.effectType || 'score',
+                        effectValue: itemData.effectValue !== undefined ? itemData.effectValue : 10,
                         group: root,
                         width: itemData.width, height: itemData.height, depth: itemData.depth,
                         baseWidth: itemData.baseWidth, baseHeight: itemData.baseHeight, baseDepth: itemData.baseDepth,
@@ -1448,6 +1726,7 @@
                     });
                     obstacleCubes.push(obstacle);
                     syncObstacleTransform(obstacle);
+                    updateObstacleDebugHelper(obstacle);
                     updateCubesListUI();
                     resolve(obstacle);
                 }, () => resolve(null));
@@ -1511,6 +1790,11 @@
                 sourceFile: null,
                 sourceFileKey: sourceObstacle.sourceFileKey || null,
                 textureFileKey: sourceObstacle.textureFileKey || null,
+                sensible: sourceObstacle.sensible,
+                colScaleX: sourceObstacle.colScaleX || 1.0,
+                colScaleZ: sourceObstacle.colScaleZ || 1.0,
+                effectType: sourceObstacle.effectType || 'score',
+                effectValue: sourceObstacle.effectValue || 10,
                 group: newGroup,
                 width: sourceObstacle.width,
                 height: sourceObstacle.height,
@@ -1528,6 +1812,7 @@
             obstacleCubes.push(newObstacle);
             selectCube(newObstacle);
             syncObstacleTransform(newObstacle);
+            updateObstacleDebugHelper(newObstacle);
             updateCubesListUI();
             recordObstacleHistory();
             persistCurrentProjectState();
@@ -1802,6 +2087,9 @@
                     const scaleFactor = 2.0 / size.y;
                     currentModel.scale.setScalar(scaleFactor);
                     currentModel.updateMatrixWorld(true);
+                    playerCollider.height = size.y * scaleFactor;
+                    document.getElementById('playerColHeight').value = playerCollider.height.toFixed(2);
+                    updatePlayerDebugHelper();
                 }
 
                 characterGroup.add(currentModel);
@@ -1950,6 +2238,12 @@
                         selectCube(hitObj);
                         document.getElementById('ctxMenuTitle').innerText = hitObj.name;
                         document.getElementById('ctxScaleInput').value = hitObj.group.scale.x.toFixed(2);
+                        document.getElementById('ctxSensible').checked = hitObj.sensible !== false;
+                        document.getElementById('ctxColScaleX').value = (hitObj.colScaleX || 1.0).toFixed(2);
+                        document.getElementById('ctxColScaleZ').value = (hitObj.colScaleZ || 1.0).toFixed(2);
+                        document.getElementById('ctxEffectType').value = hitObj.effectType || 'score';
+                        document.getElementById('ctxEffectValue').value = hitObj.effectValue !== undefined ? hitObj.effectValue : 10;
+
                         ctxMenu.style.left = `${e.clientX}px`;
                         ctxMenu.style.top = `${e.clientY}px`;
                         ctxMenu.classList.remove('hidden');
@@ -1980,6 +2274,7 @@
             selectedCube.group.scale.set(val, val * ratioY, val * ratioZ);
             selectedCube.group.updateMatrixWorld(true);
             syncObstacleTransform(selectedCube);
+            updateObstacleDebugHelper(selectedCube);
             recordObstacleHistory();
             persistCurrentProjectState();
 
@@ -2044,6 +2339,8 @@
             obstacle.worldHeight = size.y;
             obstacle.worldDepth = size.z;
 
+            updateObstacleDebugHelper(obstacle);
+
             if (renderer) renderer.render(scene, camera);
         }
 
@@ -2087,6 +2384,11 @@
                 name: name,
                 group: group,
                 textureFileKey: posData ? posData.textureFileKey : null,
+                sensible: posData ? (posData.sensible !== false) : true,
+                colScaleX: posData ? (posData.colScaleX || 1.0) : 1.0,
+                colScaleZ: posData ? (posData.colScaleZ || 1.0) : 1.0,
+                effectType: posData ? (posData.effectType || 'score') : 'score',
+                effectValue: posData ? (posData.effectValue !== undefined ? posData.effectValue : 10) : 10,
                 width: width, height: height, depth: depth,
                 baseWidth: width, baseHeight: height, baseDepth: depth,
                 x: group.position.x, y: group.position.y, z: group.position.z,
@@ -2102,6 +2404,7 @@
 
             obstacleCubes.push(cubeData);
             syncObstacleTransform(cubeData);
+            updateObstacleDebugHelper(cubeData);
             updateCubesListUI();
             if (!posData) {
                 selectCube(cubeData);
@@ -2201,6 +2504,12 @@
                     const ctxMenu = document.getElementById('objectContextMenu');
                     document.getElementById('ctxMenuTitle').innerText = c.name;
                     document.getElementById('ctxScaleInput').value = c.group.scale.x.toFixed(2);
+                    document.getElementById('ctxSensible').checked = c.sensible !== false;
+                    document.getElementById('ctxColScaleX').value = (c.colScaleX || 1.0).toFixed(2);
+                    document.getElementById('ctxColScaleZ').value = (c.colScaleZ || 1.0).toFixed(2);
+                    document.getElementById('ctxEffectType').value = c.effectType || 'score';
+                    document.getElementById('ctxEffectValue').value = c.effectValue !== undefined ? c.effectValue : 10;
+
                     ctxMenu.style.left = `${e.clientX}px`;
                     ctxMenu.style.top = `${e.clientY}px`;
                     ctxMenu.classList.remove('hidden');
@@ -2260,7 +2569,10 @@
             selectedCube = obstacleCubes.find(ob => ob.id === snapshot.selectedId) || null;
             if (selectedCube && transformControls) transformControls.attach(selectedCube.group);
             updateCubesListUI();
-            obstacleCubes.forEach(syncObstacleTransform);
+            obstacleCubes.forEach(ob => {
+                syncObstacleTransform(ob);
+                updateObstacleDebugHelper(ob);
+            });
             if (renderer) renderer.render(scene, camera);
             restoringHistory = false;
             persistCurrentProjectState();
@@ -2280,20 +2592,50 @@
             log('Ação refeita.', 'info');
         }
 
+        // ==========================================
+        // DETECÇÃO DE COLISÕES & GAMEPLAY (DANO / PONTUAÇÃO)
+        // ==========================================
+
+        let lastCollisionTime = 0;
         function checkCollisions(nextPos) {
-            const charRadius = 0.35;
+            const charRadius = playerCollider.radius;
+
             for (let c of obstacleCubes) {
-                const scaleX = c.group.scale.x;
-                const scaleZ = c.group.scale.z;
-                const halfW = (c.width * scaleX) / 2;
-                const halfD = (c.depth * scaleZ) / 2;
+                if (c.sensible === false) continue; // Ignora se não for sensível à colisão
+
+                const colScaleX = c.colScaleX || 1.0;
+                const colScaleZ = c.colScaleZ || 1.0;
+
+                const scaleX = c.group.scale.x * colScaleX;
+                const scaleZ = c.group.scale.z * colScaleZ;
+                
+                const halfW = (c.baseWidth * scaleX) / 2;
+                const halfD = (c.baseDepth * scaleZ) / 2;
+
                 const minX = c.x - halfW - charRadius;
                 const maxX = c.x + halfW + charRadius;
                 const minZ = c.z - halfD - charRadius;
                 const maxZ = c.z + halfD + charRadius;
 
                 if (nextPos.x >= minX && nextPos.x <= maxX && nextPos.z >= minZ && nextPos.z <= maxZ) {
-                    const cubeTop = c.y + (c.height * c.group.scale.y);
+                    // Trata eventos de gameplay durante teste
+                    if (isGameTestingMode) {
+                        const now = Date.now();
+                        if (now - lastCollisionTime > 600) { // Cooldown para evitar spam de colisão
+                            lastCollisionTime = now;
+                            const val = c.effectValue !== undefined ? c.effectValue : 10;
+                            if (c.effectType === 'damage') {
+                                currentScore = Math.max(0, currentScore - val);
+                                log(`Colisão com "${c.name}" - Causou Dano (-${val})`, 'warn');
+                            } else {
+                                currentScore += val;
+                                log(`Colisão com "${c.name}" - Pontuação (+${val})`, 'success');
+                            }
+                            updateHudDisplay();
+                        }
+                    }
+
+                    const cubeTop = c.y + (c.baseHeight * c.group.scale.y);
                     if (characterGroup.position.y >= cubeTop - 0.2) return cubeTop;
                     else return false;
                 }
@@ -2463,4 +2805,4 @@
         window.onload = init;
     </script>
 </body>
-</html>
+</html> 
