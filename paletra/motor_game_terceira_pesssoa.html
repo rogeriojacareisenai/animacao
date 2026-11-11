@@ -257,12 +257,17 @@
                 </div>
 
                 <!-- Action Buttons -->
-                <div class="pt-2 flex gap-2 border-t border-slate-200 dark:border-slate-700">
-                    <button id="resetCamBtn" class="flex-1 py-2 px-3 bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 dark:hover:bg-slate-600 active:scale-95 text-xs text-white font-medium rounded-lg transition shadow">
-                        Resetar Posição
-                    </button>
-                    <button id="clearConsoleBtn" class="py-2 px-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 active:scale-95 text-xs text-slate-700 dark:text-slate-300 font-medium rounded-lg transition">
-                        Limpar Log
+                <div class="pt-2 flex flex-col gap-2 border-t border-slate-200 dark:border-slate-700">
+                    <div class="flex gap-2">
+                        <button id="resetCamBtn" class="flex-1 py-2 px-3 bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 dark:hover:bg-slate-600 active:scale-95 text-xs text-white font-medium rounded-lg transition shadow">
+                            Resetar Posição
+                        </button>
+                        <button id="clearConsoleBtn" class="py-2 px-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 active:scale-95 text-xs text-slate-700 dark:text-slate-300 font-medium rounded-lg transition">
+                            Limpar Log
+                        </button>
+                    </div>
+                    <button id="clearStorageBtn" onclick="clearAllPersistedData()" class="w-full py-1.5 px-3 bg-rose-100 hover:bg-rose-200 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300 text-[11px] font-bold rounded-lg transition border border-rose-300 dark:border-rose-800">
+                        🗑️ Limpar Dados Salvos (Reset Geral)
                     </button>
                 </div>
             </div>
@@ -327,6 +332,100 @@
 
     <!-- Script Application Logic -->
     <script>
+        // IndexedDB Manager para persistência segura de arquivos e texturas em binário
+        const DB_NAME = 'Studio3DDB';
+        const DB_VERSION = 1;
+        let dbInstance = null;
+
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                if (dbInstance) return resolve(dbInstance);
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains('files')) db.createObjectStore('files');
+                    if (!db.objectStoreNames.contains('state')) db.createObjectStore('state');
+                };
+                request.onsuccess = (e) => {
+                    dbInstance = e.target.result;
+                    resolve(dbInstance);
+                };
+                request.onerror = (e) => reject(e);
+            });
+        }
+
+        async function saveFileToDB(key, fileObj) {
+            try {
+                const buffer = await fileObj.arrayBuffer();
+                const db = await openDB();
+                const tx = db.transaction('files', 'readwrite');
+                const store = tx.objectStore('files');
+                store.put({ buffer, name: fileObj.name, type: fileObj.type }, key);
+            } catch (err) {
+                console.error('Erro ao salvar arquivo no DB:', err);
+            }
+        }
+
+        async function getFileFromDB(key) {
+            try {
+                const db = await openDB();
+                return new Promise((resolve) => {
+                    const tx = db.transaction('files', 'readonly');
+                    const store = tx.objectStore('files');
+                    const req = store.get(key);
+                    req.onsuccess = () => {
+                        if (req.result && req.result.buffer) {
+                            resolve(new File([req.result.buffer], req.result.name, { type: req.result.type }));
+                        } else {
+                            resolve(null);
+                        }
+                    };
+                    req.onerror = () => resolve(null);
+                });
+            } catch (err) {
+                return null;
+            }
+        }
+
+        async function saveStateToDB(key, data) {
+            try {
+                const db = await openDB();
+                const tx = db.transaction('state', 'readwrite');
+                const store = tx.objectStore('state');
+                store.put(data, key);
+            } catch (err) {
+                console.error('Erro ao salvar estado:', err);
+            }
+        }
+
+        async function getStateFromDB(key) {
+            try {
+                const db = await openDB();
+                return new Promise((resolve) => {
+                    const tx = db.transaction('state', 'readonly');
+                    const store = tx.objectStore('state');
+                    const req = store.get(key);
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => resolve(null);
+                });
+            } catch (err) {
+                return null;
+            }
+        }
+
+        async function clearAllPersistedData() {
+            try {
+                const db = await openDB();
+                const tx = db.transaction(['files', 'state'], 'readwrite');
+                tx.objectStore('files').clear();
+                tx.objectStore('state').clear();
+                log('Dados salvos totalmente limpos. Recarregando página...', 'warn');
+                setTimeout(() => window.location.reload(), 1000);
+            } catch (err) {
+                log('Erro ao limpar dados salvos.', 'error');
+            }
+        }
+
         let scene, camera, renderer, controls, transformControls;
         let characterGroup, currentModel = null;
         let environmentMesh = null;
@@ -448,12 +547,13 @@
                     if (ambientLight) ambientLight.intensity = 0.7;
                     if (hemiLight) hemiLight.intensity = 0.4;
                 }
+                saveStateToDB('darkMode', isDarkMode);
                 log(`Modo ${isDarkMode ? 'Escuro' : 'Claro'} ativado.`, 'info');
             });
         }
 
-        function init() {
-            log('Iniciando engine Three.js com suporte a duplicação via menu de contexto.', 'info');
+        async function init() {
+            log('Iniciando Three.js com suporte a carregamento e salvamento de arquivos/texturas...', 'info');
 
             const container = document.getElementById('canvas-container');
 
@@ -508,6 +608,7 @@
                     syncObstacleTransform(selectedCube);
                     updateCubesListUI();
                     recordObstacleHistory();
+                    persistObstaclesState();
                 }
             });
 
@@ -560,6 +661,86 @@
 
             log('Engine pronta.', 'success');
             animate();
+
+            // Carrega estado e arquivos recuperados da sessão anterior
+            await restorePersistedSession();
+        }
+
+        async function persistObstaclesState() {
+            const list = obstacleCubes.map(ob => ({
+                id: ob.id,
+                name: ob.name,
+                isCube: !ob.sourceFileKey,
+                sourceFileKey: ob.sourceFileKey || null,
+                textureFileKey: ob.textureFileKey || null,
+                width: ob.width, height: ob.height, depth: ob.depth,
+                baseWidth: ob.baseWidth, baseHeight: ob.baseHeight, baseDepth: ob.baseDepth,
+                x: ob.group.position.x, y: ob.group.position.y, z: ob.group.position.z,
+                rotationX: ob.group.rotation.x, rotationY: ob.group.rotation.y, rotationZ: ob.group.rotation.z,
+                scaleX: ob.group.scale.x, scaleY: ob.group.scale.y, scaleZ: ob.group.scale.z
+            }));
+            await saveStateToDB('obstacles', list);
+        }
+
+        async function restorePersistedSession() {
+            log('Recuperando arquivos e estado salvo...', 'info');
+
+            // 1. Restaurar Tema
+            const savedDark = await getStateFromDB('darkMode');
+            if (savedDark) {
+                isDarkMode = true;
+                document.documentElement.classList.add('dark');
+                scene.background.set(0x0f172a);
+                scene.fog.color.set(0x0f172a);
+                if (ambientLight) ambientLight.intensity = 0.4;
+                if (hemiLight) hemiLight.intensity = 0.2;
+            }
+
+            // 2. Restaurar Cenário
+            const envFile = await getFileFromDB('envFile');
+            if (envFile) {
+                log(`Restaurando Cenário: ${envFile.name}...`, 'info');
+                loadEnvironmentFile(envFile, false);
+            }
+
+            // 3. Restaurar Personagem e Animações
+            const idleFile = await getFileFromDB('idleFile');
+            if (idleFile) loadCharacterOrAnimation(idleFile, 'idle', false);
+
+            const runFile = await getFileFromDB('runFile');
+            if (runFile) loadCharacterOrAnimation(runFile, 'run', false);
+
+            const jumpFile = await getFileFromDB('jumpFile');
+            if (jumpFile) loadCharacterOrAnimation(jumpFile, 'jump', false);
+
+            // 4. Restaurar Textura do Chão
+            const floorTexFile = await getFileFromDB('floorTextureFile');
+            if (floorTexFile) applyTextureToFloor(floorTexFile, false);
+
+            // 5. Restaurar Obstáculos, Modelos 3D e suas Texturas
+            const savedObstacles = await getStateFromDB('obstacles');
+            if (savedObstacles && Array.isArray(savedObstacles) && savedObstacles.length > 0) {
+                for (const item of savedObstacles) {
+                    let createdObstacle = null;
+                    if (item.isCube) {
+                        createdObstacle = spawnCubeAt(item);
+                    } else if (item.sourceFileKey) {
+                        const file = await getFileFromDB(item.sourceFileKey);
+                        if (file) {
+                            createdObstacle = await loadAndPlaceSavedModel(file, item);
+                        }
+                    }
+
+                    // Se havia textura aplicada no obstáculo, re-aplica
+                    if (createdObstacle && item.textureFileKey) {
+                        const texFile = await getFileFromDB(item.textureFileKey);
+                        if (texFile) {
+                            applyTextureToObstacle(createdObstacle, texFile, false);
+                        }
+                    }
+                }
+                log(`${savedObstacles.length} obstáculo(s) restaurado(s) com sucesso.`, 'success');
+            }
         }
 
         function createDefaultGrid() {
@@ -600,16 +781,16 @@
 
         function setupFileUploads() {
             document.getElementById('envInput').addEventListener('change', (e) => {
-                if (e.target.files[0]) loadEnvironmentFile(e.target.files[0]);
+                if (e.target.files[0]) loadEnvironmentFile(e.target.files[0], true);
             });
             document.getElementById('idleInput').addEventListener('change', (e) => {
-                if (e.target.files[0]) loadCharacterOrAnimation(e.target.files[0], 'idle');
+                if (e.target.files[0]) loadCharacterOrAnimation(e.target.files[0], 'idle', true);
             });
             document.getElementById('runInput').addEventListener('change', (e) => {
-                if (e.target.files[0]) loadCharacterOrAnimation(e.target.files[0], 'run');
+                if (e.target.files[0]) loadCharacterOrAnimation(e.target.files[0], 'run', true);
             });
             document.getElementById('jumpInput').addEventListener('change', (e) => {
-                if (e.target.files[0]) loadCharacterOrAnimation(e.target.files[0], 'jump');
+                if (e.target.files[0]) loadCharacterOrAnimation(e.target.files[0], 'jump', true);
             });
             document.getElementById('importModelSceneBtn').addEventListener('click', () => {
                 document.getElementById('sceneModelInput').click();
@@ -623,7 +804,7 @@
             document.getElementById('textureFileInput').addEventListener('change', (e) => {
                 const file = e.target.files && e.target.files[0];
                 if (file) {
-                    if (pendingTextureTarget === 'floor') applyTextureToFloor(file);
+                    if (pendingTextureTarget === 'floor') applyTextureToFloor(file, true);
                     else applyTextureToSelected(file);
                 }
                 e.target.value = '';
@@ -691,7 +872,7 @@
             return source.clone(true);
         }
 
-        function loadModelForScenePlacement(file) {
+        async function loadModelForScenePlacement(file) {
             const fileName = file.name;
             const ext = fileName.split('.').pop().toLowerCase();
             if (!['fbx', 'glb', 'gltf', 'obj'].includes(ext)) {
@@ -699,6 +880,10 @@
                 return;
             }
             log(`Importando modelo 3D [${ext.toUpperCase()}]: ${fileName}...`, 'info');
+            
+            const fileKey = 'asset_' + Date.now() + '_' + file.name;
+            await saveFileToDB(fileKey, file);
+
             load3DAssetFile(file, (obj) => {
                 prepareImported3DObject(obj);
                 obj.updateMatrixWorld(true);
@@ -707,9 +892,10 @@
                 const maxDim = Math.max(size.x, size.y, size.z);
                 if (maxDim > 0) obj.scale.multiplyScalar(1.5 / maxDim);
                 obj.updateMatrixWorld(true);
-                pendingModelPlacement = { object: obj, name: fileName, sourceFile: file };
+
+                pendingModelPlacement = { object: obj, name: fileName, sourceFile: file, fileKey: fileKey };
                 document.getElementById('canvas-container').style.cursor = 'crosshair';
-                log(`Modelo "${fileName}" carregado. Clique no chão da cena para definir o local do obstáculo. Pressione ESC para cancelar.`, 'success');
+                log(`Modelo "${fileName}" carregado. Clique no chão para posicionar.`, 'success');
             }, (err) => {
                 pendingModelPlacement = null;
                 document.getElementById('canvas-container').style.cursor = '';
@@ -749,6 +935,8 @@
                 id: 'obj_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
                 name: pending.name,
                 sourceFile: pending.sourceFile || null,
+                sourceFileKey: pending.fileKey || null,
+                textureFileKey: null,
                 group: root,
                 width: Math.max(dimensions.x, 0.001),
                 height: Math.max(dimensions.y, 0.001),
@@ -773,8 +961,63 @@
             syncObstacleTransform(obstacle);
             updateCubesListUI();
             recordObstacleHistory();
-            log(`Modelo "${pending.name}" inserido com sucesso em (X: ${point.x.toFixed(2)}, Z: ${point.z.toFixed(2)}).`, 'success');
+            persistObstaclesState();
+            log(`Modelo "${pending.name}" inserido com sucesso.`, 'success');
             return true;
+        }
+
+        async function loadAndPlaceSavedModel(file, itemData) {
+            return new Promise((resolve) => {
+                load3DAssetFile(file, (obj) => {
+                    prepareImported3DObject(obj);
+                    obj.updateMatrixWorld(true);
+                    const box = new THREE.Box3().setFromObject(obj);
+                    const size = box.getSize(new THREE.Vector3());
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    if (maxDim > 0) obj.scale.multiplyScalar(1.5 / maxDim);
+                    obj.updateMatrixWorld(true);
+
+                    const root = createEditableObstacleRoot(obj, itemData.name, new THREE.Vector3(itemData.x, itemData.y, itemData.z));
+                    root.rotation.set(itemData.rotationX, itemData.rotationY, itemData.rotationZ);
+                    root.scale.set(itemData.scaleX, itemData.scaleY, itemData.scaleZ);
+
+                    const model = root.userData.model;
+                    root.updateMatrixWorld(true);
+                    const bounds = new THREE.Box3().setFromObject(model);
+                    if (!bounds.isEmpty()) {
+                        const center = bounds.getCenter(new THREE.Vector3());
+                        const bottom = bounds.min.y;
+                        model.position.x += itemData.x - center.x;
+                        model.position.z += itemData.z - center.z;
+                        model.position.y -= bottom;
+                    }
+                    root.updateMatrixWorld(true);
+                    scene.add(root);
+
+                    const obstacle = {
+                        id: itemData.id,
+                        name: itemData.name,
+                        sourceFile: file,
+                        sourceFileKey: itemData.sourceFileKey,
+                        textureFileKey: itemData.textureFileKey || null,
+                        group: root,
+                        width: itemData.width, height: itemData.height, depth: itemData.depth,
+                        baseWidth: itemData.baseWidth, baseHeight: itemData.baseHeight, baseDepth: itemData.baseDepth,
+                        x: itemData.x, y: itemData.y, z: itemData.z,
+                        rotationX: itemData.rotationX, rotationY: itemData.rotationY, rotationZ: itemData.rotationZ,
+                        scaleX: itemData.scaleX, scaleY: itemData.scaleY, scaleZ: itemData.scaleZ
+                    };
+                    root.userData.obstacleData = obstacle;
+                    root.traverse(child => {
+                        child.userData.obstacleData = obstacle;
+                        child.userData.obstacleRoot = root;
+                    });
+                    obstacleCubes.push(obstacle);
+                    syncObstacleTransform(obstacle);
+                    updateCubesListUI();
+                    resolve(obstacle);
+                }, () => resolve(null));
+            });
         }
 
         function duplicateSelectedFromContext() {
@@ -793,7 +1036,6 @@
                     0,
                     sourceObstacle.group.position.z + 1.5
                 );
-                log(`Carregando novamente o modelo "${sourceObstacle.name}" para inserir outra instância...`, 'info');
 
                 load3DAssetFile(sourceFile, (obj) => {
                     prepareImported3DObject(obj);
@@ -807,13 +1049,12 @@
                     pendingModelPlacement = {
                         object: obj,
                         name: sourceObstacle.name + ' (Cópia)',
-                        sourceFile: sourceFile
+                        sourceFile: sourceFile,
+                        fileKey: sourceObstacle.sourceFileKey
                     };
-                    if (placePendingModelAt(targetPoint)) {
-                        log(`Uma nova instância do arquivo "${sourceFile.name}" foi carregada na cena.`, 'success');
-                    }
+                    placePendingModelAt(targetPoint);
                 }, (err) => {
-                    log(`Não foi possível carregar novamente "${sourceFile.name}": ${err?.message || err}`, 'error');
+                    log(`Erro ao duplicar: ${err?.message || err}`, 'error');
                 });
                 return;
             }
@@ -834,6 +1075,8 @@
                 id: 'obj_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
                 name: sourceObstacle.name + ' (Cópia)',
                 sourceFile: null,
+                sourceFileKey: sourceObstacle.sourceFileKey || null,
+                textureFileKey: sourceObstacle.textureFileKey || null,
                 group: newGroup,
                 width: sourceObstacle.width,
                 height: sourceObstacle.height,
@@ -853,7 +1096,8 @@
             syncObstacleTransform(newObstacle);
             updateCubesListUI();
             recordObstacleHistory();
-            log(`Objeto interno duplicado na cena: "${newObstacle.name}".`, 'success');
+            persistObstaclesState();
+            log(`Objeto duplicado: "${newObstacle.name}".`, 'success');
         }
 
         function cloneObstacleGroup(sourceRoot) {
@@ -948,19 +1192,19 @@
             return allMeshes.filter(item => item.area >= largestArea * 0.35).map(item => item.mesh);
         }
 
-        function applyTextureToFloor(file) {
+        async function applyTextureToFloor(file, saveToDb = true) {
             let targets = [];
             if (defaultFloorMesh) targets = [defaultFloorMesh];
             else targets = findEnvironmentFloorMeshes();
 
             if (!targets.length) {
-                log('Não foi possível localizar o chão. Carregue um cenário com uma malha de piso ou utilize o piso padrão.', 'warn');
+                log('Não foi possível localizar o chão.', 'warn');
                 return;
             }
 
-            const url = URL.createObjectURL(file);
-            log(`Carregando textura para o chão: ${file.name}...`, 'info');
+            if (saveToDb) await saveFileToDB('floorTextureFile', file);
 
+            const url = URL.createObjectURL(file);
             textureLoader.load(url, (texture) => {
                 texture.encoding = THREE.sRGBEncoding;
                 texture.wrapS = THREE.RepeatWrapping;
@@ -990,25 +1234,30 @@
 
                 texture.dispose();
                 URL.revokeObjectURL(url);
-                log(`Textura "${file.name}" aplicada ao chão (${targets.length} malha(s)).`, 'success');
+                log(`Textura "${file.name}" aplicada ao chão.`, 'success');
             }, undefined, (err) => {
                 log(`Erro ao carregar textura do chão: ${err?.message || err}`, 'error');
                 URL.revokeObjectURL(url);
             });
         }
 
-        function applyTextureToSelected(file) {
-            if (!selectedCube || !selectedCube.group) return;
+        async function applyTextureToObstacle(targetObstacle, file, saveToDb = true) {
+            if (!targetObstacle || !targetObstacle.group) return;
+
+            const texKey = 'tex_' + targetObstacle.id + '_' + Date.now();
+            if (saveToDb) {
+                await saveFileToDB(texKey, file);
+                targetObstacle.textureFileKey = texKey;
+                persistObstaclesState();
+            }
 
             const url = URL.createObjectURL(file);
-            log(`Carregando textura: ${file.name}...`, 'info');
-
             textureLoader.load(url, (texture) => {
                 texture.encoding = THREE.sRGBEncoding;
                 texture.wrapS = THREE.RepeatWrapping;
                 texture.wrapT = THREE.RepeatWrapping;
 
-                selectedCube.group.traverse((child) => {
+                targetObstacle.group.traverse((child) => {
                     if (child.isMesh) {
                         if (Array.isArray(child.material)) {
                             child.material.forEach(mat => {
@@ -1025,21 +1274,27 @@
                 });
 
                 URL.revokeObjectURL(url);
-                log(`Textura "${file.name}" aplicada ao objeto "${selectedCube.name}".`, 'success');
+                log(`Textura "${file.name}" aplicada ao objeto "${targetObstacle.name}".`, 'success');
             }, undefined, (err) => {
                 log(`Erro ao carregar textura: ${err?.message || err}`, 'error');
                 URL.revokeObjectURL(url);
             });
         }
 
-        function loadEnvironmentFile(file) {
+        function applyTextureToSelected(file) {
+            if (!selectedCube) return;
+            applyTextureToObstacle(selectedCube, file, true);
+        }
+
+        async function loadEnvironmentFile(file, saveToDb = true) {
             const fileName = file.name;
             const ext = fileName.split('.').pop().toLowerCase();
             log(`Carregando cenário [${ext.toUpperCase()}]: ${fileName}...`, 'info');
             document.getElementById('envName').innerText = fileName;
 
-            const url = URL.createObjectURL(file);
+            if (saveToDb) await saveFileToDB('envFile', file);
 
+            const url = URL.createObjectURL(file);
             const handleEnvSuccess = (obj) => {
                 if (environmentMesh) scene.remove(environmentMesh);
                 if (defaultFloorMesh) { scene.remove(defaultFloorMesh); defaultFloorMesh = null; }
@@ -1065,13 +1320,22 @@
             else if (ext === 'glb' || ext === 'gltf') gltfLoader.load(url, (g) => handleEnvSuccess(g.scene), undefined, handleEnvError);
         }
 
-        function loadCharacterOrAnimation(file, type) {
+        async function loadCharacterOrAnimation(file, type, saveToDb = true) {
             const fileName = file.name;
             log(`Carregando [${type.toUpperCase()}]: ${fileName}...`, 'info');
 
-            if (type === 'idle') document.getElementById('idleName').innerText = fileName;
-            if (type === 'run') document.getElementById('runName').innerText = fileName;
-            if (type === 'jump') document.getElementById('jumpName').innerText = fileName;
+            if (type === 'idle') {
+                document.getElementById('idleName').innerText = fileName;
+                if (saveToDb) await saveFileToDB('idleFile', file);
+            }
+            if (type === 'run') {
+                document.getElementById('runName').innerText = fileName;
+                if (saveToDb) await saveFileToDB('runFile', file);
+            }
+            if (type === 'jump') {
+                document.getElementById('jumpName').innerText = fileName;
+                if (saveToDb) await saveFileToDB('jumpFile', file);
+            }
 
             load3DAssetFile(file, (obj, animations, loadedName) => {
                 prepareImported3DObject(obj);
@@ -1198,7 +1462,6 @@
 
                     if (hitObj) selectCube(hitObj);
                 } else {
-                    // Clique fora de qualquer objeto selecionado
                     deselectCube();
                 }
             });
@@ -1251,7 +1514,7 @@
         }
 
         function setTransformMode(mode) {
-            if (!transformControls || !selectedCube) { log('Selecione um obstáculo antes de usar este comando.', 'warn'); return; }
+            if (!transformControls || !selectedCube) { log('Selecione um obstáculo primeiro.', 'warn'); return; }
             transformControls.setMode(mode);
             document.getElementById('objectContextMenu').classList.add('hidden');
             log(`Modo de Gizmo alterado para: ${mode.toUpperCase()}`, 'info');
@@ -1270,6 +1533,7 @@
             selectedCube.group.updateMatrixWorld(true);
             syncObstacleTransform(selectedCube);
             recordObstacleHistory();
+            persistObstaclesState();
 
             transformControls.attach(selectedCube.group);
             input.value = selectedCube.group.scale.x.toFixed(2);
@@ -1336,13 +1600,20 @@
             if (renderer) renderer.render(scene, camera);
         }
 
-        function spawnCube() {
+        function spawnCubeAt(posData = null) {
             const name = 'Cubo Padrão';
-            const spawnPos = characterGroup.position.clone().add(new THREE.Vector3(0, 0, 2.5));
+            const spawnPos = posData 
+                ? new THREE.Vector3(posData.x, posData.y, posData.z) 
+                : characterGroup.position.clone().add(new THREE.Vector3(0, 0, 2.5));
 
             const group = new THREE.Group();
             group.name = name;
             group.position.copy(spawnPos);
+
+            if (posData) {
+                group.rotation.set(posData.rotationX, posData.rotationY, posData.rotationZ);
+                group.scale.set(posData.scaleX, posData.scaleY, posData.scaleZ);
+            }
 
             const w = 1.5, h = 1.5, d = 1.5;
             const geometry = new THREE.BoxGeometry(w, h, d);
@@ -1365,14 +1636,15 @@
             const depth = Math.max(size.z, 0.001);
 
             const cubeData = {
-                id: 'obj_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                id: posData ? posData.id : ('obj_' + Date.now() + '_' + Math.floor(Math.random() * 1000)),
                 name: name,
                 group: group,
+                textureFileKey: posData ? posData.textureFileKey : null,
                 width: width, height: height, depth: depth,
                 baseWidth: width, baseHeight: height, baseDepth: depth,
                 x: group.position.x, y: group.position.y, z: group.position.z,
-                rotationX: 0, rotationY: 0, rotationZ: 0,
-                scaleX: 1, scaleY: 1, scaleZ: 1
+                rotationX: group.rotation.x, rotationY: group.rotation.y, rotationZ: group.rotation.z,
+                scaleX: group.scale.x, scaleY: group.scale.y, scaleZ: group.scale.z
             };
 
             group.userData.obstacleData = cubeData;
@@ -1382,11 +1654,19 @@
             });
 
             obstacleCubes.push(cubeData);
-            selectCube(cubeData);
             syncObstacleTransform(cubeData);
             updateCubesListUI();
-            recordObstacleHistory();
-            log(`Cubo inserido no cenário.`, 'success');
+            if (!posData) {
+                selectCube(cubeData);
+                recordObstacleHistory();
+                persistObstaclesState();
+                log(`Cubo inserido no cenário.`, 'success');
+            }
+            return cubeData;
+        }
+
+        function spawnCube() {
+            spawnCubeAt(null);
         }
 
         function selectCube(cubeObj) {
@@ -1433,6 +1713,7 @@
                 obstacleCubes.splice(index, 1);
                 updateCubesListUI();
                 recordObstacleHistory();
+                persistObstaclesState();
                 log('Obstáculo removido.', 'info');
             }
         };
@@ -1443,6 +1724,7 @@
             obstacleCubes = [];
             updateCubesListUI();
             recordObstacleHistory();
+            persistObstaclesState();
             log('Todos os obstáculos removidos.', 'info');
         }
 
@@ -1536,6 +1818,7 @@
             obstacleCubes.forEach(syncObstacleTransform);
             if (renderer) renderer.render(scene, camera);
             restoringHistory = false;
+            persistObstaclesState();
         }
 
         function undoObstacleEdit() {
