@@ -75,7 +75,7 @@
     <div id="canvas-container"></div>
 
     <!-- HUD de Pontuação / Jogo -->
-    <div id="gameHud" class="hidden absolute z-25 pointer-events-none transition-all duration-75 font-mono font-bold text-lg bg-slate-900/80 text-emerald-400 px-4 py-2 rounded-xl shadow-2xl border border-emerald-500/30 backdrop-blur-md flex items-center gap-2">
+    <div id="gameHud" class="hidden absolute z-20 pointer-events-none transition-all duration-75 font-mono font-bold text-lg bg-slate-900/80 text-emerald-400 px-4 py-2 rounded-xl shadow-2xl border border-emerald-500/30 backdrop-blur-md flex items-center gap-2">
         <span id="hudLabelText">Pontos:</span> <span id="hudScoreValue">0</span>
     </div>
 
@@ -117,25 +117,26 @@
             <button onclick="triggerApplyTexture()" class="flex-1 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded text-[10px]">Textura</button>
         </div>
 
-        <!-- Parâmetros de Colisão & Gameplay Integrados no Botão Direito -->
+        <!-- Parâmetros de Colisão, Física & Gameplay Integrados no Botão Direito -->
         <div class="p-2 bg-amber-50 dark:bg-amber-950/40 rounded border border-amber-200 dark:border-amber-800/60 space-y-2">
-            <span class="text-[10px] font-extrabold text-amber-800 dark:text-amber-300 block">⚡ Configurações de Colisão & Peso</span>
+            <span class="text-[10px] font-extrabold text-amber-800 dark:text-amber-300 block">⚡ Colisão & Física</span>
             
             <label class="flex items-center gap-2 text-[11px] font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
                 <input type="checkbox" id="ctxSensible" class="accent-amber-600 w-3.5 h-3.5"> Sensível à Colisão
             </label>
 
-            <div class="grid grid-cols-3 gap-1 text-[10px]">
+            <div>
+                <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Peso / Massa (kg):</label>
+                <input type="number" id="ctxMass" step="1" min="0.1" max="10000" value="30" class="w-full px-1.5 py-0.5 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
+            </div>
+
+            <div class="grid grid-cols-2 gap-1 text-[10px]">
                 <div>
-                    <label class="block text-slate-500">Peso (Massa):</label>
-                    <input type="number" id="ctxWeight" step="0.1" min="0.001" max="10000" class="w-full px-1 py-0.5 bg-white dark:bg-slate-800 border rounded font-mono">
-                </div>
-                <div>
-                    <label class="block text-slate-500">Escala (X):</label>
+                    <label class="block text-slate-500">Escala Larg (X):</label>
                     <input type="number" id="ctxColScaleX" step="0.1" min="0.1" max="10" class="w-full px-1 py-0.5 bg-white dark:bg-slate-800 border rounded font-mono">
                 </div>
                 <div>
-                    <label class="block text-slate-500">Escala (Z):</label>
+                    <label class="block text-slate-500">Escala Prof (Z):</label>
                     <input type="number" id="ctxColScaleZ" step="0.1" min="0.1" max="10" class="w-full px-1 py-0.5 bg-white dark:bg-slate-800 border rounded font-mono">
                 </div>
             </div>
@@ -143,19 +144,18 @@
             <div class="space-y-1 pt-1 border-t border-amber-200/50 dark:border-amber-800/40">
                 <div class="flex items-center gap-2">
                     <label class="text-[10px] font-semibold text-slate-600 dark:text-slate-400">Efeito:</label>
-                    <select id="ctxEffectType" onchange="onCtxEffectTypeChange()" class="w-full px-1 py-0.5 bg-white dark:bg-slate-800 border rounded text-[10px]">
+                    <select id="ctxEffectType" class="w-full px-1 py-0.5 bg-white dark:bg-slate-800 border rounded text-[10px]">
                         <option value="score">Somar Pontos</option>
                         <option value="damage">Causar Dano</option>
-                        <option value="neutral">Neutro</option>
                     </select>
                 </div>
-                <div id="ctxValueContainer">
+                <div>
                     <label class="block text-[10px] text-slate-500">Valor do Efeito:</label>
                     <input type="number" id="ctxEffectValue" value="10" step="1" class="w-full px-1.5 py-0.5 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
                 </div>
             </div>
 
-            <button onclick="applyCtxCollisionParams()" class="w-full py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded text-[10px] shadow">Salvar Colisão</button>
+            <button onclick="applyCtxCollisionParams()" class="w-full py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded text-[10px] shadow">Salvar Física & Colisão</button>
         </div>
 
         <div class="px-2 py-1 bg-slate-100 dark:bg-slate-900 rounded flex items-center gap-1">
@@ -179,7 +179,7 @@
     <div id="uiOverlay" class="relative z-10 p-4 h-full flex flex-col justify-between pointer-events-none">
         
         <!-- Top Header & Upload Control Panel -->
-        <div id="mainTopBar" class="flex flex-col lg:flex-row justify-between items-start gap-4">
+        <div class="flex flex-col lg:flex-row justify-between items-start gap-4">
             
             <!-- Left Side Config Panel -->
             <div id="leftConfigPanel" class="glass-card p-5 rounded-2xl w-full max-w-sm pointer-events-auto shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
@@ -347,6 +347,9 @@
                         <button id="applyFloorTextureBtn" type="button" onclick="triggerApplyFloorTexture()" class="py-2.5 px-3 bg-teal-600 hover:bg-teal-700 active:scale-95 text-xs text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1.5">
                             <span>🧱</span> Aplicar Textura no Chão
                         </button>
+                        <button id="resetFloorGridBtn" type="button" onclick="resetFloorToInitialGrid()" class="py-2 px-3 bg-slate-700 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 active:scale-95 text-xs text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1.5 border border-slate-500/30">
+                            <span>🔄</span> Redefinir Chão (Grade Inicial)
+                        </button>
                     </div>
 
                     <div class="space-y-1">
@@ -360,28 +363,31 @@
                     </div>
                 </div>
 
-                <!-- ABA DE CONFIGURAÇÃO DE COLISÃO / JOGO / PESO -->
+                <!-- ABA DE CONFIGURAÇÃO DE COLISÃO / FÍSICA / JOGO -->
                 <div id="sectionPhysics" class="space-y-3 hidden">
-                    <!-- Colisão do Jogador & Peso -->
+                    <!-- Colisão e Peso do Jogador -->
                     <div class="p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/50 space-y-2">
                         <h3 class="font-bold text-xs text-indigo-900 dark:text-indigo-300 flex items-center justify-between">
-                            <span>🧍🏽‍♂️ Jogador (Cilindro & Peso)</span>
-                            <span class="text-[9px] bg-indigo-200 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 px-1.5 py-0.5 rounded">JOGADOR</span>
+                            <span>🧍🏽‍♂️ Colisão & Peso do Jogador</span>
+                            <span class="text-[9px] bg-indigo-200 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 px-1.5 py-0.5 rounded">CILINDRO</span>
                         </h3>
-                        <div class="grid grid-cols-3 gap-1 text-xs">
+                        <div class="grid grid-cols-3 gap-2 text-xs">
                             <div>
-                                <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Raio:</label>
-                                <input type="number" id="playerColRadius" step="0.05" min="0.1" max="3.0" class="w-full px-1.5 py-1 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
+                                <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Raio (X/Z):</label>
+                                <input type="number" id="playerColRadius" step="0.05" min="0.1" max="3.0" class="w-full px-2 py-1 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
                             </div>
                             <div>
-                                <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Altura:</label>
-                                <input type="number" id="playerColHeight" step="0.1" min="0.5" max="5.0" class="w-full px-1.5 py-1 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
+                                <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Altura (Y):</label>
+                                <input type="number" id="playerColHeight" step="0.1" min="0.5" max="5.0" class="w-full px-2 py-1 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
                             </div>
                             <div>
-                                <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Peso:</label>
-                                <input type="number" id="playerWeight" step="0.1" min="0.001" max="10000" class="w-full px-1.5 py-1 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
+                                <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Peso (kg):</label>
+                                <input type="number" id="playerMassInput" step="1" min="1" max="10000" value="70" class="w-full px-2 py-1 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
                             </div>
                         </div>
+                        <p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                            Objetos mais leves que o personagem são empurrados conforme a diferença de peso e velocidade de impacto.
+                        </p>
                     </div>
 
                     <!-- Configuração Visual Bounds -->
@@ -500,21 +506,22 @@
 
         let customKeyAnimations = {};
 
-        // CONFIGURAÇÕES DE JOGO / HUD / PESO DO JOGADOR
+        // CONFIGURAÇÕES DE JOGO / HUD
         let gameConfig = {
             scoreEnabled: true,
             scoreText: 'Pontos:',
             scoreX: 32,
             scoreY: 32,
-            showBounds: true,
-            playerWeight: 1.0
+            showBounds: true
         };
         let currentScore = 0;
 
         let playerCollider = {
             radius: 0.35,
-            height: 1.8
+            height: 1.8,
+            mass: 70
         };
+        let playerVelocity = new THREE.Vector3(0, 0, 0);
         let playerDebugHelper = null;
 
         function openDB() {
@@ -713,22 +720,42 @@
 
         function toggleGameMode(testing) {
             isGameTestingMode = testing;
-            const uiOverlay = document.getElementById('uiOverlay');
+            const leftPanel = document.getElementById('leftConfigPanel');
+            const rightPanel = document.getElementById('rightInfoPanel');
+            const consolePanel = document.getElementById('consoleTerminalPanel');
             const gamePlayUI = document.getElementById('gamePlayModeUI');
             const hud = document.getElementById('gameHud');
+            const ctxMenu = document.getElementById('objectContextMenu');
+            const projectsModal = document.getElementById('projectsModal');
 
             updateHelpersVisibility();
 
             if (testing) {
                 deselectCube();
-                if (uiOverlay) uiOverlay.classList.add('hidden');
+                if (transformControls) {
+                    transformControls.detach();
+                    transformControls.visible = false;
+                }
+                if (ctxMenu) ctxMenu.classList.add('hidden');
+                if (projectsModal) projectsModal.classList.add('hidden');
+                if (pendingModelPlacement) {
+                    pendingModelPlacement = null;
+                    document.getElementById('canvas-container').style.cursor = '';
+                }
+
+                if (leftPanel) leftPanel.classList.add('hidden');
+                if (rightPanel) rightPanel.classList.add('hidden');
+                if (consolePanel) consolePanel.classList.add('hidden');
                 if (gamePlayUI) gamePlayUI.classList.remove('hidden');
                 if (gameConfig.scoreEnabled && hud) hud.classList.remove('hidden');
                 currentScore = 0;
                 updateHudDisplay();
-                log('Modo de Teste iniciado. Telas de configuração ocultadas.', 'info');
+                log('Modo de Teste iniciado.', 'info');
             } else {
-                if (uiOverlay) uiOverlay.classList.remove('hidden');
+                if (transformControls) transformControls.visible = true;
+                if (leftPanel) leftPanel.classList.remove('hidden');
+                if (rightPanel) rightPanel.classList.remove('hidden');
+                if (consolePanel) consolePanel.classList.remove('hidden');
                 if (gamePlayUI) gamePlayUI.classList.add('hidden');
                 if (hud) hud.classList.add('hidden');
                 log('Modo Edição retornado.', 'info');
@@ -930,13 +957,13 @@
         }
 
         // ==========================================
-        // CONFIGURAÇÕES DE FÍSICA & PESO
+        // CONFIGURAÇÕES DE FÍSICA & UI DE COLISÃO
         // ==========================================
 
         function setupPhysicsTabUI() {
             const radInput = document.getElementById('playerColRadius');
             const heiInput = document.getElementById('playerColHeight');
-            const weightInput = document.getElementById('playerWeight');
+            const massInput = document.getElementById('playerMassInput');
             const showBoundsCheck = document.getElementById('toggleShowBounds');
             const scoreCheck = document.getElementById('toggleScoreEnabled');
             const scoreLabelInput = document.getElementById('scoreTextLabel');
@@ -945,7 +972,7 @@
 
             radInput.value = playerCollider.radius;
             heiInput.value = playerCollider.height;
-            weightInput.value = gameConfig.playerWeight;
+            massInput.value = playerCollider.mass || 70;
             showBoundsCheck.checked = gameConfig.showBounds;
             scoreCheck.checked = gameConfig.scoreEnabled;
             scoreLabelInput.value = gameConfig.scoreText;
@@ -962,9 +989,10 @@
                 updatePlayerDebugHelper();
                 persistCurrentProjectState();
             });
-            weightInput.addEventListener('change', (e) => {
-                gameConfig.playerWeight = Math.max(0.001, parseFloat(e.target.value) || 1.0);
+            massInput.addEventListener('change', (e) => {
+                playerCollider.mass = Math.max(0.1, parseFloat(e.target.value) || 70);
                 persistCurrentProjectState();
+                log(`Peso do personagem atualizado para ${playerCollider.mass} kg.`, 'info');
             });
             showBoundsCheck.addEventListener('change', (e) => {
                 gameConfig.showBounds = e.target.checked;
@@ -1042,33 +1070,20 @@
             obstacle.group.add(lineSegments);
         }
 
-        function onCtxEffectTypeChange() {
-            const effectType = document.getElementById('ctxEffectType').value;
-            const valContainer = document.getElementById('ctxValueContainer');
-            const valInput = document.getElementById('ctxEffectValue');
-
-            if (effectType === 'neutral') {
-                valInput.value = 0;
-                valContainer.style.display = 'none';
-            } else {
-                valContainer.style.display = 'block';
-                if (parseFloat(valInput.value) === 0) valInput.value = 10;
-            }
-        }
-
         function applyCtxCollisionParams() {
             if (!selectedCube) return;
             selectedCube.sensible = document.getElementById('ctxSensible').checked;
-            selectedCube.weight = Math.max(0.001, parseFloat(document.getElementById('ctxWeight').value) || 1.0);
+            selectedCube.mass = Math.max(0.1, parseFloat(document.getElementById('ctxMass').value) || 30);
             selectedCube.colScaleX = parseFloat(document.getElementById('ctxColScaleX').value) || 1.0;
             selectedCube.colScaleZ = parseFloat(document.getElementById('ctxColScaleZ').value) || 1.0;
             selectedCube.effectType = document.getElementById('ctxEffectType').value;
-            selectedCube.effectValue = selectedCube.effectType === 'neutral' ? 0 : (parseFloat(document.getElementById('ctxEffectValue').value) || 0);
+            selectedCube.effectValue = parseFloat(document.getElementById('ctxEffectValue').value) || 0;
 
             updateObstacleDebugHelper(selectedCube);
+            updateCubesListUI();
             persistCurrentProjectState();
             document.getElementById('objectContextMenu').classList.add('hidden');
-            log(`Configurações de "${selectedCube.name}" atualizadas!`, 'success');
+            log(`Física e colisão de "${selectedCube.name}" (${selectedCube.mass} kg) atualizadas!`, 'success');
         }
 
         // ==========================================
@@ -1337,7 +1352,7 @@
                     sourceFileKey: ob.sourceFileKey || null,
                     textureFileKey: ob.textureFileKey || null,
                     sensible: ob.sensible !== false,
-                    weight: ob.weight !== undefined ? ob.weight : 1.0,
+                    mass: ob.mass !== undefined ? ob.mass : 30,
                     colScaleX: ob.colScaleX || 1.0,
                     colScaleZ: ob.colScaleZ || 1.0,
                     effectType: ob.effectType || 'score',
@@ -1376,15 +1391,15 @@
             const d = projRecord.data || {};
 
             if (d.playerCollider) {
-                playerCollider = d.playerCollider;
+                playerCollider = { radius: 0.35, height: 1.8, mass: 70, ...d.playerCollider };
                 document.getElementById('playerColRadius').value = playerCollider.radius;
                 document.getElementById('playerColHeight').value = playerCollider.height;
+                document.getElementById('playerMassInput').value = playerCollider.mass;
                 updatePlayerDebugHelper();
             }
 
             if (d.gameConfig) {
                 gameConfig = { ...gameConfig, ...d.gameConfig };
-                document.getElementById('playerWeight').value = gameConfig.playerWeight;
                 document.getElementById('toggleShowBounds').checked = gameConfig.showBounds;
                 document.getElementById('toggleScoreEnabled').checked = gameConfig.scoreEnabled;
                 document.getElementById('scoreTextLabel').value = gameConfig.scoreText;
@@ -1397,6 +1412,8 @@
                 window.currentEnvFileKey = d.envFileKey;
                 const file = await getFileFromDB(d.envFileKey);
                 if (file) loadEnvironmentFile(file, false);
+            } else {
+                resetFloorToInitialGrid(false);
             }
 
             if (d.idleFileKey) {
@@ -1448,7 +1465,7 @@
 
                     if (createdObstacle) {
                         createdObstacle.sensible = item.sensible !== false;
-                        createdObstacle.weight = item.weight !== undefined ? item.weight : 1.0;
+                        createdObstacle.mass = item.mass !== undefined ? item.mass : 30;
                         createdObstacle.colScaleX = item.colScaleX || 1.0;
                         createdObstacle.colScaleZ = item.colScaleZ || 1.0;
                         createdObstacle.effectType = item.effectType || 'score';
@@ -1464,6 +1481,7 @@
                 }
             }
 
+            updateCubesListUI();
             log(`Projeto "${currentProjectName}" carregado.`, 'success');
         }
 
@@ -1472,6 +1490,19 @@
         // ==========================================
 
         function createDefaultGrid() {
+            if (defaultFloorMesh) {
+                scene.remove(defaultFloorMesh);
+                if (defaultFloorMesh.geometry) defaultFloorMesh.geometry.dispose();
+                if (defaultFloorMesh.material) defaultFloorMesh.material.dispose();
+                defaultFloorMesh = null;
+            }
+            if (defaultGridHelper) {
+                scene.remove(defaultGridHelper);
+                if (defaultGridHelper.geometry) defaultGridHelper.geometry.dispose();
+                if (defaultGridHelper.material) defaultGridHelper.material.dispose();
+                defaultGridHelper = null;
+            }
+
             const floorGeo = new THREE.PlaneGeometry(100, 100);
             const floorMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.9, metalness: 0.1 });
             defaultFloorMesh = new THREE.Mesh(floorGeo, floorMat);
@@ -1482,6 +1513,36 @@
             defaultGridHelper = new THREE.GridHelper(100, 50, 0x6366f1, 0xcbd5e1);
             defaultGridHelper.position.y = 0.005;
             scene.add(defaultGridHelper);
+        }
+
+        async function resetFloorToInitialGrid(saveState = true) {
+            if (environmentMesh) {
+                scene.remove(environmentMesh);
+                environmentMesh = null;
+            }
+            window.currentEnvFileKey = null;
+            window.currentFloorTextureKey = null;
+            const envNameEl = document.getElementById('envName');
+            if (envNameEl) envNameEl.innerText = 'Carregar Cenário...';
+
+            createDefaultGrid();
+            groundY = 0;
+
+            obstacleCubes.forEach(ob => {
+                if (ob.group && ob.group.position.y < 0) {
+                    ob.group.position.y = 0;
+                    syncObstacleTransform(ob);
+                }
+            });
+
+            if (characterGroup && characterGroup.position.y < 0) {
+                characterGroup.position.y = 0;
+            }
+
+            if (saveState) {
+                await persistCurrentProjectState();
+                log('Chão redefinido para a grade inicial.', 'success');
+            }
         }
 
         function createDummyCharacter() {
@@ -1666,12 +1727,12 @@
                 sourceFileKey: pending.fileKey || null,
                 textureFileKey: null,
                 sensible: true,
-                weight: 1.0,
+                mass: 30,
+                velocity: new THREE.Vector3(0, 0, 0),
                 colScaleX: 1.0,
                 colScaleZ: 1.0,
                 effectType: 'score',
                 effectValue: 10,
-                velocity: new THREE.Vector3(0, 0, 0), // Vetor de velocidade inercial para empurrão interpolado
                 group: root,
                 width: Math.max(dimensions.x, 0.001),
                 height: Math.max(dimensions.y, 0.001),
@@ -1737,12 +1798,12 @@
                         sourceFileKey: itemData.sourceFileKey,
                         textureFileKey: itemData.textureFileKey || null,
                         sensible: itemData.sensible !== false,
-                        weight: itemData.weight !== undefined ? itemData.weight : 1.0,
+                        mass: itemData.mass !== undefined ? itemData.mass : 30,
+                        velocity: new THREE.Vector3(0, 0, 0),
                         colScaleX: itemData.colScaleX || 1.0,
                         colScaleZ: itemData.colScaleZ || 1.0,
                         effectType: itemData.effectType || 'score',
                         effectValue: itemData.effectValue !== undefined ? itemData.effectValue : 10,
-                        velocity: new THREE.Vector3(0, 0, 0),
                         group: root,
                         width: itemData.width, height: itemData.height, depth: itemData.depth,
                         baseWidth: itemData.baseWidth, baseHeight: itemData.baseHeight, baseDepth: itemData.baseDepth,
@@ -1797,6 +1858,10 @@
                         fileKey: sourceObstacle.sourceFileKey
                     };
                     placePendingModelAt(targetPoint);
+                    if (selectedCube) {
+                        selectedCube.mass = sourceObstacle.mass;
+                        updateCubesListUI();
+                    }
                 }, (err) => {
                     log(`Erro ao duplicar: ${err?.message || err}`, 'error');
                 });
@@ -1822,12 +1887,12 @@
                 sourceFileKey: sourceObstacle.sourceFileKey || null,
                 textureFileKey: sourceObstacle.textureFileKey || null,
                 sensible: sourceObstacle.sensible,
-                weight: sourceObstacle.weight,
+                mass: sourceObstacle.mass !== undefined ? sourceObstacle.mass : 30,
+                velocity: new THREE.Vector3(0, 0, 0),
                 colScaleX: sourceObstacle.colScaleX || 1.0,
                 colScaleZ: sourceObstacle.colScaleZ || 1.0,
                 effectType: sourceObstacle.effectType || 'score',
                 effectValue: sourceObstacle.effectValue || 10,
-                velocity: new THREE.Vector3(0, 0, 0),
                 group: newGroup,
                 width: sourceObstacle.width,
                 height: sourceObstacle.height,
@@ -2175,6 +2240,7 @@
             const ctxMenu = document.getElementById('objectContextMenu');
 
             container.addEventListener('pointerdown', (e) => {
+                if (isGameTestingMode) return;
                 if (e.button !== 0) return;
                 if (transformControls && transformControls.dragging) return;
 
@@ -2239,6 +2305,8 @@
 
             container.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
+                if (isGameTestingMode) return;
+
                 const rect = renderer.domElement.getBoundingClientRect();
                 mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
                 mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
@@ -2272,13 +2340,11 @@
                         document.getElementById('ctxMenuTitle').innerText = hitObj.name;
                         document.getElementById('ctxScaleInput').value = hitObj.group.scale.x.toFixed(2);
                         document.getElementById('ctxSensible').checked = hitObj.sensible !== false;
-                        document.getElementById('ctxWeight').value = (hitObj.weight !== undefined ? hitObj.weight : 1.0);
+                        document.getElementById('ctxMass').value = hitObj.mass !== undefined ? hitObj.mass : 30;
                         document.getElementById('ctxColScaleX').value = (hitObj.colScaleX || 1.0).toFixed(2);
                         document.getElementById('ctxColScaleZ').value = (hitObj.colScaleZ || 1.0).toFixed(2);
                         document.getElementById('ctxEffectType').value = hitObj.effectType || 'score';
                         document.getElementById('ctxEffectValue').value = hitObj.effectValue !== undefined ? hitObj.effectValue : 10;
-                        
-                        onCtxEffectTypeChange();
 
                         ctxMenu.style.left = `${e.clientX}px`;
                         ctxMenu.style.top = `${e.clientY}px`;
@@ -2376,8 +2442,6 @@
             obstacle.worldDepth = size.z;
 
             updateObstacleDebugHelper(obstacle);
-
-            if (renderer) renderer.render(scene, camera);
         }
 
         function spawnCubeAt(posData = null) {
@@ -2421,12 +2485,12 @@
                 group: group,
                 textureFileKey: posData ? posData.textureFileKey : null,
                 sensible: posData ? (posData.sensible !== false) : true,
-                weight: posData ? (posData.weight !== undefined ? posData.weight : 1.0) : 1.0,
+                mass: posData && posData.mass !== undefined ? posData.mass : 30,
+                velocity: new THREE.Vector3(0, 0, 0),
                 colScaleX: posData ? (posData.colScaleX || 1.0) : 1.0,
                 colScaleZ: posData ? (posData.colScaleZ || 1.0) : 1.0,
                 effectType: posData ? (posData.effectType || 'score') : 'score',
                 effectValue: posData ? (posData.effectValue !== undefined ? posData.effectValue : 10) : 10,
-                velocity: new THREE.Vector3(0, 0, 0),
                 width: width, height: height, depth: depth,
                 baseWidth: width, baseHeight: height, baseDepth: depth,
                 x: group.position.x, y: group.position.y, z: group.position.z,
@@ -2458,6 +2522,7 @@
         }
 
         function selectCube(cubeObj) {
+            if (isGameTestingMode) return;
             if (!cubeObj || !cubeObj.group || !transformControls) return;
             selectedCube = cubeObj;
 
@@ -2538,26 +2603,26 @@
                 row.onclick = () => selectCube(c);
                 row.oncontextmenu = (e) => {
                     e.preventDefault();
+                    if (isGameTestingMode) return;
                     selectCube(c);
                     const ctxMenu = document.getElementById('objectContextMenu');
                     document.getElementById('ctxMenuTitle').innerText = c.name;
                     document.getElementById('ctxScaleInput').value = c.group.scale.x.toFixed(2);
                     document.getElementById('ctxSensible').checked = c.sensible !== false;
-                    document.getElementById('ctxWeight').value = (c.weight !== undefined ? c.weight : 1.0);
+                    document.getElementById('ctxMass').value = c.mass !== undefined ? c.mass : 30;
                     document.getElementById('ctxColScaleX').value = (c.colScaleX || 1.0).toFixed(2);
                     document.getElementById('ctxColScaleZ').value = (c.colScaleZ || 1.0).toFixed(2);
                     document.getElementById('ctxEffectType').value = c.effectType || 'score';
                     document.getElementById('ctxEffectValue').value = c.effectValue !== undefined ? c.effectValue : 10;
-                    
-                    onCtxEffectTypeChange();
 
                     ctxMenu.style.left = `${e.clientX}px`;
                     ctxMenu.style.top = `${e.clientY}px`;
                     ctxMenu.classList.remove('hidden');
                 };
 
+                const massTag = c.mass !== undefined ? `${c.mass}kg` : '30kg';
                 row.innerHTML = `
-                    <span class="font-mono text-[10px] truncate max-w-[170px]">#${idx+1} ${c.name}</span>
+                    <span class="font-mono text-[10px] truncate max-w-[170px]">#${idx+1} ${c.name} <span class="text-slate-400">(${massTag})</span></span>
                     <button onclick="event.stopPropagation(); removeCube('${c.id}')" class="text-[10px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded font-bold">Excluir</button>
                 `;
                 container.appendChild(row);
@@ -2568,7 +2633,7 @@
             return {
                 obstacles: obstacleCubes.map(ob => {
                     const root = cloneObstacleGroup(ob.group);
-                    const data = { ...ob, group: root };
+                    const data = { ...ob, group: root, velocity: new THREE.Vector3(0, 0, 0) };
                     rebindObstacleMetadata(root, data, ob.group);
                     return data;
                 }),
@@ -2601,7 +2666,7 @@
             obstacleCubes.forEach(ob => { if (ob.group) scene.remove(ob.group); });
             obstacleCubes = snapshot.obstacles.map(saved => {
                 const root = cloneObstacleGroup(saved.group);
-                const ob = { ...saved, group: root };
+                const ob = { ...saved, group: root, velocity: new THREE.Vector3(0, 0, 0) };
                 rebindObstacleMetadata(root, ob, saved.group);
                 scene.add(root);
                 root.updateMatrixWorld(true);
@@ -2634,72 +2699,214 @@
         }
 
         // ==========================================
-        // DETECÇÃO DE COLISÕES, PONTUAÇÃO E EMPURRÃO INERCIAL POR PESO
+        // FÍSICA DE IMPACTO, EMPURRÃO & COLISÕES
         // ==========================================
 
+        function getGroundHeightAt(x, z, currentY = 5) {
+            if (environmentMesh) {
+                const origin = new THREE.Vector3(x, currentY + 10.0, z);
+                raycaster.set(origin, new THREE.Vector3(0, -1, 0));
+                const envMeshes = [];
+                environmentMesh.traverse(child => { if (child.isMesh) envMeshes.push(child); });
+                const hits = raycaster.intersectObjects(envMeshes, true);
+                if (hits.length > 0) return hits[0].point.y;
+            }
+            return 0;
+        }
+
+        function getObstacleBounds(c) {
+            const colScaleX = c.colScaleX || 1.0;
+            const colScaleZ = c.colScaleZ || 1.0;
+            const scaleX = c.group.scale.x * colScaleX;
+            const scaleZ = c.group.scale.z * colScaleZ;
+            const halfW = (c.baseWidth * scaleX) / 2;
+            const halfD = (c.baseDepth * scaleZ) / 2;
+            const topY = c.group.position.y + (c.baseHeight * c.group.scale.y);
+            return {
+                halfW,
+                halfD,
+                minX: c.group.position.x - halfW,
+                maxX: c.group.position.x + halfW,
+                minZ: c.group.position.z - halfD,
+                maxZ: c.group.position.z + halfD,
+                bottomY: c.group.position.y,
+                topY
+            };
+        }
+
+        function applyPushForce(targetObj, impactDir, impactSpeed, pusherMass) {
+            const targetMass = Math.max(0.1, targetObj.mass !== undefined ? targetObj.mass : 30);
+            if (pusherMass <= targetMass) return false;
+
+            if (!targetObj.velocity) targetObj.velocity = new THREE.Vector3(0, 0, 0);
+
+            const massDiff = pusherMass - targetMass;
+            // Fator físico baseado na diferença de massa relativa e velocidade de impacto
+            const massRatio = massDiff / targetMass;
+            const impulseMagnitude = Math.min(28.0, impactSpeed * (0.65 + massRatio * 0.45));
+
+            const pushVec = impactDir.clone().setY(0).normalize().multiplyScalar(impulseMagnitude);
+            // Aplica ou soma velocidade respeitando o sentido do impacto
+            const currentProj = targetObj.velocity.dot(impactDir);
+            if (currentProj < impulseMagnitude) {
+                targetObj.velocity.addScaledVector(impactDir, impulseMagnitude - Math.max(0, currentProj));
+            }
+            return true;
+        }
+
+        function updateDynamicObstaclesPhysics(delta) {
+            const friction = 7.5;
+
+            for (let i = 0; i < obstacleCubes.length; i++) {
+                const ob = obstacleCubes[i];
+                if (!ob.group || !ob.velocity) continue;
+
+                const speedSq = ob.velocity.x * ob.velocity.x + ob.velocity.z * ob.velocity.z;
+                if (speedSq < 0.0004) {
+                    ob.velocity.set(0, 0, 0);
+                    continue;
+                }
+
+                const stepX = ob.velocity.x * delta;
+                const stepZ = ob.velocity.z * delta;
+                const nextX = ob.group.position.x + stepX;
+                const nextZ = ob.group.position.z + stepZ;
+
+                const obBounds = getObstacleBounds(ob);
+                const obMass = Math.max(0.1, ob.mass !== undefined ? ob.mass : 30);
+                const moveDir = new THREE.Vector3(ob.velocity.x, 0, ob.velocity.z).normalize();
+                const impactSpeed = Math.sqrt(speedSq);
+
+                let blocked = false;
+
+                // Colisão objeto-contra-objeto (permite empurrar em cadeia se o objeto em movimento for mais pesado)
+                for (let j = 0; j < obstacleCubes.length; j++) {
+                    if (i === j) continue;
+                    const other = obstacleCubes[j];
+                    if (other.sensible === false) continue;
+
+                    const otherBounds = getObstacleBounds(other);
+                    const verticalOverlap = (obBounds.bottomY < otherBounds.topY - 0.1) && (obBounds.topY > otherBounds.bottomY + 0.1);
+                    if (!verticalOverlap) continue;
+
+                    const overlapX = (nextX - obBounds.halfW < otherBounds.maxX) && (nextX + obBounds.halfW > otherBounds.minX);
+                    const overlapZ = (nextZ - obBounds.halfD < otherBounds.maxZ) && (nextZ + obBounds.halfD > otherBounds.minZ);
+
+                    if (overlapX && overlapZ) {
+                        const otherMass = Math.max(0.1, other.mass !== undefined ? other.mass : 30);
+                        if (obMass > otherMass) {
+                            applyPushForce(other, moveDir, impactSpeed, obMass);
+                            ob.velocity.multiplyScalar(0.55); // Transfere parte do momento
+                        } else {
+                            blocked = true;
+                            ob.velocity.multiplyScalar(-0.2); // Rebate levemente em obstáculo mais pesado
+                        }
+                    }
+                }
+
+                // Colisão objeto em movimento contra o personagem
+                if (!blocked && characterGroup) {
+                    const charR = playerCollider.radius;
+                    const charBottom = characterGroup.position.y;
+                    const charTop = charBottom + playerCollider.height;
+                    const verticalOverlap = (obBounds.bottomY < charTop - 0.1) && (obBounds.topY > charBottom + 0.1);
+
+                    if (verticalOverlap) {
+                        const hitCharX = (nextX - obBounds.halfW < characterGroup.position.x + charR) && (nextX + obBounds.halfW > characterGroup.position.x - charR);
+                        const hitCharZ = (nextZ - obBounds.halfD < characterGroup.position.z + charR) && (nextZ + obBounds.halfD > characterGroup.position.z - charR);
+
+                        if (hitCharX && hitCharZ) {
+                            const charMass = Math.max(0.1, playerCollider.mass || 70);
+                            if (obMass > charMass) {
+                                const massRatio = (obMass - charMass) / charMass;
+                                const pushDist = Math.min(0.4, impactSpeed * delta * (0.8 + massRatio * 0.4));
+                                characterGroup.position.x += moveDir.x * pushDist;
+                                characterGroup.position.z += moveDir.z * pushDist;
+                                ob.velocity.multiplyScalar(0.7);
+                            } else {
+                                blocked = true;
+                                ob.velocity.set(0, 0, 0);
+                            }
+                        }
+                    }
+                }
+
+                if (!blocked) {
+                    ob.group.position.x = nextX;
+                    ob.group.position.z = nextZ;
+                    const floorH = getGroundHeightAt(nextX, nextZ, ob.group.position.y);
+                    ob.group.position.y = floorH;
+                    syncObstacleTransform(ob);
+                }
+
+                // Desaceleração por atrito
+                const damping = Math.max(0, 1 - friction * delta);
+                ob.velocity.multiplyScalar(damping);
+            }
+        }
+
         let lastCollisionTime = 0;
-        function checkCollisions(nextPos, movementDir = null) {
+        function checkCollisions(nextPos, moveDir = null, impactSpeed = 0) {
             const charRadius = playerCollider.radius;
+            const charMass = Math.max(0.1, playerCollider.mass || 70);
+            let highestTop = null;
 
             for (let c of obstacleCubes) {
                 if (c.sensible === false) continue;
 
-                const colScaleX = c.colScaleX || 1.0;
-                const colScaleZ = c.colScaleZ || 1.0;
-
-                const scaleX = c.group.scale.x * colScaleX;
-                const scaleZ = c.group.scale.z * colScaleZ;
-                
-                const halfW = (c.baseWidth * scaleX) / 2;
-                const halfD = (c.baseDepth * scaleZ) / 2;
-
-                const minX = c.x - halfW - charRadius;
-                const maxX = c.x + halfW + charRadius;
-                const minZ = c.z - halfD - charRadius;
-                const maxZ = c.z + halfD + charRadius;
+                const bounds = getObstacleBounds(c);
+                const minX = bounds.minX - charRadius;
+                const maxX = bounds.maxX + charRadius;
+                const minZ = bounds.minZ - charRadius;
+                const maxZ = bounds.maxZ + charRadius;
 
                 if (nextPos.x >= minX && nextPos.x <= maxX && nextPos.z >= minZ && nextPos.z <= maxZ) {
-                    
-                    // MECÂNICA DE PESO COM INércia E ACELERAÇÃO ADICIONAL
-                    const pWeight = gameConfig.playerWeight !== undefined ? gameConfig.playerWeight : 1.0;
-                    const oWeight = c.weight !== undefined ? c.weight : 1.0;
-
-                    if (isGameTestingMode && pWeight > oWeight) {
-                        const ratio = pWeight / oWeight;
-                        const pushDir = movementDir ? movementDir.clone() : new THREE.Vector3(nextPos.x - c.x, 0, nextPos.z - c.z).normalize().negate();
-                        if (pushDir.lengthSq() === 0) pushDir.set(0, 0, 1);
-                        
-                        // Adiciona impulso imediato ao vetor de velocidade inercial do objeto (com escala para suavidade)
-                        const impulseMagnitude = Math.min(ratio * 0.8, 15.0);
-                        c.velocity.addScaledVector(pushDir, impulseMagnitude);
-                        
-                        log(`Obstáculo "${c.name}" atingido! Impulso aplicado (Razão: ${ratio.toFixed(1)}x)`, 'success');
-                    }
-
+                    // Eventos de gameplay durante teste
                     if (isGameTestingMode) {
                         const now = Date.now();
-                        if (now - lastCollisionTime > 500) {
+                        if (now - lastCollisionTime > 600) {
                             lastCollisionTime = now;
                             const val = c.effectValue !== undefined ? c.effectValue : 10;
                             if (c.effectType === 'damage') {
                                 currentScore = Math.max(0, currentScore - val);
                                 log(`Colisão com "${c.name}" - Causou Dano (-${val})`, 'warn');
-                            } else if (c.effectType === 'score') {
+                            } else {
                                 currentScore += val;
                                 log(`Colisão com "${c.name}" - Pontuação (+${val})`, 'success');
-                            } else {
-                                log(`Colisão com "${c.name}" - Efeito Neutro (0)`, 'info');
                             }
                             updateHudDisplay();
                         }
                     }
 
-                    const cubeTop = c.y + (c.baseHeight * c.group.scale.y);
-                    if (characterGroup.position.y >= cubeTop - 0.2) return cubeTop;
-                    else return false;
+                    const cubeTop = bounds.topY;
+                    // Se o personagem estiver acima do topo do obstáculo, pode subir nele
+                    if (characterGroup.position.y >= cubeTop - 0.25) {
+                        if (highestTop === null || cubeTop > highestTop) highestTop = cubeTop;
+                        continue;
+                    }
+
+                    // Interação lateral com física de peso e velocidade
+                    const objMass = Math.max(0.1, c.mass !== undefined ? c.mass : 30);
+                    if (moveDir && impactSpeed > 0.05 && charMass > objMass) {
+                        // Calcula direção de empurrão baseada no centro de contato ou movimento
+                        const toObj = new THREE.Vector3(
+                            c.group.position.x - characterGroup.position.x,
+                            0,
+                            c.group.position.z - characterGroup.position.z
+                        );
+                        const pushDir = toObj.lengthSq() > 0.001
+                            ? moveDir.clone().lerp(toObj.normalize(), 0.35).normalize()
+                            : moveDir.clone().normalize();
+
+                        applyPushForce(c, pushDir, impactSpeed, charMass);
+                        // O personagem avança parcialmente enquanto empurra o objeto mais leve
+                        return 'pushed';
+                    }
+
+                    return false;
                 }
             }
-            return null;
+            return highestTop;
         }
 
         function setupInputControls() {
@@ -2707,7 +2914,7 @@
                 const target = e.target;
                 const isTyping = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
                 
-                if ((e.ctrlKey || e.metaKey) && !isTyping) {
+                if ((e.ctrlKey || e.metaKey) && !isTyping && !isGameTestingMode) {
                     const key = e.key.toLowerCase();
                     if (key === 'z' && e.shiftKey) { e.preventDefault(); redoObstacleEdit(); return; }
                     if (key === 'z') { e.preventDefault(); undoObstacleEdit(); return; }
@@ -2751,20 +2958,12 @@
         }
 
         function updateGroundHeight() {
-            if (environmentMesh) {
-                const origin = characterGroup.position.clone();
-                origin.y += 10.0;
-                raycaster.set(origin, new THREE.Vector3(0, -1, 0));
-                const envMeshes = [];
-                environmentMesh.traverse(child => { if (child.isMesh) envMeshes.push(child); });
-                const hits = raycaster.intersectObjects(envMeshes, true);
-                if (hits.length > 0) { groundY = hits[0].point.y; return; }
-            }
-            groundY = 0;
+            groundY = getGroundHeightAt(characterGroup.position.x, characterGroup.position.z, characterGroup.position.y);
         }
 
         function resetCharacterAndCamera() {
             characterGroup.position.set(0, groundY, 0);
+            playerVelocity.set(0, 0, 0);
             velocityY = 0;
             isGrounded = true;
             controls.target.set(0, 1.2, 0);
@@ -2780,25 +2979,11 @@
 
         function animate() {
             requestAnimationFrame(animate);
-            const delta = clock.getDelta();
+            const delta = Math.min(clock.getDelta(), 0.05);
             if (mixer) mixer.update(delta);
 
-            // ATUALIZAÇÃO DA FÍSICA DOS OBSTÁCULOS (Inércia, Interpolação e Amortecimento / Decay)
-            obstacleCubes.forEach(c => {
-                if (!c.velocity) c.velocity = new THREE.Vector3(0, 0, 0);
-                if (c.velocity.lengthSq() > 0.00001) {
-                    // Desloca o objeto baseado na velocidade atual
-                    c.group.position.addScaledVector(c.velocity, delta);
-                    syncObstacleTransform(c);
-
-                    // Amortecimento progressivo (Perde força/desacelera ao longo do tempo)
-                    const damping = Math.pow(0.08, delta); // Fator de atrito suave
-                    c.velocity.multiplyScalar(damping);
-                    if (c.velocity.lengthSq() < 0.0001) {
-                        c.velocity.set(0, 0, 0);
-                    }
-                }
-            });
+            // Atualiza física dos obstáculos dinâmicos empurrados
+            updateDynamicObstaclesPhysics(delta);
 
             if (characterGroup) {
                 const moving = isMoving();
@@ -2815,8 +3000,9 @@
                 if (!isGrounded) {
                     velocityY += gravity * delta;
                     characterGroup.position.y += velocityY * delta;
-                    const topCollision = checkCollisions(characterGroup.position, null);
-                    const effectiveFloor = topCollision !== null && topCollision > groundY ? topCollision : groundY;
+                    const topCollision = checkCollisions(characterGroup.position);
+                    const numericTop = typeof topCollision === 'number' ? topCollision : null;
+                    const effectiveFloor = numericTop !== null && numericTop > groundY ? numericTop : groundY;
 
                     if (characterGroup.position.y <= effectiveFloor) {
                         characterGroup.position.y = effectiveFloor;
@@ -2825,8 +3011,9 @@
                         fadeToState(activeCustomKey ? activeCustomKey : (moving ? 'run' : 'idle'));
                     }
                 } else {
-                    const topCollision = checkCollisions(characterGroup.position, null);
-                    const effectiveFloor = topCollision !== null && topCollision > groundY ? topCollision : groundY;
+                    const topCollision = checkCollisions(characterGroup.position);
+                    const numericTop = typeof topCollision === 'number' ? topCollision : null;
+                    const effectiveFloor = numericTop !== null && numericTop > groundY ? numericTop : groundY;
                     characterGroup.position.y = effectiveFloor;
                     
                     if (currentActionState !== 'jump' || isGrounded) {
@@ -2850,10 +3037,30 @@
 
                     if (moveVector.lengthSq() > 0) {
                         moveVector.normalize();
-                        const nextPos = characterGroup.position.clone().addScaledVector(moveVector, moveSpeed * delta);
-                        const collisionResult = checkCollisions(nextPos, moveVector);
+                        playerVelocity.copy(moveVector).multiplyScalar(moveSpeed);
 
-                        if (collisionResult !== false) characterGroup.position.copy(nextPos);
+                        const nextPos = characterGroup.position.clone().addScaledVector(moveVector, moveSpeed * delta);
+                        const collisionResult = checkCollisions(nextPos, moveVector, moveSpeed);
+
+                        if (collisionResult === 'pushed') {
+                            // Avança reduzindo levemente a velocidade pela resistência do objeto empurrado
+                            characterGroup.position.addScaledVector(moveVector, moveSpeed * delta * 0.65);
+                        } else if (collisionResult !== false) {
+                            characterGroup.position.copy(nextPos);
+                        } else {
+                            // Deslizamento suave nos eixos independentes (X e Z) quando bloqueado por objeto pesado
+                            const tryX = characterGroup.position.clone();
+                            tryX.x += moveVector.x * moveSpeed * delta;
+                            if (checkCollisions(tryX, new THREE.Vector3(Math.sign(moveVector.x), 0, 0), Math.abs(moveVector.x) * moveSpeed) !== false) {
+                                characterGroup.position.x = tryX.x;
+                            }
+
+                            const tryZ = characterGroup.position.clone();
+                            tryZ.z += moveVector.z * moveSpeed * delta;
+                            if (checkCollisions(tryZ, new THREE.Vector3(0, 0, Math.sign(moveVector.z)), Math.abs(moveVector.z) * moveSpeed) !== false) {
+                                characterGroup.position.z = tryZ.z;
+                            }
+                        }
 
                         const targetAngle = Math.atan2(moveVector.x, moveVector.z);
                         let angleDiff = targetAngle - characterGroup.rotation.y;
@@ -2861,6 +3068,8 @@
                         while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
                         characterGroup.rotation.y += angleDiff * rotationSpeed * delta;
                     }
+                } else {
+                    playerVelocity.set(0, 0, 0);
                 }
 
                 const camOffset = new THREE.Vector3().subVectors(camera.position, controls.target);
