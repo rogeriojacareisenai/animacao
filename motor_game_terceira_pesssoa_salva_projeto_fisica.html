@@ -34,22 +34,38 @@
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
             border: 1px solid rgba(226, 232, 240, 0.8);
-            transition: background-color 0.3s, border-color 0.3s;
+            transition: background-color 0.3s, border-color 0.3s, box-shadow 0.2s;
         }
         .dark .glass-card {
             background: rgba(15, 23, 42, 0.88);
             border: 1px solid rgba(51, 65, 85, 0.8);
         }
+        .floating-panel {
+            position: fixed;
+            z-index: 20;
+            pointer-events: auto;
+        }
+        .floating-panel.dragging {
+            box-shadow: 0 25px 50px -12px rgba(79, 70, 229, 0.35);
+            border-color: rgba(99, 102, 241, 0.7);
+        }
+        .drag-handle {
+            cursor: grab;
+            touch-action: none;
+        }
+        .drag-handle:active {
+            cursor: grabbing;
+        }
         #consoleLog::-webkit-scrollbar,
-        #leftConfigPanel::-webkit-scrollbar {
+        #leftConfigBody::-webkit-scrollbar {
             width: 6px;
         }
         #consoleLog::-webkit-scrollbar-track,
-        #leftConfigPanel::-webkit-scrollbar-track {
+        #leftConfigBody::-webkit-scrollbar-track {
             background: rgba(0, 0, 0, 0.05);
         }
         #consoleLog::-webkit-scrollbar-thumb,
-        #leftConfigPanel::-webkit-scrollbar-thumb {
+        #leftConfigBody::-webkit-scrollbar-thumb {
             background: rgba(148, 163, 184, 0.5);
             border-radius: 3px;
         }
@@ -101,11 +117,17 @@
         </div>
     </div>
 
-    <!-- Context Menu for Right Click on Objects -->
-    <div id="objectContextMenu" class="hidden absolute z-30 glass-card p-2.5 rounded-xl shadow-2xl space-y-2 text-xs w-64 border border-slate-300 dark:border-slate-700">
-        <div class="px-2 py-1 font-bold text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-            <span id="ctxMenuTitle" class="truncate">Objeto</span>
-            <span class="text-[9px] bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 px-1.5 py-0.5 rounded">Gizmo</span>
+    <!-- Context Menu Suspenso & Transladável para Botão Direito nos Objetos -->
+    <div id="objectContextMenu" class="hidden fixed z-40 glass-card p-2.5 rounded-xl shadow-2xl space-y-2 text-xs w-64 border border-slate-300 dark:border-slate-700">
+        <div id="ctxMenuDragHandle" title="Arraste para mover este menu" class="drag-handle px-2 py-1 font-bold text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-100/70 dark:bg-slate-800/70 rounded-lg">
+            <span class="flex items-center gap-1.5 truncate">
+                <span class="text-slate-400">⠿</span>
+                <span id="ctxMenuTitle" class="truncate">Objeto</span>
+            </span>
+            <div class="flex items-center gap-1">
+                <span class="text-[9px] bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 px-1.5 py-0.5 rounded">Gizmo</span>
+                <button type="button" onclick="document.getElementById('objectContextMenu').classList.add('hidden')" class="text-slate-400 hover:text-rose-500 px-1 font-bold">✕</button>
+            </div>
         </div>
         <div class="grid grid-cols-3 gap-1">
             <button onclick="setTransformMode('translate')" class="px-2 py-1.5 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded text-center font-medium">Mover</button>
@@ -175,324 +197,344 @@
     <!-- Input Oculto para Texturas -->
     <input type="file" id="textureFileInput" accept="image/*" class="hidden">
 
-    <!-- UI Overlay Layer -->
-    <div id="uiOverlay" class="relative z-10 p-4 h-full flex flex-col justify-between pointer-events-none">
-        
-        <!-- Top Header & Upload Control Panel -->
-        <div class="flex flex-col lg:flex-row justify-between items-start gap-4">
-            
-            <!-- Left Side Config Panel -->
-            <div id="leftConfigPanel" class="glass-card p-5 rounded-2xl w-full max-w-sm pointer-events-auto shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
-                <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
-                    <div>
-                        <h1 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                            <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
-                            Estúdio 3D Interativo
-                        </h1>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Projeto: <span id="currentProjectTitle" class="font-bold text-indigo-600 dark:text-indigo-400">Projeto Padrão</span></p>
-                    </div>
-                    <button id="themeToggleBtn" title="Alternar Modo Dark/Light" class="p-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-700 transition">
-                        <svg id="sunIcon" class="w-4 h-4 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                        <svg id="moonIcon" class="w-4 h-4 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
-                    </button>
+    <!-- Menu Suspenso & Transladável: Painel Principal de Configurações -->
+    <div id="leftConfigPanel" style="top: 16px; left: 16px;" class="floating-panel glass-card rounded-2xl w-[calc(100vw-32px)] max-w-sm shadow-2xl overflow-hidden">
+        <!-- Barra de Arraste Superior -->
+        <div id="leftConfigHeader" title="Arraste para transladar o menu" class="drag-handle px-4 py-3 flex items-center justify-between border-b border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/70">
+            <div class="flex items-center gap-2 min-w-0">
+                <span class="text-slate-400 text-sm select-none">⠿</span>
+                <div class="min-w-0">
+                    <h1 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
+                        <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                        Estúdio 3D Interativo
+                    </h1>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">Projeto: <span id="currentProjectTitle" class="font-bold text-indigo-600 dark:text-indigo-400">Projeto Padrão</span></p>
                 </div>
-
-                <!-- Painel de Gerenciamento de Projeto -->
-                <div class="grid grid-cols-3 gap-1.5">
-                    <button onclick="handleSaveProject()" class="py-2 px-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-[11px] text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1">
-                        <span>💾</span> Salvar
-                    </button>
-                    <button onclick="handleSaveAsProject()" class="py-2 px-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-[11px] text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1">
-                        <span>📑</span> Como...
-                    </button>
-                    <button onclick="openProjectsManager()" class="py-2 px-2 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 active:scale-95 text-[11px] text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1">
-                        <span>📂</span> Projetos
-                    </button>
-                </div>
-
-                <!-- Botão de Testar Jogo -->
-                <button id="playGameBtn" onclick="toggleGameMode(true)" class="w-full py-2.5 px-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-95 text-xs text-white font-extrabold rounded-xl transition shadow-lg flex items-center justify-center gap-2 tracking-wide uppercase">
-                    <span>🎮</span> Testar Jogo
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0">
+                <button id="themeToggleBtn" title="Alternar Modo Dark/Light" class="p-1.5 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-700 transition">
+                    <svg id="sunIcon" class="w-4 h-4 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    <svg id="moonIcon" class="w-4 h-4 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
                 </button>
+                <button type="button" onclick="toggleFloatingBody('leftConfigBody', this)" title="Recolher / Expandir menu" class="px-2 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-xs font-bold transition">
+                    −
+                </button>
+            </div>
+        </div>
 
-                <!-- Tabs selector -->
-                <div class="flex bg-slate-200/80 dark:bg-slate-800 p-1 rounded-xl text-xs font-semibold">
-                    <button id="tabFiles" onclick="switchTab('files')" class="flex-1 py-1.5 rounded-lg transition tab-btn active">Arquivos & Animações</button>
-                    <button id="tabBuilder" onclick="switchTab('builder')" class="flex-1 py-1.5 rounded-lg transition tab-btn text-slate-700 dark:text-slate-300">Obstáculos</button>
-                    <button id="tabPhysics" onclick="switchTab('physics')" class="flex-1 py-1.5 rounded-lg transition tab-btn text-slate-700 dark:text-slate-300">Colisão ⚡</button>
+        <!-- Corpo do Menu Suspenso -->
+        <div id="leftConfigBody" class="p-4 space-y-3.5 max-h-[80vh] overflow-y-auto">
+            <!-- Painel de Gerenciamento de Projeto -->
+            <div class="grid grid-cols-3 gap-1.5">
+                <button onclick="handleSaveProject()" class="py-2 px-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-[11px] text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1">
+                    <span>💾</span> Salvar
+                </button>
+                <button onclick="handleSaveAsProject()" class="py-2 px-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-[11px] text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1">
+                    <span>📑</span> Salvar Como
+                </button>
+                <button onclick="openProjectsManager()" class="py-2 px-2 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 active:scale-95 text-[11px] text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1">
+                    <span>📂</span> Projetos
+                </button>
+            </div>
+
+            <!-- Botão de Testar Jogo -->
+            <button id="playGameBtn" onclick="toggleGameMode(true)" class="w-full py-2.5 px-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-95 text-xs text-white font-extrabold rounded-xl transition shadow-lg flex items-center justify-center gap-2 tracking-wide uppercase">
+                <span>🎮</span> Testar Jogo
+            </button>
+
+            <!-- Tabs selector -->
+            <div class="flex bg-slate-200/80 dark:bg-slate-800 p-1 rounded-xl text-xs font-semibold">
+                <button id="tabFiles" onclick="switchTab('files')" class="flex-1 py-1.5 rounded-lg transition tab-btn active">Arquivos & Animações</button>
+                <button id="tabBuilder" onclick="switchTab('builder')" class="flex-1 py-1.5 rounded-lg transition tab-btn text-slate-700 dark:text-slate-300">Obstáculos</button>
+                <button id="tabPhysics" onclick="switchTab('physics')" class="flex-1 py-1.5 rounded-lg transition tab-btn text-slate-700 dark:text-slate-300">Colisão ⚡</button>
+            </div>
+
+            <!-- Files & Animations Tab Content -->
+            <div id="sectionFiles" class="space-y-3">
+                <!-- Scenario -->
+                <div class="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/50">
+                    <label class="block text-[11px] font-bold text-emerald-800 dark:text-emerald-300 mb-1 flex items-center justify-between">
+                        <span>CENÁRIO (.GLB, .GLTF, .FBX)</span>
+                        <span class="text-[9px] bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100 px-1.5 py-0.5 rounded font-mono">MAPA</span>
+                    </label>
+                    <input type="file" id="envInput" accept=".glb,.gltf,.fbx" class="hidden">
+                    <label for="envInput" class="flex items-center justify-between px-3 py-2 text-xs bg-white dark:bg-slate-800 hover:bg-emerald-100/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-emerald-300 dark:border-emerald-700 rounded-lg cursor-pointer transition shadow-sm">
+                        <span class="truncate pr-2 font-medium" id="envName">Carregar Cenário...</span>
+                        <span class="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded font-bold">SELECIONAR</span>
+                    </label>
                 </div>
 
-                <!-- Files & Animations Tab Content -->
-                <div id="sectionFiles" class="space-y-3">
-                    <!-- Scenario -->
-                    <div class="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/50">
-                        <label class="block text-[11px] font-bold text-emerald-800 dark:text-emerald-300 mb-1 flex items-center justify-between">
-                            <span>CENÁRIO (.GLB, .GLTF, .FBX)</span>
-                            <span class="text-[9px] bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100 px-1.5 py-0.5 rounded font-mono">MAPA</span>
-                        </label>
-                        <input type="file" id="envInput" accept=".glb,.gltf,.fbx" class="hidden">
-                        <label for="envInput" class="flex items-center justify-between px-3 py-2 text-xs bg-white dark:bg-slate-800 hover:bg-emerald-100/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-emerald-300 dark:border-emerald-700 rounded-lg cursor-pointer transition shadow-sm">
-                            <span class="truncate pr-2 font-medium" id="envName">Carregar Cenário...</span>
-                            <span class="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded font-bold">SELECIONAR</span>
-                        </label>
-                    </div>
+                <!-- EXPANSÍVEL: Animações Base -->
+                <div class="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-slate-50/50 dark:bg-slate-900/50">
+                    <button onclick="toggleAccordion('baseAnimAccordion')" class="w-full px-3 py-2.5 text-left text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition">
+                        <span class="flex items-center gap-1.5">🏃🏽‍♂️ Animações Principais (Idle/Run/Jump)</span>
+                        <span id="baseAnimAccordionArrow" class="text-xs transition-transform duration-200">▼</span>
+                    </button>
+                    
+                    <div id="baseAnimAccordion" class="p-3 space-y-3 hidden border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+                        <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                            <label class="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                                <span>1. PERSONAGEM / IDLE (.FBX, .GLB)</span>
+                                <span class="text-[8px] bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 px-1 py-0.5 rounded">BASE</span>
+                            </label>
+                            <input type="file" id="idleInput" accept=".fbx,.glb,.gltf" class="hidden">
+                            <label for="idleInput" class="flex items-center justify-between px-2.5 py-1.5 text-xs bg-white dark:bg-slate-800 hover:bg-slate-100 border border-slate-300 dark:border-slate-600 rounded cursor-pointer transition">
+                                <span class="truncate pr-2 font-medium" id="idleName">Carregar Idle...</span>
+                                <span class="text-[9px] bg-indigo-600 text-white px-1.5 py-0.5 rounded font-bold">CARREGAR</span>
+                            </label>
+                        </div>
 
-                    <!-- EXPANSÍVEL: Animações Base -->
-                    <div class="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-slate-50/50 dark:bg-slate-900/50">
-                        <button onclick="toggleAccordion('baseAnimAccordion')" class="w-full px-3 py-2.5 text-left text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition">
-                            <span class="flex items-center gap-1.5">🏃🏽‍♂️ Animações Principais (Idle/Run/Jump)</span>
-                            <span id="baseAnimAccordionArrow" class="text-xs transition-transform duration-200">▼</span>
-                        </button>
-                        
-                        <div id="baseAnimAccordion" class="p-3 space-y-3 hidden border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
-                            <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-                                <label class="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
-                                    <span>1. PERSONAGEM / IDLE (.FBX, .GLB)</span>
-                                    <span class="text-[8px] bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 px-1 py-0.5 rounded">BASE</span>
-                                </label>
-                                <input type="file" id="idleInput" accept=".fbx,.glb,.gltf" class="hidden">
-                                <label for="idleInput" class="flex items-center justify-between px-2.5 py-1.5 text-xs bg-white dark:bg-slate-800 hover:bg-slate-100 border border-slate-300 dark:border-slate-600 rounded cursor-pointer transition">
-                                    <span class="truncate pr-2 font-medium" id="idleName">Carregar Idle...</span>
-                                    <span class="text-[9px] bg-indigo-600 text-white px-1.5 py-0.5 rounded font-bold">CARREGAR</span>
-                                </label>
-                            </div>
+                        <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                            <label class="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                                <span>2. ANIMAÇÃO RUN (.FBX, .GLB)</span>
+                                <span class="text-[8px] bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 px-1 py-0.5 rounded">CORRER</span>
+                            </label>
+                            <input type="file" id="runInput" accept=".fbx,.glb,.gltf" class="hidden">
+                            <label for="runInput" class="flex items-center justify-between px-2.5 py-1.5 text-xs bg-white dark:bg-slate-800 hover:bg-slate-100 border border-slate-300 dark:border-slate-600 rounded cursor-pointer transition">
+                                <span class="truncate pr-2 font-medium" id="runName">Carregar Run...</span>
+                                <span class="text-[9px] bg-indigo-600 text-white px-1.5 py-0.5 rounded font-bold">CARREGAR</span>
+                            </label>
+                        </div>
 
-                            <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-                                <label class="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
-                                    <span>2. ANIMAÇÃO RUN (.FBX, .GLB)</span>
-                                    <span class="text-[8px] bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 px-1 py-0.5 rounded">CORRER</span>
-                                </label>
-                                <input type="file" id="runInput" accept=".fbx,.glb,.gltf" class="hidden">
-                                <label for="runInput" class="flex items-center justify-between px-2.5 py-1.5 text-xs bg-white dark:bg-slate-800 hover:bg-slate-100 border border-slate-300 dark:border-slate-600 rounded cursor-pointer transition">
-                                    <span class="truncate pr-2 font-medium" id="runName">Carregar Run...</span>
-                                    <span class="text-[9px] bg-indigo-600 text-white px-1.5 py-0.5 rounded font-bold">CARREGAR</span>
-                                </label>
-                            </div>
-
-                            <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-                                <label class="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
-                                    <span>3. ANIMAÇÃO JUMP (.FBX, .GLB)</span>
-                                    <span class="text-[8px] bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 px-1 py-0.5 rounded">PULO</span>
-                                </label>
-                                <input type="file" id="jumpInput" accept=".fbx,.glb,.gltf" class="hidden">
-                                <label for="jumpInput" class="flex items-center justify-between px-2.5 py-1.5 text-xs bg-white dark:bg-slate-800 hover:bg-slate-100 border border-slate-300 dark:border-slate-600 rounded cursor-pointer transition">
-                                    <span class="truncate pr-2 font-medium" id="jumpName">Carregar Jump...</span>
-                                    <span class="text-[9px] bg-indigo-600 text-white px-1.5 py-0.5 rounded font-bold">CARREGAR</span>
-                                </label>
-                            </div>
+                        <div class="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                            <label class="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                                <span>3. ANIMAÇÃO JUMP (.FBX, .GLB)</span>
+                                <span class="text-[8px] bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 px-1 py-0.5 rounded">PULO</span>
+                            </label>
+                            <input type="file" id="jumpInput" accept=".fbx,.glb,.gltf" class="hidden">
+                            <label for="jumpInput" class="flex items-center justify-between px-2.5 py-1.5 text-xs bg-white dark:bg-slate-800 hover:bg-slate-100 border border-slate-300 dark:border-slate-600 rounded cursor-pointer transition">
+                                <span class="truncate pr-2 font-medium" id="jumpName">Carregar Jump...</span>
+                                <span class="text-[9px] bg-indigo-600 text-white px-1.5 py-0.5 rounded font-bold">CARREGAR</span>
+                            </label>
                         </div>
                     </div>
+                </div>
 
-                    <!-- EXPANSÍVEL: Teclas Extra -->
-                    <div class="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-slate-50/50 dark:bg-slate-900/50">
-                        <button onclick="toggleAccordion('customAnimAccordion')" class="w-full px-3 py-2.5 text-left text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition">
-                            <span class="flex items-center gap-1.5">⌨️ Teclas & Animações Extras</span>
-                            <span id="customAnimAccordionArrow" class="text-xs transition-transform duration-200">▼</span>
-                        </button>
-                        
-                        <div id="customAnimAccordion" class="p-3 space-y-3 hidden border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
-                            <div class="space-y-2 border-b border-slate-200 dark:border-slate-700 pb-3">
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label class="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-0.5">Tecla Atalho:</label>
-                                        <input type="text" id="newKeyChar" placeholder="ex: e, f, 1" maxlength="1" class="w-full px-2 py-1 text-xs uppercase bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded font-bold text-center">
-                                    </div>
-                                    <div>
-                                        <label class="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-0.5">Modo Loop:</label>
-                                        <select id="newKeyLoop" class="w-full px-2 py-1 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded">
-                                            <option value="once">Executar 1x</option>
-                                            <option value="loop">Loop Contínuo</option>
-                                        </select>
-                                    </div>
+                <!-- EXPANSÍVEL: Teclas Extra -->
+                <div class="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-slate-50/50 dark:bg-slate-900/50">
+                    <button onclick="toggleAccordion('customAnimAccordion')" class="w-full px-3 py-2.5 text-left text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition">
+                        <span class="flex items-center gap-1.5">⌨️ Teclas & Animações Extras</span>
+                        <span id="customAnimAccordionArrow" class="text-xs transition-transform duration-200">▼</span>
+                    </button>
+                    
+                    <div id="customAnimAccordion" class="p-3 space-y-3 hidden border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+                        <div class="space-y-2 border-b border-slate-200 dark:border-slate-700 pb-3">
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-0.5">Tecla Atalho:</label>
+                                    <input type="text" id="newKeyChar" placeholder="ex: e, f, 1" maxlength="1" class="w-full px-2 py-1 text-xs uppercase bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded font-bold text-center">
                                 </div>
                                 <div>
-                                    <label class="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-0.5">Arquivo de Animação (.FBX, .GLB):</label>
-                                    <input type="file" id="newKeyAnimFile" accept=".fbx,.glb,.gltf" class="text-xs w-full text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
-                                </div>
-                                <button onclick="addCustomKeyAnimation()" class="w-full py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg transition shadow">
-                                    + Vincular Tecla e Animação
-                                </button>
-                            </div>
-
-                            <div class="space-y-1">
-                                <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Teclas Personalizadas Ativas:</label>
-                                <div id="customKeysList" class="space-y-1 max-h-32 overflow-y-auto">
-                                    <span class="text-[11px] text-slate-400 italic">Nenhuma tecla extra cadastrada.</span>
+                                    <label class="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-0.5">Modo Loop:</label>
+                                    <select id="newKeyLoop" class="w-full px-2 py-1 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded">
+                                        <option value="once">Executar 1x</option>
+                                        <option value="loop">Loop Contínuo</option>
+                                    </select>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Builder Tab Content -->
-                <div id="sectionBuilder" class="space-y-3 hidden">
-                    <div class="p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/50">
-                        <label class="block text-[11px] font-bold text-indigo-800 dark:text-indigo-300 mb-1 flex items-center justify-between">
-                            <span>IMPORTAR MODELO 3D (.FBX, .GLB, .OBJ)</span>
-                            <span class="text-[9px] bg-indigo-200 dark:bg-indigo-800 text-indigo-900 dark:text-indigo-100 px-1.5 py-0.5 rounded font-mono">3D ASSET</span>
-                        </label>
-                        <div class="mt-2">
-                            <input type="file" id="sceneModelInput" accept=".fbx,.glb,.gltf,.obj" class="hidden">
-                            <button id="importModelSceneBtn" type="button" class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-xs text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-2">
-                                <span>📥</span> Importar Modelo 3D e Posicionar
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-0.5">Arquivo de Animação (.FBX, .GLB):</label>
+                                <input type="file" id="newKeyAnimFile" accept=".fbx,.glb,.gltf" class="text-xs w-full text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                            </div>
+                            <button onclick="addCustomKeyAnimation()" class="w-full py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg transition shadow">
+                                + Vincular Tecla e Animação
                             </button>
-                            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Escolha um arquivo e clique no chão da cena para posicionar o obstáculo.</p>
                         </div>
-                    </div>
 
-                    <div class="grid grid-cols-1 gap-2">
-                        <button id="spawnCubeBtn" class="py-2.5 px-3 bg-amber-600 hover:bg-amber-700 active:scale-95 text-xs text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1.5">
-                            <span>🟩</span> Inserir Cubo Padrão
-                        </button>
-                        <button id="applyFloorTextureBtn" type="button" onclick="triggerApplyFloorTexture()" class="py-2.5 px-3 bg-teal-600 hover:bg-teal-700 active:scale-95 text-xs text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1.5">
-                            <span>🧱</span> Aplicar Textura no Chão
-                        </button>
-                        <button id="resetFloorGridBtn" type="button" onclick="resetFloorToInitialGrid()" class="py-2 px-3 bg-slate-700 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 active:scale-95 text-xs text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1.5 border border-slate-500/30">
-                            <span>🔄</span> Redefinir Chão (Grade Inicial)
-                        </button>
-                    </div>
-
-                    <div class="space-y-1">
-                        <div class="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                            <span>Objetos Criados (<span id="cubeCount">0</span>)</span>
-                            <button id="clearCubesBtn" class="text-[10px] text-rose-600 dark:text-rose-400 hover:underline">Deletar Todos</button>
-                        </div>
-                        <div id="cubesListContainer" class="max-h-32 overflow-y-auto space-y-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-[11px]">
-                            <span class="text-slate-400 italic">Nenhum obstáculo adicionado ainda.</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ABA DE CONFIGURAÇÃO DE COLISÃO / FÍSICA / JOGO -->
-                <div id="sectionPhysics" class="space-y-3 hidden">
-                    <!-- Colisão e Peso do Jogador -->
-                    <div class="p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/50 space-y-2">
-                        <h3 class="font-bold text-xs text-indigo-900 dark:text-indigo-300 flex items-center justify-between">
-                            <span>🧍🏽‍♂️ Colisão & Peso do Jogador</span>
-                            <span class="text-[9px] bg-indigo-200 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 px-1.5 py-0.5 rounded">CILINDRO</span>
-                        </h3>
-                        <div class="grid grid-cols-3 gap-2 text-xs">
-                            <div>
-                                <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Raio (X/Z):</label>
-                                <input type="number" id="playerColRadius" step="0.05" min="0.1" max="3.0" class="w-full px-2 py-1 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Altura (Y):</label>
-                                <input type="number" id="playerColHeight" step="0.1" min="0.5" max="5.0" class="w-full px-2 py-1 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Peso (kg):</label>
-                                <input type="number" id="playerMassInput" step="1" min="1" max="10000" value="70" class="w-full px-2 py-1 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
-                            </div>
-                        </div>
-                        <p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
-                            Objetos mais leves que o personagem são empurrados conforme a diferença de peso e velocidade de impacto.
-                        </p>
-                    </div>
-
-                    <!-- Configuração Visual Bounds -->
-                    <div class="p-3 rounded-xl bg-orange-50/70 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-800/50 flex items-center justify-between">
-                        <label for="toggleShowBounds" class="text-xs font-bold text-orange-900 dark:text-orange-300 cursor-pointer flex items-center gap-2">
-                            <span>🟠</span> Exibir Área de Colisão (Bounds)
-                        </label>
-                        <input type="checkbox" id="toggleShowBounds" checked class="w-4 h-4 cursor-pointer accent-orange-600">
-                    </div>
-
-                    <!-- Configuração do HUD / Pontuação -->
-                    <div class="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 space-y-2.5">
-                        <div class="flex items-center justify-between">
-                            <label for="toggleScoreEnabled" class="text-xs font-bold text-emerald-900 dark:text-emerald-300 cursor-pointer flex items-center gap-1.5">
-                                <span>🏆</span> Habilitar Pontuação do Jogo
-                            </label>
-                            <input type="checkbox" id="toggleScoreEnabled" checked class="w-4 h-4 cursor-pointer accent-emerald-600">
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400 mb-0.5">Texto do Placar:</label>
-                            <input type="text" id="scoreTextLabel" value="Pontos:" class="w-full px-2 py-1 text-xs bg-white dark:bg-slate-800 border rounded">
-                        </div>
-                        <div class="grid grid-cols-2 gap-2 text-xs">
-                            <div>
-                                <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Posição X (px):</label>
-                                <input type="number" id="scorePosX" value="32" step="5" class="w-full px-2 py-1 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Posição Y (px):</label>
-                                <input type="number" id="scorePosY" value="32" step="5" class="w-full px-2 py-1 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">Teclas Personalizadas Ativas:</label>
+                            <div id="customKeysList" class="space-y-1 max-h-32 overflow-y-auto">
+                                <span class="text-[11px] text-slate-400 italic">Nenhuma tecla extra cadastrada.</span>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Action Buttons -->
-                <div class="pt-2 flex flex-col gap-2 border-t border-slate-200 dark:border-slate-700">
-                    <div class="flex gap-2">
-                        <button id="resetCamBtn" class="flex-1 py-2 px-3 bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 dark:hover:bg-slate-600 active:scale-95 text-xs text-white font-medium rounded-lg transition shadow">
-                            Resetar Posição
+            <!-- Builder Tab Content -->
+            <div id="sectionBuilder" class="space-y-3 hidden">
+                <div class="p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/50">
+                    <label class="block text-[11px] font-bold text-indigo-800 dark:text-indigo-300 mb-1 flex items-center justify-between">
+                        <span>IMPORTAR MODELO 3D (.FBX, .GLB, .OBJ)</span>
+                        <span class="text-[9px] bg-indigo-200 dark:bg-indigo-800 text-indigo-900 dark:text-indigo-100 px-1.5 py-0.5 rounded font-mono">3D ASSET</span>
+                    </label>
+                    <div class="mt-2">
+                        <input type="file" id="sceneModelInput" accept=".fbx,.glb,.gltf,.obj" class="hidden">
+                        <button id="importModelSceneBtn" type="button" class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-xs text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-2">
+                            <span>📥</span> Importar Modelo 3D e Posicionar
                         </button>
-                        <button id="clearConsoleBtn" class="py-2 px-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 active:scale-95 text-xs text-slate-700 dark:text-slate-300 font-medium rounded-lg transition">
-                            Limpar Log
-                        </button>
+                        <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Escolha um arquivo e clique no chão da cena para posicionar o obstáculo.</p>
                     </div>
-                    <button id="clearStorageBtn" onclick="clearAllPersistedData()" class="w-full py-1.5 px-3 bg-rose-100 hover:bg-rose-200 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300 text-[11px] font-bold rounded-lg transition border border-rose-300 dark:border-rose-800">
-                        🗑️ Limpar Todos os Projetos
+                </div>
+
+                <div class="grid grid-cols-1 gap-2">
+                    <button id="spawnCubeBtn" class="py-2.5 px-3 bg-amber-600 hover:bg-amber-700 active:scale-95 text-xs text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1.5">
+                        <span>🟩</span> Inserir Cubo Padrão
+                    </button>
+                    <button id="applyFloorTextureBtn" type="button" onclick="triggerApplyFloorTexture()" class="py-2.5 px-3 bg-teal-600 hover:bg-teal-700 active:scale-95 text-xs text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1.5">
+                        <span>🧱</span> Aplicar Textura no Chão
+                    </button>
+                    <button id="resetFloorGridBtn" type="button" onclick="resetFloorToInitialGrid()" class="py-2 px-3 bg-slate-700 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 active:scale-95 text-xs text-white font-bold rounded-xl transition shadow flex items-center justify-center gap-1.5 border border-slate-500/30">
+                        <span>🔄</span> Redefinir Chão (Grade Inicial)
                     </button>
                 </div>
-            </div>
 
-            <!-- Right Info Panel -->
-            <div id="rightInfoPanel" class="glass-card p-4 rounded-2xl pointer-events-auto text-xs text-slate-600 dark:text-slate-300 max-w-xs shadow-xl hidden md:block space-y-2">
-                <div class="font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
-                    <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                    Instruções & Controles
-                </div>
-                <div class="space-y-1.5 pt-1">
-                    <div class="flex justify-between items-center">
-                        <span>Movimentação:</span>
-                        <span class="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold">WASD / Setas</span>
+                <div class="space-y-1">
+                    <div class="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                        <span>Objetos Criados (<span id="cubeCount">0</span>)</span>
+                        <button id="clearCubesBtn" class="text-[10px] text-rose-600 dark:text-rose-400 hover:underline">Deletar Todos</button>
                     </div>
-                    <div class="flex justify-between items-center">
-                        <span>Pular:</span>
-                        <span class="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold">ESPAÇO</span>
-                    </div>
-                    <div id="customKeysHelp" class="space-y-1 border-t border-slate-200 dark:border-slate-700 pt-1">
-                        <!-- Ajuda via JS -->
+                    <div id="cubesListContainer" class="max-h-32 overflow-y-auto space-y-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-[11px]">
+                        <span class="text-slate-400 italic">Nenhum obstáculo adicionado ainda.</span>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Touch Controls (Mobile) -->
-        <div id="touchControlsPanel" class="pointer-events-auto sm:hidden self-center my-2 glass-card p-3 rounded-2xl flex items-center gap-4 shadow-xl">
-            <div class="grid grid-cols-3 gap-1 w-32 h-32">
-                <div></div>
-                <button id="btnUp" class="bg-slate-200 dark:bg-slate-800 active:bg-indigo-500 active:text-white rounded-lg flex items-center justify-center text-lg font-bold">↑</button>
-                <div></div>
-                <button id="btnLeft" class="bg-slate-200 dark:bg-slate-800 active:bg-indigo-500 active:text-white rounded-lg flex items-center justify-center text-lg font-bold">←</button>
-                <button id="btnDown" class="bg-slate-200 dark:bg-slate-800 active:bg-indigo-500 active:text-white rounded-lg flex items-center justify-center text-lg font-bold">↓</button>
-                <button id="btnRight" class="bg-slate-200 dark:bg-slate-800 active:bg-indigo-500 active:text-white rounded-lg flex items-center justify-center text-lg font-bold">→</button>
+            <!-- ABA DE CONFIGURAÇÃO DE COLISÃO / FÍSICA / JOGO -->
+            <div id="sectionPhysics" class="space-y-3 hidden">
+                <!-- Colisão e Peso do Jogador -->
+                <div class="p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/50 space-y-2">
+                    <h3 class="font-bold text-xs text-indigo-900 dark:text-indigo-300 flex items-center justify-between">
+                        <span>🧍🏽‍♂️ Colisão & Peso do Jogador</span>
+                        <span class="text-[9px] bg-indigo-200 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 px-1.5 py-0.5 rounded">CILINDRO</span>
+                    </h3>
+                    <div class="grid grid-cols-3 gap-2 text-xs">
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Raio (X/Z):</label>
+                            <input type="number" id="playerColRadius" step="0.05" min="0.1" max="3.0" class="w-full px-2 py-1 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Altura (Y):</label>
+                            <input type="number" id="playerColHeight" step="0.1" min="0.5" max="5.0" class="w-full px-2 py-1 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Peso (kg):</label>
+                            <input type="number" id="playerMassInput" step="1" min="1" max="10000" value="70" class="w-full px-2 py-1 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                        Objetos mais leves que o personagem são empurrados conforme a diferença de peso e velocidade de impacto.
+                    </p>
+                </div>
+
+                <!-- Configuração Visual Bounds -->
+                <div class="p-3 rounded-xl bg-orange-50/70 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-800/50 flex items-center justify-between">
+                    <label for="toggleShowBounds" class="text-xs font-bold text-orange-900 dark:text-orange-300 cursor-pointer flex items-center gap-2">
+                        <span>🟠</span> Exibir Área de Colisão (Bounds)
+                    </label>
+                    <input type="checkbox" id="toggleShowBounds" checked class="w-4 h-4 cursor-pointer accent-orange-600">
+                </div>
+
+                <!-- Configuração do HUD / Pontuação -->
+                <div class="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <label for="toggleScoreEnabled" class="text-xs font-bold text-emerald-900 dark:text-emerald-300 cursor-pointer flex items-center gap-1.5">
+                            <span>🏆</span> Habilitar Pontuação do Jogo
+                        </label>
+                        <input type="checkbox" id="toggleScoreEnabled" checked class="w-4 h-4 cursor-pointer accent-emerald-600">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400 mb-0.5">Texto do Placar:</label>
+                        <input type="text" id="scoreTextLabel" value="Pontos:" class="w-full px-2 py-1 text-xs bg-white dark:bg-slate-800 border rounded">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Posição X (px):</label>
+                            <input type="number" id="scorePosX" value="32" step="5" class="w-full px-2 py-1 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-400">Posição Y (px):</label>
+                            <input type="number" id="scorePosY" value="32" step="5" class="w-full px-2 py-1 bg-white dark:bg-slate-800 border rounded font-mono text-xs">
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="flex flex-col gap-2">
-                <button id="btnJump" class="w-16 h-14 bg-indigo-600 active:bg-indigo-700 rounded-xl flex items-center justify-center text-xs font-bold text-white shadow-lg">
-                    PULO
-                </button>
-                <button id="btnAddCubeMobile" class="w-16 h-12 bg-amber-600 active:bg-amber-700 rounded-xl flex items-center justify-center text-[10px] font-bold text-white shadow-lg">
-                    + OBJ
+
+            <!-- Action Buttons -->
+            <div class="pt-2 flex flex-col gap-2 border-t border-slate-200 dark:border-slate-700">
+                <div class="flex gap-2">
+                    <button id="resetCamBtn" class="flex-1 py-2 px-3 bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 dark:hover:bg-slate-600 active:scale-95 text-xs text-white font-medium rounded-lg transition shadow">
+                        Resetar Posição
+                    </button>
+                    <button id="clearConsoleBtn" class="py-2 px-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 active:scale-95 text-xs text-slate-700 dark:text-slate-300 font-medium rounded-lg transition">
+                        Limpar Log
+                    </button>
+                </div>
+                <button id="clearStorageBtn" onclick="clearAllPersistedData()" class="w-full py-1.5 px-3 bg-rose-100 hover:bg-rose-200 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300 text-[11px] font-bold rounded-lg transition border border-rose-300 dark:border-rose-800">
+                    🗑️ Limpar Todos os Projetos
                 </button>
             </div>
         </div>
+    </div>
 
-        <!-- Terminal de Status -->
-        <div id="consoleTerminalPanel" class="glass-card p-3 rounded-xl pointer-events-auto w-full max-w-3xl self-center max-h-36 flex flex-col shadow-xl">
-            <div class="flex items-center justify-between pb-1.5 border-b border-slate-200 dark:border-slate-700 text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                <span class="flex items-center gap-1.5 font-bold text-slate-700 dark:text-slate-300">
-                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    Terminal de Status & Debug
-                </span>
+    <!-- Menu Suspenso & Transladável: Instruções & Controles -->
+    <div id="rightInfoPanel" style="top: 16px; right: 16px;" class="floating-panel glass-card rounded-2xl text-xs text-slate-600 dark:text-slate-300 w-72 shadow-2xl hidden md:block overflow-hidden">
+        <div id="rightInfoHeader" title="Arraste para transladar o menu" class="drag-handle px-4 py-2.5 font-bold text-slate-900 dark:text-white flex items-center justify-between border-b border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/70">
+            <span class="flex items-center gap-1.5">
+                <span class="text-slate-400">⠿</span>
+                <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                Instruções & Controles
+            </span>
+            <button type="button" onclick="toggleFloatingBody('rightInfoBody', this)" title="Recolher / Expandir menu" class="px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-xs font-bold transition">
+                −
+            </button>
+        </div>
+        <div id="rightInfoBody" class="p-3.5 space-y-1.5">
+            <div class="flex justify-between items-center">
+                <span>Movimentação:</span>
+                <span class="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold">WASD / Setas</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span>Pular:</span>
+                <span class="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold">ESPAÇO</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span>Selecionar / Limpar:</span>
+                <span class="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold">Clique / Vazio</span>
+            </div>
+            <div id="customKeysHelp" class="space-y-1 border-t border-slate-200 dark:border-slate-700 pt-1">
+                <!-- Ajuda via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Touch Controls (Mobile) -->
+    <div id="touchControlsPanel" class="fixed bottom-40 left-1/2 -translate-x-1/2 z-20 pointer-events-auto sm:hidden glass-card p-3 rounded-2xl flex items-center gap-4 shadow-xl">
+        <div class="grid grid-cols-3 gap-1 w-32 h-32">
+            <div></div>
+            <button id="btnUp" class="bg-slate-200 dark:bg-slate-800 active:bg-indigo-500 active:text-white rounded-lg flex items-center justify-center text-lg font-bold">↑</button>
+            <div></div>
+            <button id="btnLeft" class="bg-slate-200 dark:bg-slate-800 active:bg-indigo-500 active:text-white rounded-lg flex items-center justify-center text-lg font-bold">←</button>
+            <button id="btnDown" class="bg-slate-200 dark:bg-slate-800 active:bg-indigo-500 active:text-white rounded-lg flex items-center justify-center text-lg font-bold">↓</button>
+            <button id="btnRight" class="bg-slate-200 dark:bg-slate-800 active:bg-indigo-500 active:text-white rounded-lg flex items-center justify-center text-lg font-bold">→</button>
+        </div>
+        <div class="flex flex-col gap-2">
+            <button id="btnJump" class="w-16 h-14 bg-indigo-600 active:bg-indigo-700 rounded-xl flex items-center justify-center text-xs font-bold text-white shadow-lg">
+                PULO
+            </button>
+            <button id="btnAddCubeMobile" class="w-16 h-12 bg-amber-600 active:bg-amber-700 rounded-xl flex items-center justify-center text-[10px] font-bold text-white shadow-lg">
+                + OBJ
+            </button>
+        </div>
+    </div>
+
+    <!-- Menu Suspenso & Transladável: Terminal de Status -->
+    <div id="consoleTerminalPanel" style="bottom: 16px; right: 16px;" class="floating-panel glass-card rounded-xl w-[calc(100vw-32px)] max-w-xl flex flex-col shadow-2xl overflow-hidden">
+        <div id="consoleTerminalHeader" title="Arraste para transladar o terminal" class="drag-handle px-3 py-2 flex items-center justify-between border-b border-slate-200 dark:border-slate-700 text-[11px] font-mono text-slate-500 dark:text-slate-400 bg-slate-50/70 dark:bg-slate-900/70">
+            <span class="flex items-center gap-1.5 font-bold text-slate-700 dark:text-slate-300">
+                <span class="text-slate-400">⠿</span>
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Terminal de Status & Debug
+            </span>
+            <div class="flex items-center gap-2">
                 <span id="currentStatusBadge" class="text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">Personagem: Manequim Padrão</span>
+                <button type="button" onclick="toggleFloatingBody('consoleLog', this)" title="Recolher / Expandir terminal" class="px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-xs font-bold transition">
+                    −
+                </button>
             </div>
-            <div id="consoleLog" class="flex-1 overflow-y-auto text-[11px] font-mono space-y-1 mt-1.5 pr-1 text-slate-700 dark:text-slate-300">
-                <!-- Log messages -->
-            </div>
+        </div>
+        <div id="consoleLog" class="h-24 overflow-y-auto text-[11px] font-mono space-y-1 p-2.5 text-slate-700 dark:text-slate-300">
+            <!-- Log messages -->
         </div>
     </div>
 
@@ -505,6 +547,103 @@
         let currentProjectName = 'Projeto Padrão';
 
         let customKeyAnimations = {};
+
+        // ==========================================
+        // MENUS SUSPENSOS & TRANSLADÁVEIS (DRAG)
+        // ==========================================
+        let topPanelZIndex = 25;
+
+        function bringPanelToFront(panelEl) {
+            if (!panelEl) return;
+            topPanelZIndex += 1;
+            panelEl.style.zIndex = topPanelZIndex;
+        }
+
+        function clampPanelInsideViewport(panelEl) {
+            if (!panelEl || panelEl.classList.contains('hidden')) return;
+            const rect = panelEl.getBoundingClientRect();
+            const maxLeft = Math.max(0, window.innerWidth - rect.width);
+            const maxTop = Math.max(0, window.innerHeight - rect.height);
+            const clampedLeft = Math.min(Math.max(0, rect.left), maxLeft);
+            const clampedTop = Math.min(Math.max(0, rect.top), maxTop);
+
+            panelEl.style.left = `${clampedLeft}px`;
+            panelEl.style.top = `${clampedTop}px`;
+            panelEl.style.right = 'auto';
+            panelEl.style.bottom = 'auto';
+        }
+
+        function makePanelDraggable(panelId, handleId) {
+            const panelEl = document.getElementById(panelId);
+            const handleEl = document.getElementById(handleId);
+            if (!panelEl || !handleEl) return;
+
+            let isDragging = false;
+            let startPointerX = 0;
+            let startPointerY = 0;
+            let startLeft = 0;
+            let startTop = 0;
+
+            panelEl.addEventListener('pointerdown', () => bringPanelToFront(panelEl));
+
+            handleEl.addEventListener('pointerdown', (e) => {
+                if (e.target.closest('button, input, select, label, a')) return;
+                e.preventDefault();
+                e.stopPropagation();
+
+                bringPanelToFront(panelEl);
+                const rect = panelEl.getBoundingClientRect();
+                panelEl.style.left = `${rect.left}px`;
+                panelEl.style.top = `${rect.top}px`;
+                panelEl.style.right = 'auto';
+                panelEl.style.bottom = 'auto';
+
+                isDragging = true;
+                startPointerX = e.clientX;
+                startPointerY = e.clientY;
+                startLeft = rect.left;
+                startTop = rect.top;
+                panelEl.classList.add('dragging');
+            });
+
+            window.addEventListener('pointermove', (e) => {
+                if (!isDragging) return;
+                const dx = e.clientX - startPointerX;
+                const dy = e.clientY - startPointerY;
+                const rect = panelEl.getBoundingClientRect();
+                const maxLeft = Math.max(0, window.innerWidth - rect.width);
+                const maxTop = Math.max(0, window.innerHeight - rect.height);
+
+                const newLeft = Math.min(Math.max(0, startLeft + dx), maxLeft);
+                const newTop = Math.min(Math.max(0, startTop + dy), maxTop);
+
+                panelEl.style.left = `${newLeft}px`;
+                panelEl.style.top = `${newTop}px`;
+            });
+
+            const stopDragging = () => {
+                if (!isDragging) return;
+                isDragging = false;
+                panelEl.classList.remove('dragging');
+            };
+
+            window.addEventListener('pointerup', stopDragging);
+            window.addEventListener('pointercancel', stopDragging);
+        }
+
+        function toggleFloatingBody(bodyId, btnEl) {
+            const bodyEl = document.getElementById(bodyId);
+            if (!bodyEl) return;
+            const isHidden = bodyEl.classList.toggle('hidden');
+            if (btnEl) btnEl.innerText = isHidden ? '+' : '−';
+        }
+
+        function setupDraggableMenus() {
+            makePanelDraggable('leftConfigPanel', 'leftConfigHeader');
+            makePanelDraggable('rightInfoPanel', 'rightInfoHeader');
+            makePanelDraggable('consoleTerminalPanel', 'consoleTerminalHeader');
+            makePanelDraggable('objectContextMenu', 'ctxMenuDragHandle');
+        }
 
         // CONFIGURAÇÕES DE JOGO / HUD
         let gameConfig = {
@@ -731,7 +870,7 @@
             updateHelpersVisibility();
 
             if (testing) {
-                deselectCube();
+                deselectCube(true);
                 if (transformControls) {
                     transformControls.detach();
                     transformControls.visible = false;
@@ -844,6 +983,7 @@
 
         async function init() {
             log('Iniciando Estúdio 3D...', 'info');
+            setupDraggableMenus();
 
             const container = document.getElementById('canvas-container');
 
@@ -922,10 +1062,14 @@
 
             window.addEventListener('resize', onResize);
             window.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && pendingModelPlacement) {
-                    pendingModelPlacement = null;
-                    document.getElementById('canvas-container').style.cursor = '';
-                    log('Posicionamento cancelado.', 'info');
+                if (e.key === 'Escape') {
+                    if (pendingModelPlacement) {
+                        pendingModelPlacement = null;
+                        document.getElementById('canvas-container').style.cursor = '';
+                        log('Posicionamento cancelado.', 'info');
+                    } else if (selectedCube) {
+                        deselectCube();
+                    }
                 }
             });
 
@@ -1065,6 +1209,7 @@
             lineSegments.computeLineDistances();
             lineSegments.position.y = h / 2;
             lineSegments.visible = gameConfig.showBounds && !isGameTestingMode;
+            lineSegments.userData.isDebugHelper = true;
 
             obstacle.debugHelper = lineSegments;
             obstacle.group.add(lineSegments);
@@ -1100,7 +1245,7 @@
         }
 
         async function handleSaveAsProject() {
-            const name = prompt('Digite o novo nome para salvar este projeto:', `${currentProjectName} (Cópia)`);
+            const name = prompt('Salvar Como — Digite o nome do novo projeto:', `${currentProjectName} (Cópia)`);
             if (!name || !name.trim()) return;
 
             const newId = 'proj_' + Date.now();
@@ -1110,7 +1255,7 @@
             updateProjectTitleUI();
             localStorage.setItem('active_project_id', currentProjectId);
             await persistCurrentProjectState();
-            log(`Projeto salvo como novo projeto: "${currentProjectName}".`, 'success');
+            log(`Projeto salvo como: "${currentProjectName}".`, 'success');
         }
 
         async function openProjectsManager() {
@@ -1368,7 +1513,7 @@
         }
 
         async function loadProject(projId) {
-            deselectCube();
+            deselectCube(true);
             obstacleCubes.forEach(c => scene.remove(c.group));
             obstacleCubes = [];
             customKeyAnimations = {};
@@ -2235,16 +2380,57 @@
             }
         }
 
+        function pickObstacleAtClientPoint(clientX, clientY) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+
+            // Coleta apenas as malhas visíveis dos obstáculos (ignorando linhas de debug bounds)
+            const pickableMeshes = [];
+            obstacleCubes.forEach(c => {
+                if (!c || !c.group || !c.group.visible) return;
+                c.group.traverse(child => {
+                    if ((child.isMesh || child.isSkinnedMesh) && child.visible && !child.userData.isDebugHelper) {
+                        child.userData.obstacleData = c;
+                        pickableMeshes.push(child);
+                    }
+                });
+            });
+
+            const hits = raycaster.intersectObjects(pickableMeshes, false);
+            if (!hits.length) return null;
+
+            for (const hit of hits) {
+                let node = hit.object;
+                while (node) {
+                    if (node.userData && node.userData.obstacleData) {
+                        return node.userData.obstacleData;
+                    }
+                    node = node.parent;
+                }
+            }
+            return null;
+        }
+
         function setupBuilderInteraction() {
             const container = document.getElementById('canvas-container');
             const ctxMenu = document.getElementById('objectContextMenu');
 
+            let downX = 0;
+            let downY = 0;
+            let downButton = -1;
+            let startedOnGizmo = false;
+
             container.addEventListener('pointerdown', (e) => {
                 if (isGameTestingMode) return;
-                if (e.button !== 0) return;
-                if (transformControls && transformControls.dragging) return;
+                downX = e.clientX;
+                downY = e.clientY;
+                downButton = e.button;
+                startedOnGizmo = !!(transformControls && (transformControls.dragging || transformControls.axis !== null));
 
-                if (pendingModelPlacement) {
+                if (e.button === 0 && pendingModelPlacement) {
                     e.preventDefault();
                     e.stopPropagation();
                     const placeRect = renderer.domElement.getBoundingClientRect();
@@ -2264,40 +2450,26 @@
                     }
                     if (placementPoint) placePendingModelAt(placementPoint);
                     else log('Não foi possível projetar o clique no chão.', 'warn');
-                    return;
+                    downButton = -1;
                 }
+            });
+
+            container.addEventListener('pointerup', (e) => {
+                if (isGameTestingMode) return;
+                if (downButton !== 0 || e.button !== 0) return;
+
+                const moveDist = Math.hypot(e.clientX - downX, e.clientY - downY);
+                const wasGizmoAction = startedOnGizmo || (transformControls && transformControls.dragging);
+                downButton = -1;
+
+                // Se arrastou a câmera ou manipulou o gizmo, não altera a seleção
+                if (moveDist > 5 || wasGizmoAction) return;
 
                 ctxMenu.classList.add('hidden');
 
-                const rect = renderer.domElement.getBoundingClientRect();
-                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-                mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-
-                raycaster.setFromCamera(mouse, camera);
-                const targets = obstacleCubes.filter(c => c && c.group).map(c => c.group);
-                const hits = raycaster.intersectObjects(targets, true);
-
-                if (hits.length > 0) {
-                    let node = hits[0].object;
-                    let hitObj = null;
-
-                    while (node && !hitObj) {
-                        hitObj = node.userData && node.userData.obstacleData;
-                        node = node.parent;
-                    }
-
-                    if (!hitObj) {
-                        hitObj = obstacleCubes.find(c => {
-                            let n = hits[0].object;
-                            while (n) {
-                                if (n === c.group) return true;
-                                n = n.parent;
-                            }
-                            return false;
-                        });
-                    }
-
-                    if (hitObj) selectCube(hitObj);
+                const hitObj = pickObstacleAtClientPoint(e.clientX, e.clientY);
+                if (hitObj) {
+                    selectCube(hitObj);
                 } else {
                     deselectCube();
                 }
@@ -2307,49 +2479,23 @@
                 e.preventDefault();
                 if (isGameTestingMode) return;
 
-                const rect = renderer.domElement.getBoundingClientRect();
-                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-                mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+                const hitObj = pickObstacleAtClientPoint(e.clientX, e.clientY);
+                if (hitObj) {
+                    selectCube(hitObj);
+                    document.getElementById('ctxMenuTitle').innerText = hitObj.name;
+                    document.getElementById('ctxScaleInput').value = hitObj.group.scale.x.toFixed(2);
+                    document.getElementById('ctxSensible').checked = hitObj.sensible !== false;
+                    document.getElementById('ctxMass').value = hitObj.mass !== undefined ? hitObj.mass : 30;
+                    document.getElementById('ctxColScaleX').value = (hitObj.colScaleX || 1.0).toFixed(2);
+                    document.getElementById('ctxColScaleZ').value = (hitObj.colScaleZ || 1.0).toFixed(2);
+                    document.getElementById('ctxEffectType').value = hitObj.effectType || 'score';
+                    document.getElementById('ctxEffectValue').value = hitObj.effectValue !== undefined ? hitObj.effectValue : 10;
 
-                raycaster.setFromCamera(mouse, camera);
-                const targets = obstacleCubes.filter(c => c && c.group).map(c => c.group);
-                const hits = raycaster.intersectObjects(targets, true);
-
-                if (hits.length > 0) {
-                    let node = hits[0].object;
-                    let hitObj = null;
-
-                    while (node && !hitObj) {
-                        hitObj = node.userData && node.userData.obstacleData;
-                        node = node.parent;
-                    }
-
-                    if (!hitObj) {
-                        hitObj = obstacleCubes.find(c => {
-                            let n = hits[0].object;
-                            while (n) {
-                                if (n === c.group) return true;
-                                n = n.parent;
-                            }
-                            return false;
-                        });
-                    }
-
-                    if (hitObj) {
-                        selectCube(hitObj);
-                        document.getElementById('ctxMenuTitle').innerText = hitObj.name;
-                        document.getElementById('ctxScaleInput').value = hitObj.group.scale.x.toFixed(2);
-                        document.getElementById('ctxSensible').checked = hitObj.sensible !== false;
-                        document.getElementById('ctxMass').value = hitObj.mass !== undefined ? hitObj.mass : 30;
-                        document.getElementById('ctxColScaleX').value = (hitObj.colScaleX || 1.0).toFixed(2);
-                        document.getElementById('ctxColScaleZ').value = (hitObj.colScaleZ || 1.0).toFixed(2);
-                        document.getElementById('ctxEffectType').value = hitObj.effectType || 'score';
-                        document.getElementById('ctxEffectValue').value = hitObj.effectValue !== undefined ? hitObj.effectValue : 10;
-
-                        ctxMenu.style.left = `${e.clientX}px`;
-                        ctxMenu.style.top = `${e.clientY}px`;
-                        ctxMenu.classList.remove('hidden');
-                    }
+                    ctxMenu.style.left = `${e.clientX}px`;
+                    ctxMenu.style.top = `${e.clientY}px`;
+                    ctxMenu.classList.remove('hidden');
+                    bringPanelToFront(ctxMenu);
+                    clampPanelInsideViewport(ctxMenu);
                 } else {
                     ctxMenu.classList.add('hidden');
                     deselectCube();
@@ -2524,6 +2670,7 @@
         function selectCube(cubeObj) {
             if (isGameTestingMode) return;
             if (!cubeObj || !cubeObj.group || !transformControls) return;
+            const alreadySelected = selectedCube && selectedCube.id === cubeObj.id;
             selectedCube = cubeObj;
 
             cubeObj.group.userData.obstacleData = cubeObj;
@@ -2543,13 +2690,19 @@
 
             syncObstacleTransform(cubeObj);
             updateCubesListUI();
-            log(`Objeto selecionado: ${cubeObj.name}.`, 'info');
+            if (!alreadySelected) {
+                log(`Objeto selecionado: ${cubeObj.name}.`, 'info');
+            }
         }
 
-        function deselectCube() {
+        function deselectCube(silent = false) {
+            const hadSelection = Boolean(selectedCube);
             if (transformControls) transformControls.detach();
             selectedCube = null;
             updateCubesListUI();
+            if (hadSelection && !silent) {
+                log('Seleção removida (nenhum objeto selecionado).', 'info');
+            }
         }
 
         function updateSelectedObstacleState() {
@@ -2560,7 +2713,7 @@
         window.removeCube = function(id) {
             const index = obstacleCubes.findIndex(c => c.id === id);
             if (index !== -1) {
-                if (selectedCube && selectedCube.id === id) deselectCube();
+                if (selectedCube && selectedCube.id === id) deselectCube(true);
                 scene.remove(obstacleCubes[index].group);
                 obstacleCubes.splice(index, 1);
                 updateCubesListUI();
@@ -2571,7 +2724,7 @@
         };
 
         function removeAllCubes() {
-            deselectCube();
+            deselectCube(true);
             obstacleCubes.forEach(c => scene.remove(c.group));
             obstacleCubes = [];
             updateCubesListUI();
@@ -2618,6 +2771,8 @@
                     ctxMenu.style.left = `${e.clientX}px`;
                     ctxMenu.style.top = `${e.clientY}px`;
                     ctxMenu.classList.remove('hidden');
+                    bringPanelToFront(ctxMenu);
+                    clampPanelInsideViewport(ctxMenu);
                 };
 
                 const massTag = c.mass !== undefined ? `${c.mass}kg` : '30kg';
@@ -2741,12 +2896,9 @@
             if (!targetObj.velocity) targetObj.velocity = new THREE.Vector3(0, 0, 0);
 
             const massDiff = pusherMass - targetMass;
-            // Fator físico baseado na diferença de massa relativa e velocidade de impacto
             const massRatio = massDiff / targetMass;
             const impulseMagnitude = Math.min(28.0, impactSpeed * (0.65 + massRatio * 0.45));
 
-            const pushVec = impactDir.clone().setY(0).normalize().multiplyScalar(impulseMagnitude);
-            // Aplica ou soma velocidade respeitando o sentido do impacto
             const currentProj = targetObj.velocity.dot(impactDir);
             if (currentProj < impulseMagnitude) {
                 targetObj.velocity.addScaledVector(impactDir, impulseMagnitude - Math.max(0, currentProj));
@@ -2779,7 +2931,6 @@
 
                 let blocked = false;
 
-                // Colisão objeto-contra-objeto (permite empurrar em cadeia se o objeto em movimento for mais pesado)
                 for (let j = 0; j < obstacleCubes.length; j++) {
                     if (i === j) continue;
                     const other = obstacleCubes[j];
@@ -2796,15 +2947,14 @@
                         const otherMass = Math.max(0.1, other.mass !== undefined ? other.mass : 30);
                         if (obMass > otherMass) {
                             applyPushForce(other, moveDir, impactSpeed, obMass);
-                            ob.velocity.multiplyScalar(0.55); // Transfere parte do momento
+                            ob.velocity.multiplyScalar(0.55);
                         } else {
                             blocked = true;
-                            ob.velocity.multiplyScalar(-0.2); // Rebate levemente em obstáculo mais pesado
+                            ob.velocity.multiplyScalar(-0.2);
                         }
                     }
                 }
 
-                // Colisão objeto em movimento contra o personagem
                 if (!blocked && characterGroup) {
                     const charR = playerCollider.radius;
                     const charBottom = characterGroup.position.y;
@@ -2839,7 +2989,6 @@
                     syncObstacleTransform(ob);
                 }
 
-                // Desaceleração por atrito
                 const damping = Math.max(0, 1 - friction * delta);
                 ob.velocity.multiplyScalar(damping);
             }
@@ -2861,7 +3010,6 @@
                 const maxZ = bounds.maxZ + charRadius;
 
                 if (nextPos.x >= minX && nextPos.x <= maxX && nextPos.z >= minZ && nextPos.z <= maxZ) {
-                    // Eventos de gameplay durante teste
                     if (isGameTestingMode) {
                         const now = Date.now();
                         if (now - lastCollisionTime > 600) {
@@ -2879,16 +3027,13 @@
                     }
 
                     const cubeTop = bounds.topY;
-                    // Se o personagem estiver acima do topo do obstáculo, pode subir nele
                     if (characterGroup.position.y >= cubeTop - 0.25) {
                         if (highestTop === null || cubeTop > highestTop) highestTop = cubeTop;
                         continue;
                     }
 
-                    // Interação lateral com física de peso e velocidade
                     const objMass = Math.max(0.1, c.mass !== undefined ? c.mass : 30);
                     if (moveDir && impactSpeed > 0.05 && charMass > objMass) {
-                        // Calcula direção de empurrão baseada no centro de contato ou movimento
                         const toObj = new THREE.Vector3(
                             c.group.position.x - characterGroup.position.x,
                             0,
@@ -2899,7 +3044,6 @@
                             : moveDir.clone().normalize();
 
                         applyPushForce(c, pushDir, impactSpeed, charMass);
-                        // O personagem avança parcialmente enquanto empurra o objeto mais leve
                         return 'pushed';
                     }
 
@@ -2982,7 +3126,6 @@
             const delta = Math.min(clock.getDelta(), 0.05);
             if (mixer) mixer.update(delta);
 
-            // Atualiza física dos obstáculos dinâmicos empurrados
             updateDynamicObstaclesPhysics(delta);
 
             if (characterGroup) {
@@ -3043,12 +3186,10 @@
                         const collisionResult = checkCollisions(nextPos, moveVector, moveSpeed);
 
                         if (collisionResult === 'pushed') {
-                            // Avança reduzindo levemente a velocidade pela resistência do objeto empurrado
                             characterGroup.position.addScaledVector(moveVector, moveSpeed * delta * 0.65);
                         } else if (collisionResult !== false) {
                             characterGroup.position.copy(nextPos);
                         } else {
-                            // Deslizamento suave nos eixos independentes (X e Z) quando bloqueado por objeto pesado
                             const tryX = characterGroup.position.clone();
                             tryX.x += moveVector.x * moveSpeed * delta;
                             if (checkCollisions(tryX, new THREE.Vector3(Math.sign(moveVector.x), 0, 0), Math.abs(moveVector.x) * moveSpeed) !== false) {
@@ -3085,6 +3226,10 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+            clampPanelInsideViewport(document.getElementById('leftConfigPanel'));
+            clampPanelInsideViewport(document.getElementById('rightInfoPanel'));
+            clampPanelInsideViewport(document.getElementById('consoleTerminalPanel'));
+            clampPanelInsideViewport(document.getElementById('objectContextMenu'));
         }
 
         window.onload = init;
